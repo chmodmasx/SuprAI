@@ -67,6 +67,35 @@ Hermes Agent, Hermes Desktop, OpenClaw and similar projects are research referen
 
 The interface exists to preserve clean boundaries and testability, not to make third-party agent runtimes the product.
 
+### Thread ownership
+
+Qt thread affinity is part of the architecture (ADR-0015).
+
+```text
+Main/UI thread
+  QApplication
+  QQmlApplicationEngine
+  UI-facing QAbstractListModels/controllers
+          |
+          | queued commands/events
+          v
+Runtime thread
+  NativeSuprAIRuntime
+  TurnStateMachine
+  Provider network objects
+  QProcess/QTimer runtime objects
+          |
+          | queued persistence commands/results
+          v
+Persistence thread
+  PersistenceWorker
+  primary SQLite writer connection
+```
+
+QML never manipulates runtime-owned network/process/database QObjects directly.
+
+High-frequency text deltas may be coalesced at the UI boundary, but state transitions and terminal events are not dropped.
+
 ## 3. Why Qt Quick/QML
 
 Use QML for presentation and C++ for application/runtime logic.
@@ -150,8 +179,9 @@ Proposed:
       transports/
     context/
       ContextManager.*
-      TokenCounter.*
+      TokenBudgetService.*
       CompactionPolicy.*
+      CompactionArtifact.*
     memory/
       MemoryService.*
     skills/
@@ -163,8 +193,10 @@ Proposed:
       SecretService.*
     persistence/
       AppDatabase.*
+      PersistenceWorker.*
       SessionStore.*
       MessageStore.*
+      ToolInvocationStore.*
       migrations/
     platform/
       linux/
@@ -394,14 +426,75 @@ Inputs may include:
 - tool definitions;
 - memory retrieval;
 - attachments;
-- compacted summaries.
+- compaction artifacts.
+
+### Token budgeting
+
+TokenBudgetService follows ADR-0018.
+
+It budgets the final semantic provider request, including tool schemas, template overhead and media.
+
+Effective context-limit precedence:
+1. explicit user override;
+2. provider/runtime-advertised effective limit;
+3. verified cached probe for the exact provider/model configuration;
+4. conservative configured fallback.
+
+Current local runtimes expose useful effective limits:
+- NInfer: `max_model_len`;
+- vLLM: `max_model_len`;
+- llama.cpp: effective `n_ctx`.
+
+Counting uses the most exact provider capability:
+1. final-request input-token endpoint;
+2. provider render/tokenize path;
+3. tokenizer count of known rendered prompt;
+4. conservative estimate with uncertainty margin.
+
+NInfer and current llama.cpp expose final-request input-token counting for Responses; current llama.cpp also exposes it for Chat Completions. Provider capability probing, not brand assumptions, selects the path.
+
+Budget:
+
+```text
+effective_context
+  - output_reserve
+  - safety_margin
+  = maximum_input_budget
+```
+
+Provider-side automatic truncation is not normal SuprAI context management.
+
+### Compaction
+
+Compaction follows ADR-0019.
+
+Canonical conversation history is never replaced by a summary.
+
+A CompactionArtifact records its covered source item IDs/hash, retained boundary, summary, summarizer identity/config version and before/after token counts.
+
+Compaction:
+- preserves recent canonical tail items;
+- never splits tool-call/result structural pairs;
+- reduces old oversized tool output only in the prompt representation;
+- validates the generated summary;
+- rebuilds and recounts the candidate provider request;
+- commits only if the result is valid and meaningfully smaller.
+
+Failed or larger compactions are discarded.
+
+Optional proactive compaction is budget-relative; there is no universal fixed percentage threshold.
+
+### Prompt caching
+
+Prompt/KV caching is an optional optimization (ADR-0020).
+
+Stable prompt material is kept early when semantics permit, but correctness never depends on cache survival. Provider cache IDs, KV slots and server-side response stores are not session identity.
 
 Requirements:
-- explicit context budget;
-- provider/model-aware token limits;
-- deterministic ordering;
-- observable compaction;
-- persistent original history remains separate from temporary compacted context.
+- deterministic semantic ordering;
+- observable exact-vs-estimated token state;
+- persistent original history separate from compacted context;
+- cache loss/server restart changes performance only.
 
 ## 12. Memory and skills
 
@@ -454,6 +547,22 @@ Chat supports:
 
 Do not expose hidden chain-of-thought. Reasoning status/summary may be shown only when the provider/runtime legitimately exposes such data.
 
+### Transcript renderer
+
+The native transcript follows ADR-0014 (currently proof-gated).
+
+Direction:
+- C++ `QAbstractListModel`;
+- QML `ListView` with delegate reuse;
+- no durable state stored inside recycled delegates;
+- coalesced streaming updates;
+- safe Markdown rendering with raw HTML/network resource loading disabled;
+- external links opened only after explicit user action;
+- code blocks as owned native components;
+- no Qt WebEngine dependency for ordinary chat.
+
+Qt Markdown support may be reused, but model-generated Markdown must not be able to trigger ambient network fetches.
+
 ## 14. Projects
 
 Project is a SuprAI-owned workspace.
@@ -471,57 +580,103 @@ A session may exist without a project.
 
 ## 15. Persistence
 
-Use SQLite for SuprAI durable state.
+SQLite is SuprAI's canonical durable state (ADRs 0011, 0012 and 0017).
+
+Conversation history is an append-oriented stream of generalized items, not merely mutable `{role,text}` messages.
+
+Canonical item classes include:
+- message;
+- reasoning metadata/summary when legitimately exposed;
+- tool_call;
+- tool_result;
+- attachment;
+- runtime annotation.
+
+Stable SuprAI IDs exist independently of provider IDs.
+
+Retry, regenerate, edit-and-resend and future branching create lineage; they do not rewrite completed canonical history.
+
+### Persistence worker
+
+The primary SQLite writer connection belongs to a dedicated PersistenceWorker/thread.
+
+Baseline:
+- WAL;
+- foreign keys enabled;
+- busy timeout;
+- versioned migrations;
+- FTS5 verified in the actually shipped SQLite;
+- no arbitrary SQL from QML/runtime components.
+
+### Side-effect journal
+
+Mutating external tool invocations are durable before execution.
+
+```text
+prepared -> authorized -> executing -> succeeded|failed|cancelled
+
+crash while executing -> outcome_unknown
+```
+
+An `outcome_unknown` mutating/non-idempotent action is never automatically replayed.
 
 Store:
-- sessions;
-- messages;
+- sessions/turns/items;
+- tool invocation journal;
+- compaction artifacts;
 - projects;
 - profiles;
 - provider configuration excluding raw secrets;
 - tool/MCP configuration;
-- memory metadata/content where appropriate;
+- memory metadata/content;
 - UI associations;
 - schema version.
+
+Provider response IDs/cache/session state are optional metadata, never canonical conversation authority.
 
 Secrets live in secure Linux secret storage when available.
 
 ## 16. Linux integration
 
-Desired:
-- system tray/status notifier;
-- notifications;
-- single instance;
-- desktop file;
-- deep links;
-- file chooser;
-- clipboard;
-- drag/drop;
-- portals;
-- optional global shortcut;
-- optional autostart.
+Linux integration is freedesktop-first and capability-driven (ADR-0013).
 
-Wayland first.
+Baseline services:
+- application activation/single-instance/deep links via `org.freedesktop.Application` semantics over QtDBus;
+- global shortcuts through XDG Desktop Portal GlobalShortcuts v2;
+- notifications through Portal Notification v2 when available, with `org.freedesktop.Notifications` fallback;
+- file/open/screenshot interactions through appropriate portals where Wayland/user-consent semantics matter;
+- optional tray via C++ `QSystemTrayIcon`, capability-probed;
+- secure secret storage through SecretStore; QtKeychain is the current implementation candidate (ADR-0016);
+- clipboard and drag/drop through Qt.
 
-Capabilities are probed, not assumed.
+The visible interface remains Qt Quick/QML even if `QApplication` + Qt::Widgets are linked for QSystemTrayIcon.
 
-## 17. Process model
+Do not use raw X11 key grabs as the Wayland global-shortcut design.
+
+Tray, notification actions and shortcuts are optional capabilities; application correctness cannot depend on them.
+
+QML consumes a `DesktopCapabilities` model rather than guessing GNOME/KDE/X11 from environment strings.
+
+## 17. Process and thread model
 
 Initial preference: one application process, modular internally.
 
 ```text
 suprai
-  ├─ Qt/QML UI
-  ├─ application core
-  └─ NativeSuprAIRuntime
-       ├─ HTTP provider connections
-       ├─ optional MCP child processes
-       └─ tool child processes when required
+  ├─ main/UI thread
+  │    └─ Qt Quick/QML + UI models
+  ├─ runtime worker thread
+  │    └─ NativeSuprAIRuntime
+  │         ├─ HTTP provider connections
+  │         ├─ optional MCP child processes
+  │         └─ tool child processes when required
+  └─ persistence worker thread
+       └─ SQLite writer
 ```
 
 A separate SuprAI daemon/gateway may be designed later for remote/headless use, but is not required to make the desktop functional.
 
-This avoids prematurely reproducing Hermes' client/gateway split when SuprAI's first target is one native Linux app.
+This avoids prematurely reproducing another project's client/gateway split while still preventing model/network/database work from blocking the UI thread.
 
 ## 18. Runtime state
 
