@@ -1,25 +1,25 @@
 # SuprAI Architecture v0
 
-Status: proposed baseline.
+Status: accepted baseline.
 
-## 1. Goals
+## 1. Product
 
-Build a Linux-native AI desktop workspace with the interaction quality of modern agent desktops while keeping the runtime modular and replaceable.
+SuprAI is a complete Linux-native AI desktop application.
 
-Primary goals:
-- native Qt/QML UI;
-- low idle overhead;
-- first-class Wayland behavior;
-- AppImage distribution;
-- local and remote agent operation;
-- streaming tool-aware chat;
-- explicit approvals and user requests;
-- project/workspace awareness;
-- desktop integration;
-- no permanent dependency on Hermes/OpenClaw internals.
+It owns:
+- desktop UI;
+- application core;
+- agent runtime;
+- session persistence;
+- provider integration;
+- tool execution;
+- approvals;
+- MCP;
+- context management;
+- memory;
+- Linux integration.
 
-Non-goal for v0:
-- implementing a full autonomous agent runtime before the desktop shell is proven.
+Hermes Agent, Hermes Desktop, OpenClaw and similar projects are research references only. They are not runtime dependencies and are not planned production backends.
 
 ## 2. Architectural shape
 
@@ -32,7 +32,7 @@ Non-goal for v0:
                             v
 +------------------------------------------------------+
 |                C++ Application Layer                 |
-| navigation state | commands | use-cases | adapters  |
+| navigation | commands | settings | platform glue   |
 +-------------+----------------------+-----------------+
               |                      |
               v                      v
@@ -43,62 +43,68 @@ Non-goal for v0:
               |
               v
 +------------------------------------------------------+
-|                AgentBackend interface                |
-+--------------------+----------------+----------------+
-                     |                |
-          +----------+----+     +-----+----------------+
-          | HermesBackend |     | MockBackend          |
-          | JSON-RPC/WS    |     | deterministic tests |
-          +----------+----+     +----------------------+
-                     |
-                     v
-             Hermes Agent gateway
-
-Later:
-AgentBackend -> NativeSuprAIBackend
+|                 AgentRuntime interface               |
++---------------------+--------------------------------+
+                      |
+          +-----------+-----------+
+          |                       |
+          v                       v
++----------------------+  +----------------------+
+| NativeSuprAIRuntime  |  | MockRuntime          |
+| production           |  | deterministic tests  |
++----------+-----------+  +----------------------+
+           |
+           +--> AgentLoop
+           +--> ProviderRegistry
+           +--> ContextManager
+           +--> ToolRegistry / ToolExecutor
+           +--> ApprovalManager
+           +--> MCPClientManager
+           +--> SkillRegistry
+           +--> MemoryService
+           +--> SessionStore / MessageStore
 ```
+
+The interface exists to preserve clean boundaries and testability, not to make third-party agent runtimes the product.
 
 ## 3. Why Qt Quick/QML
 
-Use QML for the interactive shell and C++ for application/runtime logic.
+Use QML for presentation and C++ for application/runtime logic.
 
-Rationale:
-- native Linux process and window integration;
+Reasons:
+- native Linux process/window integration;
 - strong Wayland support through Qt platform plugins;
 - GPU-accelerated scene graph;
-- declarative UI suitable for dynamic agent surfaces;
-- no Chromium runtime required for the core chat UI;
-- C++ access to D-Bus, filesystem, QProcess, sockets and desktop services;
-- straightforward CMake packaging.
+- declarative UI appropriate for streaming/dynamic agent surfaces;
+- direct C++ integration with networking, D-Bus, filesystem, processes and desktop services;
+- no Chromium runtime required for core chat;
+- CMake/AppImage-friendly.
 
-Baseline modules:
+Baseline Qt modules:
 - Qt::Core
 - Qt::Gui
 - Qt::Qml
 - Qt::Quick
 - Qt::QuickControls2
 - Qt::Network
-- Qt::WebSockets
 - Qt::Sql
 - Qt::DBus
 - Qt::Concurrent
 - Qt::Svg
 
-Optional later:
+Optional:
+- Qt::WebSockets
 - Qt::Multimedia
 - Qt::Pdf
 - Qt::WebEngineQuick
 
-Qt WebEngine is deliberately optional because it materially increases binary size, memory use, security surface and packaging complexity.
+Qt WebEngine is not baseline.
 
 ## 4. C++ standard
 
-Use C++20 initially.
+C++20 initially.
 
-Reasons:
-- mature compiler availability on intended Linux build baselines;
-- sufficient coroutines/types/concepts support where useful;
-- lower toolchain friction than requiring newer language modes without a demonstrated need.
+Raise only when a concrete feature justifies a newer compiler/toolchain floor.
 
 ## 5. Repository structure
 
@@ -118,20 +124,48 @@ Proposed:
       Message.*
       ToolCall.*
       AgentEvent.*
-      BackendCapabilities.*
-    backends/
-      AgentBackend.*
-      hermes/
-        HermesBackend.*
-        HermesRpcClient.*
-        HermesMapper.*
+      RuntimeCapabilities.*
+    runtime/
+      AgentRuntime.*
+      native/
+        NativeSuprAIRuntime.*
+        AgentLoop.*
+        RuntimeEventBus.*
       mock/
-        MockBackend.*
+        MockRuntime.*
+    providers/
+      Provider.*
+      ProviderRegistry.*
+      openai/
+        OpenAICompatibleProvider.*
+        SSEParser.*
+    tools/
+      Tool.*
+      ToolRegistry.*
+      ToolExecutor.*
+      ApprovalManager.*
+      builtin/
+    mcp/
+      MCPClientManager.*
+      transports/
+    context/
+      ContextManager.*
+      TokenCounter.*
+      CompactionPolicy.*
+    memory/
+      MemoryService.*
+    skills/
+      SkillRegistry.*
     services/
       SessionService.*
       ProjectService.*
       SettingsService.*
       SecretService.*
+    persistence/
+      AppDatabase.*
+      SessionStore.*
+      MessageStore.*
+      migrations/
     platform/
       linux/
         LinuxDesktopIntegration.*
@@ -139,9 +173,6 @@ Proposed:
         LinuxTray.*
         LinuxPortal.*
         LinuxSecretStore.*
-    persistence/
-      AppDatabase.*
-      migrations/
     qml/
       Main.qml
       shell/
@@ -154,7 +185,10 @@ Proposed:
       theme/
   tests/
     unit/
-    backend-contract/
+    runtime/
+    provider/
+    tools/
+    mcp/
     integration/
   packaging/
     appimage/
@@ -167,102 +201,198 @@ Proposed:
     adr/
 ```
 
-## 6. AgentBackend boundary
+## 6. AgentRuntime boundary
 
-The desktop must be backend-neutral.
+The UI talks to SuprAI domain/runtime APIs, never directly to providers.
 
-### Required capability groups
+Conceptual API:
 
 ```text
-connection
-sessions
-messages
-streaming
-turn-control
-user-requests
-models
-profiles
-tools
-skills
-files?       capability-gated
-terminal?    capability-gated
-memory?      capability-gated
-voice?       capability-gated
+AgentRuntime
+  start()
+  stop()
+  capabilities()
+  listSessions()
+  createSession()
+  resumeSession()
+  submitPrompt()
+  cancelTurn()
+  answerRequest()
+  listModels()
+  listProfiles()
+  listTools()
+  listSkills()
+  events()
 ```
 
-A backend announces capabilities at connection time.
+Production implementation:
+- NativeSuprAIRuntime.
 
-The UI must not infer capability from backend name.
+Test implementation:
+- MockRuntime.
 
-Example:
-```cpp
-struct BackendCapabilities {
-    bool sessions;
-    bool cancelTurn;
-    bool approvals;
-    bool profiles;
-    bool skills;
-    bool remoteFiles;
-    bool terminal;
-    bool clientTools;
-};
+Provider-specific request/response types must stop at the provider boundary.
+
+## 7. NativeSuprAIRuntime
+
+NativeSuprAIRuntime is part of the initial product, not a future replacement.
+
+Responsibilities:
+- own active runtime state;
+- execute the agent loop;
+- build context;
+- call providers;
+- normalize streaming;
+- parse/dispatch tool calls;
+- request approvals;
+- execute tools;
+- call MCP servers;
+- persist sessions/messages;
+- publish domain events;
+- manage cancellation;
+- coordinate memory/skills.
+
+### Agent loop
+
+Conceptual flow:
+
+```text
+user prompt
+   ↓
+persist message
+   ↓
+build context
+   ↓
+provider request
+   ↓
+stream assistant output
+   ↓
+tool calls?
+   ├─ no  -> finalize turn
+   └─ yes
+        ↓
+   policy / approval
+        ↓
+   execute tool(s)
+        ↓
+   persist result
+        ↓
+   next provider turn
 ```
 
-## 7. Hermes adapter
+The loop must have:
+- explicit maximum iteration policy;
+- cancellation;
+- timeouts;
+- observable tool lifecycle;
+- deterministic persistence boundaries;
+- protection against stale concurrent turn updates.
 
-Hermes is the recommended first real backend because it already exposes a bidirectional JSON-RPC protocol through its gateway.
+## 8. Providers
 
-Known upstream properties:
-- WebSocket transport;
-- JSON-RPC in both directions;
-- server -> client requests for approvals/clarifications/secrets/etc.;
-- server -> client event notifications;
-- session creation/resume;
-- prompt submission;
-- streaming events;
-- local or remote gateway operation.
+Providers supply model inference only.
 
-Implementation rule:
-- `HermesRpcClient` speaks Hermes protocol.
-- `HermesMapper` converts Hermes payloads to SuprAI domain types.
-- `HermesBackend` implements `AgentBackend`.
-- no QML code knows a Hermes RPC method name.
+Initial provider:
+- OpenAI-compatible HTTP API.
 
-Local Hermes lifecycle is optional:
-- connection mode A: attach to existing local Hermes;
-- mode B: spawn/manage a Hermes gateway child process;
-- mode C: connect to remote Hermes.
+This allows SuprAI to work with:
+- local llama.cpp servers;
+- vLLM;
+- NInfer-compatible OpenAI endpoints;
+- compatible remote APIs.
 
-Do not assume local process ownership merely because the endpoint is localhost.
+Provider interface should normalize:
+- models/capabilities;
+- chat/responses request;
+- streaming;
+- tool definitions;
+- tool calls;
+- usage/token accounting;
+- reasoning metadata where exposed;
+- image/multimodal inputs when supported.
 
-## 8. Native SuprAI agent
+Do not encode agent policy inside provider classes.
 
-Not v0.
+## 9. Tool system
 
-When implemented, it must plug into the same `AgentBackend` contract.
+Core types:
+- ToolDefinition;
+- ToolInvocation;
+- ToolResult;
+- ToolPolicy;
+- ToolExecutionContext.
 
-Likely components:
-- provider abstraction;
-- OpenAI-compatible Responses/Chat transport;
-- tool registry;
-- MCP client;
-- approval policy;
-- session persistence;
-- memory;
-- skill registry;
-- agent loop;
-- context management;
-- subagents/background jobs.
+Execution classes:
+- ToolRegistry;
+- ToolExecutor;
+- ApprovalManager.
 
-Do not build these into UI classes.
+Policy outcomes:
+- allow;
+- ask;
+- deny.
 
-## 9. UI information architecture v0
+Built-in tools must be narrow. Avoid one generic unrestricted shell bridge as the foundation.
 
-### Main shell
+Process execution can exist, but under an explicit tool/policy boundary.
+
+## 10. MCP
+
+MCP extends the same ToolRegistry/agent loop.
+
+MCP is not a second agent architecture.
+
+MCPClientManager responsibilities:
+- configured server lifecycle;
+- capability discovery;
+- tool/resource/prompt mapping;
+- transport;
+- timeout/failure handling;
+- security scope.
+
+Server-provided capabilities are untrusted until configured/approved.
+
+## 11. Context management
+
+ContextManager owns what enters each model request.
+
+Inputs may include:
+- system/runtime instructions;
+- project instructions;
+- session history;
+- tool definitions;
+- memory retrieval;
+- attachments;
+- compacted summaries.
+
+Requirements:
+- explicit context budget;
+- provider/model-aware token limits;
+- deterministic ordering;
+- observable compaction;
+- persistent original history remains separate from temporary compacted context.
+
+## 12. Memory
+
+Memory must be scoped and explicit.
+
+Candidate scopes:
+- global;
+- profile/agent;
+- project;
+- session.
+
+Do not conflate conversation persistence with memory retrieval.
+
+MemoryService comes after core turn/tool correctness.
+
+## 13. UI information architecture
+
+Initial shell:
 
 ```text
 +--------------------------------------------------------------+
-| top bar: project / backend / model / status                  |
+| project            model/provider                    status  |
 +--------------+--------------------------------+--------------+
 | left rail    | main chat                      | inspector     |
 |              |                                |              |
@@ -274,144 +404,129 @@ Do not build these into UI classes.
 +--------------+--------------------------------+--------------+
 ```
 
-Inspector is collapsible.
-
-### Chat must support
+Chat supports:
 - Markdown;
-- code blocks;
+- code;
 - streaming;
-- reasoning summary/status when backend exposes it;
-- tool call cards;
+- tool cards;
 - approvals;
-- clarifications;
+- clarification prompts;
 - attachments;
-- image input;
+- image input when model supports it;
 - stop/cancel;
-- retry/branch only when backend supports it.
+- retry/branch when runtime semantics are implemented.
 
-Do not design around showing hidden chain-of-thought.
+Do not expose hidden chain-of-thought. Reasoning status/summary may be shown only when the provider/runtime legitimately exposes such data.
 
-## 10. Project/workspace model
+## 14. Projects
 
-A Project is a desktop-owned workspace abstraction.
+Project is a SuprAI-owned workspace.
 
-It may contain:
-- display name;
-- one or more directories;
+May contain:
+- name;
+- directories;
 - repositories;
-- preferred backend/profile;
+- preferred profile/provider/model;
 - sessions;
-- UI layout metadata.
+- project instructions;
+- layout metadata.
 
-A session can exist without a Project.
+A session may exist without a project.
 
-Filesystem authority depends on backend mode:
-- local backend: local workspace;
-- remote backend: remote workspace unless a client capability explicitly exposes local files.
+## 15. Persistence
 
-This distinction must always be visible to the user.
-
-## 11. Persistence
-
-Use SQLite for SuprAI-owned durable metadata.
+Use SQLite for SuprAI durable state.
 
 Store:
+- sessions;
+- messages;
 - projects;
-- connection definitions without raw secrets;
-- UI/session associations;
-- window state;
-- recent items;
-- migration version.
+- profiles;
+- provider configuration excluding raw secrets;
+- tool/MCP configuration;
+- memory metadata/content where appropriate;
+- UI associations;
+- schema version.
 
-Do NOT duplicate backend conversation history unless there is a concrete feature requiring a cache.
+Secrets live in secure Linux secret storage when available.
 
-Secrets:
-- store references/IDs in SQLite;
-- actual secret material in the Linux secret backend.
+## 16. Linux integration
 
-## 12. Linux integration
-
-Desired capabilities:
-- system tray / status notifier;
+Desired:
+- system tray/status notifier;
 - notifications;
 - single instance;
 - desktop file;
-- URL/deep-link handler;
+- deep links;
 - file chooser;
 - clipboard;
 - drag/drop;
-- portal-aware file/screenshot interaction;
+- portals;
 - optional global shortcut;
-- optional autostart;
-- user-service integration where justified.
+- optional autostart.
 
 Wayland first.
 
-Global shortcut support must be capability-gated because compositor policies differ.
+Capabilities are probed, not assumed.
 
-## 13. Local process model
+## 17. Process model
 
-Potential process tree:
+Initial preference: one application process, modular internally.
 
 ```text
 suprai
-  └─ optional managed backend
-       └─ hermes serve
+  ├─ Qt/QML UI
+  ├─ application core
+  └─ NativeSuprAIRuntime
+       ├─ HTTP provider connections
+       ├─ optional MCP child processes
+       └─ tool child processes when required
 ```
 
-Rules:
-- stdout/stderr captured to structured logs;
-- crash detected;
-- bounded restart policy;
-- user can inspect failure reason;
-- do not kill an external backend the app did not start;
-- on quit, ownership determines whether child backend is stopped.
+A separate SuprAI daemon/gateway may be designed later for remote/headless use, but is not required to make the desktop functional.
 
-## 14. Transport
+This avoids prematurely reproducing Hermes' client/gateway split when SuprAI's first target is one native Linux app.
 
-Hermes v0:
-- QWebSocket;
-- JSON-RPC 2.0-like request IDs;
-- bidirectional requests;
-- event notifications;
-- explicit timeout policy;
-- reconnect state machine.
+## 18. Runtime state
 
-States:
+Representative states:
+
 ```text
-Disconnected
-Resolving
-Connecting
-Authenticating
+Stopped
+Starting
 Ready
-Reconnecting
+Working
+WaitingForUser
+Cancelling
 Degraded
 Failed
 ```
 
-Do not compress all failure conditions into "offline".
+Provider connectivity is separate from runtime state.
 
-## 15. Logging
+Do not compress every failure into "offline".
 
-Structured log categories:
+## 19. Logging
+
+Categories:
 - app.lifecycle
-- backend.connection
-- backend.rpc
-- backend.events
+- runtime
+- provider
+- agent.loop
+- tools
+- mcp
+- context
+- memory
 - session
 - platform
 - persistence
 - packaging
 
-Sensitive fields must be redacted before logging.
+Secrets and sensitive tool arguments/results must be redacted according to policy.
 
-Recommended runtime location:
-`$XDG_STATE_HOME/suprai/logs/`
-with XDG fallback behavior.
+Use XDG state locations.
 
-## 16. Configuration
-
-Follow XDG directories.
+## 20. XDG paths
 
 Suggested:
 - config: `$XDG_CONFIG_HOME/suprai/`
@@ -419,60 +534,73 @@ Suggested:
 - cache: `$XDG_CACHE_HOME/suprai/`
 - state/logs: `$XDG_STATE_HOME/suprai/`
 
-Never use a hidden home directory when an XDG location fits.
+## 21. AppImage
 
-## 17. AppImage
-
-Build strategy:
+Build flow:
 1. CMake install into AppDir.
-2. deploy executable and Qt runtime/plugins/QML imports.
-3. add desktop file/icon/AppRun metadata.
+2. deploy executable and required Qt runtime/plugins/QML imports.
+3. add desktop/icon/AppRun metadata.
 4. build AppImage.
-5. smoke-test on the declared ABI floor.
+5. smoke-test actual artifact on declared ABI floor.
 
-Use shared Qt libraries inside the AppImage rather than static Qt unless licensing/technical review explicitly changes this.
+Do not blindly bundle host graphics/Wayland driver stacks.
 
-The build image defines the ABI floor. Keep it intentional.
+## 22. Compatibility
 
-## 18. Compatibility
-
-Target classes:
+Initial:
+- Linux x86_64;
 - KDE Plasma Wayland;
 - GNOME Wayland;
 - X11 fallback;
-- common x86_64 distributions meeting AppImage ABI floor.
+- distributions meeting declared AppImage ABI floor.
 
-Initial release architecture:
-- x86_64 first.
-- arm64 later if CI and dependency closure are clean.
+arm64 later.
 
-## 19. Security model
+## 23. Security boundaries
 
 Trust boundaries:
 1. user;
-2. QML renderer;
+2. QML presentation;
 3. C++ application;
-4. local filesystem/platform;
-5. backend;
-6. remote tool execution;
-7. untrusted preview content.
+4. NativeSuprAIRuntime;
+5. local tools/processes;
+6. MCP servers;
+7. model providers;
+8. untrusted preview content.
 
 Rules:
-- explicit capability bridges;
-- no "execute arbitrary native command" QML API;
-- backend-provided HTML is untrusted;
-- user-visible host identity for remote execution;
-- secret requests identify requester/backend/session;
-- dangerous tools require backend policy and visible approval state.
+- no generic privileged QML escape hatch;
+- no hidden privilege escalation;
+- dangerous tools require visible policy;
+- provider output never grants authority by itself;
+- MCP/model content is data, not trusted instruction outside agent policy;
+- secret requests/actions are attributable to a session/tool.
 
-## 20. Definition of v0 architecture complete
+## 24. Upstream research policy
 
-Architecture v0 is proven when:
+Allowed:
+- inspect Hermes/OpenClaw/other agent source;
+- document patterns;
+- compare behavior;
+- learn failure modes;
+- adapt general architectural ideas where licensing permits.
+
+Not planned:
+- launch Hermes as SuprAI's agent;
+- launch OpenClaw as SuprAI's agent;
+- depend on their gateway protocols;
+- define SuprAI domain semantics from their private implementation details.
+
+## 25. Architecture proof complete when
+
 - Qt shell boots;
-- MockBackend streams a deterministic conversation;
-- state model handles tools + approval request;
-- HermesBackend connects to a real gateway;
-- new session + prompt + streaming + cancel works;
-- app survives backend disconnect/reconnect;
-- AppImage launches on clean test VM;
-- no Hermes-specific type leaks into QML.
+- MockRuntime completes a scripted streaming/tool/approval turn;
+- NativeSuprAIRuntime sends a real request to an OpenAI-compatible model;
+- streamed response appears through the domain event model;
+- session persists and resumes;
+- one real tool round-trip succeeds;
+- approval gate succeeds;
+- MCP tool round-trip succeeds;
+- cancellation works;
+- AppImage launches on clean supported environment;
+- no third-party agent runtime is required.
