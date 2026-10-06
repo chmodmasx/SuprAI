@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: 2dcb2cb890fd76a2ff3255fbe0f5889c8ef8cd20
+last_verified_commit: ca75e980ac61f9affd497fc53b9d8d3197941312
 
 working:
   - repository exists and is writable
@@ -13,13 +13,20 @@ working:
   - proof-driven roadmap exists
   - NativeSuprAIRuntime is the canonical production agent runtime
   - MockRuntime is test-only
-  - Hermes/OpenClaw/Goose/GPT4All/OpenCode are research references only
+  - Hermes/OpenClaw/Goose/GPT4All/OpenCode/Codex/ACP are research references only
   - deep runtime research is recorded under docs/research/
+  - advanced execution research is recorded under docs/research/
   - AppImage selected as first portable artifact
   - canonical conversation state is SuprAI-owned
   - runtime, UI and persistence have explicit thread ownership
   - context/token/compaction/cache semantics are documented
   - Linux desktop integration is freedesktop-first
+  - Session/Input/Turn/Run/Attempt/Task identities are distinct
+  - queued input and steering semantics are documented
+  - subagent lifecycle is modeled through Task-owned child Sessions
+  - unified durable TaskManager architecture is defined
+  - restart recovery uses owner generations and replay-safe reconciliation
+  - schedules/automations are separate from execution Tasks
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -38,12 +45,19 @@ accepted_adrs:
   - ADR-0018 provider-aware token budgeting
   - ADR-0019 auditable derived context compaction
   - ADR-0020 prompt/KV caches are optimization only
+  - ADR-0021 distinct Session/Input/Turn/Run/Attempt/Task identities
+  - ADR-0022 queued input + steering semantics
+  - ADR-0023 subagents as Task-owned child Sessions
+  - ADR-0024 unified durable Task registry
+  - ADR-0025 owner-generation-aware restart recovery
+  - ADR-0026 schedules separate from Task execution
 
 proposed_adrs:
   - ADR-0009 jsoncons as isolated JSON Schema 2020-12 validator
   - ADR-0010 Qt/CMake-owned AppDir staging for AppImage
   - ADR-0014 safe native transcript renderer
   - ADR-0016 QtKeychain SecretStore implementation
+  - ADR-0027 optional systemd transient user-service process backend
 
 broken: []
 
@@ -63,15 +77,37 @@ decisions:
   - every model request must remain reconstructible from SuprAI-owned state
   - AgentLoop is an explicit state machine
   - conversation history is append-oriented generalized items with stable SuprAI IDs
+  - Session/Input/Turn/Run/ProviderAttempt/ToolInvocation/Task identities are distinct
+  - input acceptance is separate from foreground-turn completion
+  - foreground Session state is separate from background Task activity
+  - a Turn may span multiple Run generations
   - retries/regeneration/branches create lineage rather than rewriting completed history
   - every accepted tool call receives a terminal outcome item
-  - tool side effects are journaled before execution
-  - ambiguous crash-time mutating tool effects become outcome_unknown and are never blindly replayed
+  - steering does not preempt an already-running tool
+  - skipped-by-steering calls still receive synthetic terminal results
+  - accepted steering is not equivalent to delivered steering
+  - subagents execute through NativeSuprAIRuntime in child Sessions
+  - subagent context is isolated/explicit by default
+  - child authority is an intersection and can never widen parent authority
+  - attached and detached child work have explicit lifecycle semantics
+  - subagent/task completion is push/event driven; model polling loops are forbidden
+  - TaskManager unifies subagent/process/MCP/scheduled background work
+  - Task execution state and result-delivery state are separate
+  - cancel_requested is not the same as confirmed cancelled
+  - task tool side effects are journaled before execution
+  - ambiguous crash-time mutating effects become outcome_unknown and are never blindly replayed
+  - persisted running state is not proof of liveness
+  - recovery uses exact owner generations and fences stale late events
+  - recovery attempts are bounded
+  - schedules are trigger definitions; each occurrence creates a Task
+  - schedule misfire and overlap policy are explicit
+  - scheduled execution revalidates current policy
   - canonical tool schemas use JSON Schema 2020-12
   - tool authorization is allow/ask/deny with scoped rules
   - approval is not sandboxing
   - containment is feature-probed Landlock/bubblewrap/none
   - MCP targets current final 2026-07-28 semantics
+  - MCP Tasks are an external Task source, not SuprAI's internal task model
   - MCP roots/sampling/protocol-logging are not foundations for new design
   - skills use Agent Skills SKILL.md compatibility
   - canonical history and active memory are separate
@@ -91,6 +127,8 @@ decisions:
   - secure desktop storage for secrets
   - initial process model is one modular native application
   - AppImage runtime ABI floor must be proven, not assumed
+  - QProcess is baseline for process tools/tasks
+  - systemd transient user services are only a proposed optional durability backend
 
 open_questions:
   - exact visual language and component system
@@ -98,15 +136,22 @@ open_questions:
   - QtKeychain proof on KDE/GNOME/AppImage
   - exact first built-in tool set
   - default persisted permission UX
+  - exact initial steering UX exposed in M3/M10
+  - exact concurrency scheduler limits/defaults
+  - exact Task persistence schema/migrations
+  - default child TaskBrief fields and output contract
+  - exact attached-vs-detached subagent default
+  - exact recovery freshness windows by Task/Run type
   - Landlock/bubblewrap effective-default policy after prototype
   - jsoncons proof results and exact dependency pin
   - exact Qt 6.12 toolchain source for Ubuntu-22.04-compatible release builds
   - final AppImage finalizer/tool
   - exact MCP legacy 2025-era compatibility scope
+  - MCP Tasks extension implementation timing
   - memory mutation/review UX
   - SuprAI project license and distribution notices
   - semantic/vector retrieval only if FTS5 measurements justify it
-  - exact background-job/subagent architecture after core turn model is proven
+  - systemd transient-process backend output/log/containment proof
 
 next_milestone: M1
 next_exact_steps:
@@ -122,6 +167,9 @@ next_exact_steps:
   - prove Qt CMake QML deployment into a staged directory
   - keep AppImage proof minimal at M1; full release pipeline remains later
   - then implement AgentRuntime + MockRuntime
+  - in M3 implement Session/Input/Turn/Run identities before provider transport
+  - implement followup queue + explicit interrupt before advanced steering
+  - keep TaskManager schema-compatible even if background work lands later
   - then implement normalized inference types and NativeSuprAIRuntime state machine
 
 verification_commands:
