@@ -252,66 +252,71 @@ Responsibilities:
 - manage cancellation;
 - coordinate memory/skills.
 
-### Agent loop
+### Agent turn state machine
 
-Conceptual flow:
+Turn execution is an explicit state machine (ADR-0004), not one recursive `while(tool_calls)` function.
+
+Baseline shape:
 
 ```text
-user prompt
-   ↓
-persist message
-   ↓
-build context
-   ↓
-provider request
-   ↓
-stream assistant output
-   ↓
-tool calls?
-   ├─ no  -> finalize turn
-   └─ yes
-        ↓
-   policy / approval
-        ↓
-   execute tool(s)
-        ↓
-   persist result
-        ↓
-   next provider turn
+Created
+  -> PreparingContext
+  -> RequestingModel
+  -> StreamingModel
+  -> EvaluatingToolCalls
+       -> AwaitingApproval
+       -> SchedulingTools
+       -> ExecutingTools
+       -> RecordingToolResults
+       -> PreparingContext
+  -> Finalizing
+  -> Completed
+
+active state -> Cancelling -> Cancelled
+active state -> Failed
 ```
 
-The loop must have:
-- explicit maximum iteration policy;
-- cancellation;
-- timeouts;
-- observable tool lifecycle;
-- deterministic persistence boundaries;
-- protection against stale concurrent turn updates.
+Rules:
+- transitions/reducers do not perform external I/O;
+- effects perform provider/tool/persistence I/O;
+- turn, provider-attempt and tool-invocation IDs are stable;
+- stale events from superseded attempts are ignored;
+- terminal transitions are idempotent;
+- persistence checkpoints bracket external side effects;
+- retries classify errors instead of blindly resending;
+- maximum iteration/turn limits are explicit.
+
+Parallel tool calls are scheduled concurrently only when tool metadata, policy and resource scopes make that safe.
 
 ## 8. Providers
 
 Providers supply model inference only.
 
-Initial provider:
-- OpenAI-compatible HTTP API.
+Initial provider family:
+- OpenAI-compatible HTTP.
 
-This allows SuprAI to work with:
-- local llama.cpp servers;
-- vLLM;
-- NInfer-compatible OpenAI endpoints;
-- compatible remote APIs.
+Internal runtime semantics are NOT Chat Completions or Responses wire objects.
 
-Provider interface should normalize:
+SuprAI owns normalized `InferenceRequest` / `InferenceEvent` types (ADR-0003).
+
+Initial transports:
+- `OpenAIResponsesTransport` — preferred when supported;
+- `OpenAIChatCompletionsTransport` — compatibility.
+
+This covers current local servers including llama.cpp, vLLM and NInfer-compatible endpoints, plus compatible remote APIs.
+
+Auto-selection may try Responses first, but fallback to Chat only when endpoint non-support is established before observable generation. Do not use arbitrary HTTP 400 as a fallback signal.
+
+Provider interface normalizes:
 - models/capabilities;
-- chat/responses request;
-- streaming;
-- tool definitions;
-- tool calls;
+- typed streamed output;
+- tool definitions/calls;
 - usage/token accounting;
-- reasoning metadata where exposed;
-- image/multimodal inputs when supported.
+- reasoning metadata where legitimately exposed;
+- multimodal inputs;
+- finish/incomplete/failure semantics.
 
-Do not encode agent policy inside provider classes.
+Do not encode agent policy inside provider classes and do not leak provider wire types above `providers/`.
 
 ## 9. Tool system
 
@@ -322,19 +327,29 @@ Core types:
 - ToolPolicy;
 - ToolExecutionContext.
 
+Canonical input/output schemas use JSON Schema 2020-12.
+
 Execution classes:
 - ToolRegistry;
 - ToolExecutor;
-- ApprovalManager.
+- PolicyEngine / ApprovalManager;
+- ContainmentBackend.
 
 Policy outcomes:
 - allow;
 - ask;
 - deny.
 
+Authorization and containment are different layers (ADR-0005). Approval does not make a host process sandboxed.
+
+Containment is feature-probed:
+- Landlock where supported;
+- bubblewrap where available and policy permits;
+- none as an explicit fallback.
+
 Built-in tools must be narrow. Avoid one generic unrestricted shell bridge as the foundation.
 
-Process execution can exist, but under an explicit tool/policy boundary.
+Process execution can exist under explicit policy, resource scopes, timeouts, output limits and descendant-cleanup behavior.
 
 ## 10. MCP
 
@@ -342,9 +357,25 @@ MCP extends the same ToolRegistry/agent loop.
 
 MCP is not a second agent architecture.
 
+Canonical protocol era: MCP `2026-07-28` (ADR-0006).
+
+Design assumptions:
+- modern stateless core;
+- Multi Round-Trip Requests where needed;
+- JSON Schema 2020-12;
+- extension-aware capabilities.
+
+Do not design new SuprAI behavior around deprecated roots, server sampling or MCP protocol logging.
+
+Because the current official SDK matrix has no C++ SDK, the initial plan is a deliberately small SuprAI-owned MCP client:
+- QProcess stdio transport;
+- QtNetwork Streamable HTTP;
+- protocol-era adapter;
+- conformance fixtures.
+
 MCPClientManager responsibilities:
 - configured server lifecycle;
-- capability discovery;
+- capability/version handling;
 - tool/resource/prompt mapping;
 - transport;
 - timeout/failure handling;
@@ -372,19 +403,24 @@ Requirements:
 - observable compaction;
 - persistent original history remains separate from temporary compacted context.
 
-## 12. Memory
+## 12. Memory and skills
 
-Memory must be scoped and explicit.
+Memory v1 follows ADR-0008.
 
-Candidate scopes:
-- global;
+Separate:
+1. canonical SQLite conversation history;
+2. SQLite FTS5 searchable history;
+3. bounded curated active memory with explicit scope/provenance/trust;
+4. semantic/vector retrieval later if measurements justify it.
+
+Candidate active-memory scopes:
+- user;
 - profile/agent;
-- project;
-- session.
+- project.
 
-Do not conflate conversation persistence with memory retrieval.
+Conversation persistence is not memory. Summaries never replace canonical history. Agent-generated memory cannot elevate its own trust by writing metadata into recalled prose.
 
-MemoryService comes after core turn/tool correctness.
+Skills follow the Agent Skills `SKILL.md` standard (ADR-0007) with progressive disclosure. Project default location is `.agents/skills/`; user skills live under the SuprAI XDG data directory. Skill metadata never bypasses PolicyEngine.
 
 ## 13. UI information architecture
 
@@ -536,12 +572,17 @@ Suggested:
 
 ## 21. AppImage
 
-Build flow:
+Proposed build flow is tracked in ADR-0010:
 1. CMake install into AppDir.
-2. deploy executable and required Qt runtime/plugins/QML imports.
-3. add desktop/icon/AppRun metadata.
-4. build AppImage.
-5. smoke-test actual artifact on declared ABI floor.
+2. use Qt CMake/QML deployment APIs to stage executable, Qt runtime, plugins and QML imports;
+3. verify QPA/Wayland/QML/SQLite/image-plugin closure;
+4. add desktop/icon/AppRun metadata;
+5. finalize AppImage;
+6. smoke-test the actual artifact on the declared ABI floor.
+
+AppImage does not erase glibc/libstdc++ requirements.
+
+Ubuntu 22.04 x86_64 is a strong candidate build baseline because Qt 6.12 supports it, but this remains proof-gated. Official Qt Linux installer binaries are built on Ubuntu 24.04/glibc 2.39 and therefore cannot simply be assumed suitable for an older runtime floor.
 
 Do not blindly bundle host graphics/Wayland driver stacks.
 
