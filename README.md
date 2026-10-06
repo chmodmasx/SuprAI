@@ -45,9 +45,12 @@ Hermes Agent, Hermes Desktop, OpenClaw and other agent systems may be inspected 
 AI agents should read in this order:
 
 1. `AGENTS.md`
-2. `docs/ARCHITECTURE.md`
-3. `docs/ROADMAP.md`
-4. `docs/PROJECT_STATE.md`
-5. `docs/REFERENCES.md`
+2. `docs/DOCUMENTATION_POLICY.md`
+3. `docs/ARCHITECTURE.md`
+4. `docs/ROADMAP.md`
+5. `docs/PROJECT_STATE.md`
+6. `docs/REFERENCES.md`
 
 The documentation is intentionally optimized for machine continuation rather than tutorial-style prose.
+
+Documentation is living and canonical: when research or implementation proves an older decision inferior or wrong, the repository documentation is updated/replaced in place. Git history preserves old versions; current files should not retain stale competing truths.
