@@ -169,7 +169,67 @@ Ask: "who is allowed to be correct about this state?"
 - Never use one global key for data that can differ by profile/project/session.
 - Every optimistic mutation must have rollback behavior.
 
-## 7. Linux-native rules
+## 7. Execution identity and async-work rules
+
+Do not collapse these concepts:
+- Session = durable conversation context.
+- Input = durably admitted user/internal input.
+- Turn = logical foreground work episode.
+- Run = one executable generation/segment of a Turn.
+- ProviderAttempt = one model request attempt.
+- ToolInvocation = one durable tool execution.
+- Task = asynchronous/background work record.
+
+Input acceptance is not Turn completion.
+
+Foreground Session state is separate from background Task activity.
+
+### Queued input
+
+Steering, followup, collect and interrupt are distinct semantics.
+
+Steering:
+- never terminates an already-running tool merely to apply guidance;
+- is consumed only at explicit safe boundaries;
+- must preserve tool-call/result structural pairing;
+- tracks accepted vs actually delivered/missed.
+
+### Subagents
+
+A subagent is a Task-owned child Session running NativeSuprAIRuntime.
+
+Subagents:
+- cannot widen parent/requester authority;
+- receive explicit TaskBrief context by default;
+- use bounded depth/concurrency;
+- complete by event/push, not model polling;
+- may be attached or detached, but that choice is explicit.
+
+### Tasks
+
+The model must never poll in a loop just to discover whether background work finished.
+
+TaskManager owns:
+- background process/subagent/MCP/scheduled work tracking;
+- external polling where required;
+- completion/progress events;
+- cancellation/reconciliation.
+
+Execution status and delivery status are separate.
+
+`cancel_requested` is not equivalent to confirmed `cancelled`.
+
+### Recovery
+
+Persisted `running` state is not proof an executor is live.
+
+Recovery requires exact ownership/generation checks.
+
+Ambiguous mutating side effects become `outcome_unknown` and are never automatically replayed.
+
+Schedules are trigger definitions; each firing creates execution work. A Schedule is not a long-lived Task.
+
+## 8. Linux-native rules
 
 Wayland is the primary display target.
 
@@ -184,7 +244,7 @@ Platform capabilities must be probed.
 
 Desktop integrations belong behind `platform/linux` interfaces, never scattered through QML.
 
-## 8. Security rules
+## 9. Security rules
 
 - No API keys/tokens/passwords in plaintext config.
 - Use a secure desktop secret backend when available.
@@ -197,7 +257,7 @@ Desktop integrations belong behind `platform/linux` interfaces, never scattered 
 - Any sudo/root flow must be explicit to the user.
 - MCP servers are untrusted external capabilities until configured and approved.
 
-## 9. Dependency policy
+## 10. Dependency policy
 
 Before adding a dependency:
 1. state what problem it solves;
@@ -210,7 +270,7 @@ Avoid large runtime stacks.
 
 Qt WebEngine is optional, not baseline. Do not introduce it only to render chat.
 
-## 10. Performance rules
+## 11. Performance rules
 
 Hot paths:
 - typing;
@@ -228,7 +288,7 @@ Rules:
 - do not destroy expensive views only because they are hidden;
 - profile realistic long conversations, not empty demos.
 
-## 11. Packaging rules
+## 12. Packaging rules
 
 Primary artifact: AppImage.
 
@@ -242,7 +302,7 @@ Build must:
 
 Later artifacts may include .deb.
 
-## 12. Testing contract
+## 13. Testing contract
 
 At minimum:
 - unit tests for domain/state;
@@ -262,7 +322,7 @@ At minimum:
 
 A feature crossing a boundary requires a test at that boundary.
 
-## 13. Documentation contract
+## 14. Documentation contract
 
 For every meaningful change:
 - update `docs/PROJECT_STATE.md`;
@@ -272,7 +332,7 @@ For every meaningful change:
 
 Do not rely on conversation memory as project state.
 
-## 14. AI handoff format
+## 15. AI handoff format
 
 Before ending a development milestone, update `docs/PROJECT_STATE.md` with:
 
