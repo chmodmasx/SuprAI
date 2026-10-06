@@ -1,42 +1,44 @@
 # SuprAI
 
-Linux-first native desktop AI workspace.
+Linux-first native desktop AI agent and workspace.
 
-SuprAI is intended to provide a Hermes-Desktop-class experience without Electron: a Qt Quick/QML interface, a C++ application core, native Linux integration, and replaceable agent backends.
+SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface, its own C++ application core, and its own agent runtime. Hermes Agent, OpenClaw and similar projects are research references only.
 
-Status: architecture/planning only.
+Status: architecture/planning.
 
 ## Initial target
 
 - Linux only.
 - Qt 6 + QML UI.
-- C++20 core.
+- C++20 core and agent runtime.
 - CMake + Ninja.
 - AppImage as the first portable artifact.
-- Local and remote agent backends.
-- Streaming chat, tool activity, approvals, sessions, projects/workspaces, files, settings, tray and notifications.
+- Local-first operation with optional remote model/API endpoints.
+- OpenAI-compatible model providers, including local servers.
+- Streaming chat, tool calling, approvals, sessions, projects/workspaces, files, settings, tray and notifications.
+- MCP support.
 - Wayland first; X11 compatibility retained where practical.
-- No Node/Electron dependency in the shipped application.
+- No Node/Electron dependency in the shipped core application.
 
 ## Architectural direction
 
-The UI is not the agent.
+The UI and the agent runtime are separate modules, but both are SuprAI.
 
 ```text
 QML UI
   |
 Application/Core layer
   |
-AgentBackend interface
-  |------------------------------|
-Hermes gateway adapter       SuprAI native agent (later)
+AgentRuntime interface
+  |-----------------------------|
+NativeSuprAIRuntime         MockRuntime
   |
-JSON-RPC / WebSocket
+providers + agent loop + tools + MCP + memory + sessions
 ```
 
-The first useful backend may be Hermes Agent, because its gateway already exposes sessions, streaming, tool calls, approvals and persistence. SuprAI must not couple its domain model to Hermes-specific types; Hermes is an adapter, not the architecture.
+There is no Hermes runtime dependency in the planned product.
 
-OpenClaw and other agent desktops are reference implementations to study, not dependencies unless an ADR explicitly approves one.
+Hermes Agent, Hermes Desktop, OpenClaw and other agent systems may be inspected to learn from solved problems such as lifecycle, tool execution, approvals, memory, session semantics, remote execution and desktop integration. Their protocols and implementations are not SuprAI's architecture.
 
 ## Documentation
 
