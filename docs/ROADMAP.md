@@ -16,15 +16,15 @@ Deliverables:
 - ADR directory.
 
 Exit:
-- architecture has explicit UI/core/backend/platform boundaries;
-- first backend strategy selected;
-- first packaging strategy selected.
+- explicit UI/core/agent/platform boundaries;
+- native SuprAI runtime strategy selected;
+- packaging strategy selected.
 
-Status: IN PROGRESS.
+Status: COMPLETE.
 
 ## M1 — Native shell skeleton
 
-Goal: prove the Qt/AppImage foundation before agent complexity.
+Goal: prove the Qt foundation before agent complexity.
 
 Implement:
 - CMake project;
@@ -43,104 +43,137 @@ Implement:
 Tests:
 - process starts under Wayland;
 - process starts under X11;
-- QML loads without runtime warnings considered fatal by project policy;
+- QML loads cleanly;
 - clean shutdown.
 
 Exit:
 - native shell runs without Node/Electron/Python;
-- architecture structure exists in source tree.
+- architecture source structure exists.
 
-## M2 — Domain model + MockBackend
+## M2 — Domain model + MockRuntime
 
-Goal: prove the agent UI without relying on any external agent.
+Goal: prove the complete agent-facing UI contract independently from model/network behavior.
 
 Implement:
-- AgentBackend abstract interface;
-- BackendCapabilities;
+- AgentRuntime abstract interface;
+- runtime capabilities;
 - session/message/tool/request domain types;
-- event dispatcher;
-- MockBackend scripted fixture;
+- runtime event bus;
+- MockRuntime scripted fixture;
 - transcript model;
 - composer;
 - streaming delta path;
 - tool cards;
 - approval/clarification component;
 - cancellation;
-- reconnect/error state UI.
-
-Tests:
-- deterministic streaming;
-- out-of-order/stale update rejection;
-- tool lifecycle;
-- user action request lifecycle;
-- cancellation;
-- backend disconnect/reconnect.
+- error-state UI.
 
 Exit:
-- a complete fake agent turn can be exercised from UI.
+- a complete deterministic fake agent turn works end-to-end.
 
-## M3 — Hermes protocol adapter
+## M3 — Native SuprAI runtime foundation
 
-Goal: make SuprAI useful with an existing mature agent runtime.
-
-Research before implementation:
-- current Hermes gateway startup contract;
-- auth contract;
-- WebSocket endpoint;
-- JSON-RPC method/event catalog;
-- session identities;
-- prompt submission;
-- cancellation;
-- approvals;
-- profiles/models/tools/skills;
-- compatibility/version probing.
+Goal: execute real model turns using SuprAI code only.
 
 Implement:
-- HermesRpcClient;
-- request ID management;
-- bidirectional RPC;
-- HermesMapper;
-- HermesBackend;
-- local existing-gateway connection;
-- remote gateway connection;
-- capability probe;
-- version compatibility policy.
+- NativeSuprAIRuntime;
+- ProviderRegistry;
+- OpenAI-compatible provider;
+- SSE/stream parser;
+- model configuration;
+- local endpoint support;
+- AgentLoop;
+- SessionStore;
+- MessageStore;
+- cancellation;
+- runtime event conversion.
 
-Then:
-- optional managed local Hermes process through QProcess.
+First real target:
+- any compliant local OpenAI-compatible endpoint;
+- specifically validate common local servers such as llama.cpp/vLLM/NInfer-compatible endpoints when available.
 
 Exit:
-- connect;
-- list/resume sessions;
-- create session;
-- submit prompt;
-- stream reply;
-- show tool calls;
-- answer approval/clarification;
-- cancel turn;
-- reconnect without duplicating a turn.
+- user prompt -> provider -> streamed assistant response through NativeSuprAIRuntime;
+- sessions persist and resume;
+- no Hermes/OpenClaw runtime involved.
 
-## M4 — Projects + files
+## M4 — Tool calling + approvals
 
-Goal: make the desktop useful as a work environment.
+Implement:
+- normalized tool schema;
+- ToolRegistry;
+- ToolExecutor;
+- provider tool-call translation;
+- tool lifecycle events;
+- approval policy;
+- allow/ask/deny decisions;
+- cancellation/timeouts;
+- first safe built-in tools.
+
+Initial built-in tool candidates:
+- read file;
+- list directory;
+- write/edit file with explicit policy;
+- controlled process execution;
+- system information.
+
+Exit:
+- multi-step model -> tool -> result -> model loop works;
+- dangerous operations are never silently escalated.
+
+## M5 — MCP + skills
+
+Implement:
+- MCP client;
+- stdio transport;
+- HTTP/streamable transport as justified by current MCP spec;
+- server registry/config;
+- capability discovery;
+- tool/resource/prompt mapping;
+- approval/security boundaries;
+- SuprAI skill format.
+
+Research Hermes/OpenClaw here only to compare solved ergonomics and failure modes.
+
+Exit:
+- configured MCP tools participate in the same native AgentLoop as built-in tools.
+
+## M6 — Context management + memory
+
+Implement:
+- ContextManager;
+- token accounting;
+- context-window policy;
+- transcript compaction/summarization;
+- pinned project context;
+- MemoryService;
+- explicit memory scopes;
+- retrieval policy.
+
+Requirements:
+- model context size is configurable/discovered;
+- no hidden uncontrolled growth;
+- summarization never silently becomes canonical history.
+
+Exit:
+- long sessions remain usable with deterministic context policy.
+
+## M7 — Projects + files
 
 Implement:
 - Project model;
 - project directories;
 - session/project association;
 - file tree;
-- file preview for safe native formats;
+- native safe previews;
 - drag/drop attachments;
-- backend/local filesystem distinction;
-- git repository recognition.
-
-Do NOT add Qt WebEngine merely for this milestone.
+- git repository recognition;
+- project instructions/context.
 
 Exit:
-- local project flow works;
-- remote backend cannot accidentally present remote paths as local paths.
+- project-aware agent workflow works locally.
 
-## M5 — Linux desktop integration
+## M8 — Linux desktop integration
 
 Implement:
 - tray/status notifier;
@@ -149,7 +182,7 @@ Implement:
 - deep link;
 - secure secret storage;
 - portal-aware file operations;
-- optional global shortcut capability;
+- optional global shortcut;
 - optional autostart;
 - polished close-to-tray behavior.
 
@@ -158,10 +191,7 @@ Validate:
 - GNOME Wayland;
 - X11 fallback.
 
-Exit:
-- feature availability is probed, not assumed.
-
-## M6 — AppImage release pipeline
+## M9 — AppImage release pipeline
 
 Implement:
 - release CMake install layout;
@@ -171,83 +201,43 @@ Implement:
 - CI artifact;
 - clean VM smoke test;
 - dependency report;
-- SBOM if tooling is practical;
-- release checksum.
+- checksums.
 
-Baseline:
-- choose a deliberately old-enough Linux build image;
-- record glibc and GLIBCXX requirements from built artifact.
+Record exact ABI floor.
 
-Exit:
-- downloaded AppImage launches on supported clean systems.
+## M10 — Advanced agent UX
 
-## M7 — Voice and rich previews
-
-Voice:
-- microphone capture;
-- backend capability mapping;
-- STT/TTS interface;
-- interruption/cancel semantics.
-
-Preview:
-- PDF/image/text first;
-- evaluate Qt WebEngine separately for browser/artifact previews.
-
-Qt WebEngine requires ADR due to package/security cost.
-
-## M8 — Profiles, skills, advanced agent UX
-
-Implement if backend supports:
-- profiles/agents;
-- models/providers;
-- skills;
-- tool enable/disable;
+Candidates:
+- multiple profiles/agents;
+- multiple providers/models;
+- skills manager;
+- tool permissions UI;
 - session branching;
 - background jobs;
-- richer inspector;
-- terminal surface.
+- terminal;
+- artifacts;
+- voice/STT/TTS;
+- PDF/image/browser previews;
+- subagents.
 
-Do not fake unsupported capability in UI.
-
-## M9 — Native SuprAI agent runtime
-
-Only start after desktop/backend contract is stable.
-
-First native runtime scope:
-- OpenAI-compatible provider;
-- local endpoint support;
-- streaming;
-- tool registry;
-- approval policy;
-- MCP;
-- SQLite sessions;
-- context handling.
-
-Later:
-- memory;
-- skills;
-- subagents;
-- background jobs;
-- routine/automation model.
-
-Exit:
-- NativeSuprAIBackend satisfies the same backend contract used by HermesBackend.
+These extend NativeSuprAIRuntime; they do not introduce Hermes/OpenClaw as runtime dependencies.
 
 ## Priority rule
 
 If forced to choose:
-1. correctness of backend/session lifecycle;
-2. recoverability;
+1. correctness of AgentLoop/tool/session lifecycle;
+2. recoverability and security;
 3. native Linux behavior;
 4. interaction quality;
-5. visual polish;
-6. feature count.
+5. performance;
+6. visual polish;
+7. feature count.
 
 ## Explicitly deferred
 
 - Windows/macOS;
 - mobile;
-- custom model inference engine;
+- custom inference engine;
 - custom browser engine;
-- plugin ABI before two real consumers need it;
-- full Hermes feature parity before core lifecycle is stable.
+- public plugin ABI before real consumers prove its shape;
+- compatibility adapters for Hermes/OpenClaw.
