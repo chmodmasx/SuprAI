@@ -330,3 +330,177 @@ Before release:
 - choose SuprAI project license;
 - perform Qt/module/dependency license audit;
 - produce notices/source-offer/relinking documentation as required.
+
+
+## Token accounting and effective context
+
+### NInfer
+Current serving docs expose:
+- effective `max_model_len` in `/v1/models`;
+- `POST /v1/responses/input_tokens` through the same prompt path as generation, including tools/media/template behavior.
+
+### llama.cpp
+Current server exposes:
+- `/v1/responses/input_tokens`;
+- `/v1/chat/completions/input_tokens`;
+- `/tokenize`, `/detokenize`, `/apply-template`;
+- effective runtime `n_ctx` in `/v1/models.meta.n_ctx` and `/props`.
+
+Important:
+`n_ctx_train` is training/model metadata; `n_ctx` is the effective configured slot context and is the relevant runtime ceiling.
+
+### vLLM
+Current direct `/v1/models` exposes `max_model_len`.
+vLLM also exposes generic `/tokenize` and records prompt usage after actual rendering/generation.
+
+Do not assume generic text tokenization equals the full final agent request when chat templates, tool schemas and multimodal content are involved.
+
+### SuprAI response
+ADR-0018:
+- discover effective runtime context;
+- count the final candidate provider request through the best capability;
+- reserve output before sending;
+- use conservative margins for estimates;
+- compact/recount rather than relying on provider truncation.
+
+## Canonical conversation ownership
+
+Local server state differs:
+- llama.cpp Responses does not provide universal provider-side continuation semantics;
+- NInfer stored Responses are local/bounded/process-lifetime state;
+- vLLM response storage is configuration-dependent.
+
+SuprAI response:
+- ADR-0011 makes local SQLite canonical;
+- provider IDs/state are optimization metadata only;
+- every request remains reconstructible after inference-server restart.
+
+## Prefix/prompt caching
+
+### llama.cpp
+Current server:
+- reuses common prompt prefixes;
+- exposes prompt/cache reuse controls;
+- reports cached/processed token timing information.
+
+### vLLM
+Automatic Prefix Caching reuses identical token prefixes.
+Current security documentation identifies cross-tenant timing side channels and provides per-request `cache_salt` isolation.
+
+### NInfer
+Supports OpenAI-style prompt cache hints/breakpoints. Documentation explicitly treats them as optimization hints rather than semantic session identity.
+
+SuprAI response:
+- ADR-0020 makes all provider caches performance-only;
+- ContextBuilder keeps stable prefix material early when semantics permit;
+- shared/multi-tenant providers may use secret cache isolation where supported;
+- cache eviction/restart must never affect correctness.
+
+## Context compaction
+
+Useful upstream lessons:
+
+OpenClaw:
+- persists compaction as transcript/context metadata;
+- preserves recent tail;
+- preserves tool-call/result pairs across split boundaries;
+- distinguishes estimated token pressure from measured request size;
+- rejects/guards bad compaction output.
+
+Hermes:
+- protects recent messages;
+- keeps canonical archived/searchable history;
+- prunes old verbose tool results before expensive summarization;
+- refuses compression when a summary would grow the request.
+
+SuprAI response:
+- ADR-0019 defines CompactionArtifact as derived state;
+- canonical history is never rewritten by compaction;
+- artifact records source coverage, summarizer identity and before/after counts;
+- candidate request is rebuilt and recounted before commit.
+
+## Persistence and crash recovery
+
+SQLite:
+- WAL supports concurrent readers but still serializes writes;
+- Qt SQL database connections are thread-affine.
+
+SuprAI response:
+- ADR-0012 gives PersistenceWorker the primary writer;
+- external mutating tool invocations are journaled before execution;
+- process crash while an external effect is executing becomes `outcome_unknown`;
+- non-idempotent ambiguous effects are not replayed automatically.
+
+## Conversation item model and steering
+
+OpenClaw research reinforces:
+- append-oriented transcripts;
+- structural tool-call/result pairing;
+- explicit run IDs/terminal reconciliation;
+- steering/user-input boundaries;
+- completed tool work persisted before final answer.
+
+SuprAI response:
+- ADR-0017 stores generalized ordered items with stable SuprAI IDs;
+- retries/regeneration/branches create lineage instead of rewriting completed history;
+- every accepted tool call eventually has a terminal outcome item.
+
+## Qt threading
+
+Primary Qt documentation:
+- QObject thread affinity;
+- QThread worker-object pattern;
+- queued signal/slot delivery;
+- thread-affine network/process/timer/database objects.
+
+SuprAI response:
+- ADR-0015: UI thread + runtime worker thread + persistence worker thread;
+- UI-facing models stay on the main thread;
+- runtime owns provider network/process objects;
+- persistence owns its QSQLITE connection.
+
+## Linux desktop integration
+
+### Global shortcuts
+XDG Desktop Portal GlobalShortcuts v2 is the Wayland-first route.
+Do not use X11 grabs as the primary design.
+
+### Application activation
+`org.freedesktop.Application` provides Activate/Open/ActivateAction semantics suitable for single-instance activation and deep links.
+
+### Tray
+Qt 6.12 `QSystemTrayIcon` uses Linux StatusNotifierItem where available and can explicitly probe tray availability.
+It lives in Qt Widgets, so SuprAI may use `QApplication`/Qt::Widgets while the visible UI stays Qt Quick/QML.
+
+### Notifications
+Prefer XDG Portal Notification v2; support `org.freedesktop.Notifications` fallback.
+Action support is capability-dependent.
+
+### Secrets
+QtKeychain 0.17.x is the current candidate:
+- Qt 6 default;
+- libsecret/GNOME Keyring;
+- KWallet fallback;
+- Modified BSD;
+- no insecure plaintext fallback unless explicitly requested.
+
+SuprAI response:
+- ADR-0013 accepted freedesktop-first integration;
+- ADR-0016 keeps QtKeychain proposed until KDE/GNOME/AppImage tests pass.
+
+## Native transcript rendering
+
+Qt Quick facts:
+- ListView delegates are virtualized and can be reused;
+- state must not live only in recycled delegates;
+- variable-height delegates require cache/performance tuning;
+- Qt Text Markdown supports CommonMark/GitHub-style features;
+- rich/Markdown content can load external image resources unless controlled.
+
+SuprAI response:
+- ADR-0014 proposes a C++ QAbstractListModel transcript;
+- safe Markdown resource policy;
+- no ambient remote-image fetch;
+- explicit external-link activation;
+- native code-block components;
+- no Qt WebEngine for ordinary chat.
