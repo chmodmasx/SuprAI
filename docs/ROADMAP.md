@@ -29,7 +29,9 @@ Goal: prove the Qt foundation before agent complexity.
 Implement:
 - CMake project;
 - C++20 executable;
-- Qt Quick/QML application;
+- Qt Quick/QML application using QApplication/QQmlApplicationEngine;
+- explicit UI-thread ownership;
+- runtime/persistence worker-thread skeletons with clean shutdown;
 - theme tokens;
 - three-pane shell;
 - left navigation;
@@ -60,7 +62,9 @@ Implement:
 - session/message/tool/request domain types;
 - runtime event bus;
 - MockRuntime scripted fixture;
-- transcript model;
+- append-oriented generalized conversation item model;
+- C++ QAbstractListModel transcript projection;
+- safe native Markdown rendering proof;
 - composer;
 - streaming delta path;
 - tool cards;
@@ -84,10 +88,14 @@ Implement:
 - Chat Completions compatibility transport;
 - SSE/stream parsers;
 - provider capability resolution;
+- provider effective context-window discovery;
+- TokenBudgetService capability ladder;
 - model configuration;
 - local endpoint support;
-- SessionStore;
-- MessageStore;
+- canonical SQLite Session/Turn/Item stores;
+- dedicated PersistenceWorker;
+- WAL/foreign-keys/busy-timeout/migrations;
+- provider-state-independent session reconstruction;
 - cancellation;
 - runtime event conversion.
 
@@ -101,7 +109,10 @@ Responses is preferred where supported; fallback to Chat must not hide arbitrary
 
 Exit:
 - user prompt -> provider -> streamed assistant response through NativeSuprAIRuntime;
-- sessions persist and resume;
+- exact provider-native input-token count is used where supported;
+- effective runtime context limit is discovered or explicitly configured;
+- sessions persist/resume after provider restart without provider conversation state;
+- runtime and persistence work do not block the UI thread;
 - no Hermes/OpenClaw runtime involved.
 
 ## M4 — Tool calling + approvals
@@ -120,6 +131,8 @@ Implement:
 - bubblewrap prototype;
 - explicit no-containment fallback;
 - cancellation/timeouts/output limits;
+- durable side-effect journal;
+- crash recovery with outcome_unknown for ambiguous mutating invocations;
 - first safe built-in tools.
 
 Initial built-in tool candidates:
@@ -160,9 +173,14 @@ Exit:
 
 Implement:
 - ContextManager;
-- token accounting;
+- TokenBudgetService integration;
+- provider-native exact counting where available;
+- explicit output reserve and safety margin;
 - context-window policy;
-- transcript compaction/summarization;
+- derived CompactionArtifact persistence;
+- transcript compaction/summarization without rewriting canonical history;
+- tool-call/result-safe compaction boundaries;
+- prompt/KV-cache optimization layer that is never correctness-critical;
 - pinned project context;
 - MemoryService;
 - SQLite FTS5 history search;
@@ -200,15 +218,19 @@ Exit:
 ## M8 — Linux desktop integration
 
 Implement:
-- tray/status notifier;
-- notifications;
-- desktop entry/icons;
-- deep link;
-- secure secret storage;
-- portal-aware file operations;
-- optional global shortcut;
+- stable reverse-DNS application identity;
+- org.freedesktop.Application activation/single-instance behavior via QtDBus;
+- optional tray/status notifier through QSystemTrayIcon;
+- Portal Notification v2 with freedesktop Notifications fallback;
+- desktop entry/icons/deep links;
+- SecretStore with QtKeychain candidate proof;
+- portal-aware FileChooser/OpenURI/Screenshot operations;
+- GlobalShortcuts Portal v2 capability;
+- optional X11 fallback only behind the same shortcut interface;
 - optional autostart;
 - polished close-to-tray behavior.
+
+Do not implement Wayland global shortcuts with raw X11 grabs.
 
 Validate:
 - KDE Plasma Wayland;
