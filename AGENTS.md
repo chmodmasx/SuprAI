@@ -6,11 +6,13 @@ Purpose: make future AI work deterministic, resumable, and architecture-safe.
 
 Before changing code:
 1. Read this file.
-2. Read `docs/ARCHITECTURE.md`.
-3. Read `docs/ROADMAP.md`.
-4. Read `docs/PROJECT_STATE.md`.
-5. Read any ADR or reference document relevant to the change.
-6. Inspect the current code. Code wins over stale documentation; if they disagree, update the documentation in the same change.
+2. Read `docs/DOCUMENTATION_POLICY.md`.
+3. Read `docs/ARCHITECTURE.md`.
+4. Read `docs/ROADMAP.md`.
+5. Read `docs/PROJECT_STATE.md`.
+6. Read any ADR or reference document relevant to the change.
+7. Inspect the current code and tests.
+8. If implementation and canonical documentation disagree, determine which is wrong and resolve the contradiction in the same change. Never preserve a known-stale document merely for history.
 
 ## 1. Product identity
 
@@ -324,11 +326,24 @@ A feature crossing a boundary requires a test at that boundary.
 
 ## 14. Documentation contract
 
+`docs/DOCUMENTATION_POLICY.md` is mandatory.
+
 For every meaningful change:
 - update `docs/PROJECT_STATE.md`;
 - update architecture docs if a boundary changed;
-- record significant decisions in an ADR;
+- update the relevant ADR when a decision improves or changes;
+- remove/rewrite superseded ADRs or research notes when they would mislead;
+- scan for contradictory references to renamed/obsolete concepts;
 - leave explicit next steps when work is incomplete.
+
+The repository documents the best current understanding, not a museum of old decisions.
+
+Git history is the archive. Current files are the truth.
+
+Do not:
+- preserve obsolete architecture merely for historical context;
+- create parallel "v2" docs while stale "v1" docs remain authoritative-looking;
+- leave knowingly wrong technical claims with an "outdated" warning when they can be corrected or removed.
 
 Do not rely on conversation memory as project state.
 
