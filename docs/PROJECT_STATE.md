@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: ca75e980ac61f9affd497fc53b9d8d3197941312
+last_verified_commit: 82bb55825b7314602f4a38cb9e30e906650893bb
 
 working:
   - repository exists and is writable
@@ -27,6 +27,7 @@ working:
   - unified durable TaskManager architecture is defined
   - restart recovery uses owner generations and replay-safe reconciliation
   - schedules/automations are separate from execution Tasks
+  - documentation policy is canonical and living; stale decisions are replaced/removed rather than accumulated
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -129,6 +130,9 @@ decisions:
   - AppImage runtime ABI floor must be proven, not assumed
   - QProcess is baseline for process tools/tasks
   - systemd transient user services are only a proposed optional durability backend
+  - Git history is the archive; current documentation must contain the best current truth only
+  - new research or implementation evidence must rewrite/remove obsolete docs and ADRs in the same change
+  - contradictory old/new documentation is not permitted
 
 open_questions:
   - exact visual language and component system
