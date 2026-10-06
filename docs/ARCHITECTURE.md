@@ -62,7 +62,7 @@ Hermes Agent, Hermes Desktop, OpenClaw and similar projects are research referen
            +--> MCPClientManager
            +--> SkillRegistry
            +--> MemoryService
-           +--> SessionStore / MessageStore
+           +--> SessionStore / ItemStore
 ```
 
 The interface exists to preserve clean boundaries and testability, not to make third-party agent runtimes the product.
@@ -195,7 +195,7 @@ Proposed:
       AppDatabase.*
       PersistenceWorker.*
       SessionStore.*
-      MessageStore.*
+      ItemStore.*
       ToolInvocationStore.*
       migrations/
     platform/
