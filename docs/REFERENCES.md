@@ -504,3 +504,176 @@ SuprAI response:
 - explicit external-link activation;
 - native code-block components;
 - no Qt WebEngine for ordinary chat.
+
+
+## Advanced execution / orchestration references
+
+### OpenClaw steering
+
+Primary:
+- https://docs.openclaw.ai/concepts/queue-steering
+
+Current useful semantics:
+- steer/followup/collect/interrupt are distinct;
+- steering does not interrupt an already-running tool;
+- sequential unstarted tool calls can be skipped after steering lands;
+- skipped calls still receive synthetic paired results;
+- parallel tool batches settle as a batch;
+- accepted steering and actual model consumption are different events.
+
+SuprAI response:
+- ADR-0022 adopts explicit queued-input semantics and safe steering boundaries.
+
+### OpenClaw subagents
+
+Primary:
+- https://docs.openclaw.ai/tools/subagents
+- https://docs.openclaw.ai/tools/subagents/operations
+- https://docs.openclaw.ai/tools/subagents/announce
+
+Current useful semantics:
+- spawning is non-blocking;
+- completion is push-based;
+- parent models should yield rather than poll;
+- cancellation can target exact parent-run-owned child trees;
+- ownership/run generation matters during recovery;
+- child results remain recoverable even when delivery fails;
+- ordinary parent completion does not necessarily cancel detached admitted children.
+
+SuprAI response:
+- ADR-0023 models subagents as Task-owned child Sessions.
+- attached and detached semantics are explicit.
+- completion is event-driven, not model polling.
+
+### OpenClaw durable Tasks
+
+Primary:
+- https://docs.openclaw.ai/automation/tasks
+- https://docs.openclaw.ai/cli/tasks
+
+Current useful semantics:
+- background Task registry is separate from Session context;
+- task lifecycle distinguishes queued/running/succeeded/failed/timed_out/cancelled/lost;
+- execution completion is authoritative for active task records;
+- delivery/notification policy is separate from execution status;
+- requester and child session identities are separately tracked.
+
+SuprAI response:
+- ADR-0024 introduces one durable TaskManager/registry.
+
+### OpenClaw restart recovery
+
+Primary:
+- https://docs.openclaw.ai/gateway/restart-recovery
+
+Current useful semantics:
+- conversation, pending input, schedules, subagent records and deliveries are durable;
+- graceful restart fences new work and drains admitted work first;
+- terminal persistence is part of successful drain;
+- exact ownership and lifecycle generation are required to adopt old work;
+- repeated recovery is bounded;
+- stale/ambiguous work may be tombstoned instead of replayed.
+
+SuprAI response:
+- ADR-0025 uses owner-generation fencing and replay-safe recovery.
+
+### Hermes delegation
+
+Primary:
+- https://github.com/hermes-agent-org/hermes/blob/main/website/docs/user-guide/features/delegation.md
+- https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md
+- https://github.com/NousResearch/hermes-agent/blob/main/tools/AGENTS.md
+
+Useful semantics observed across current Hermes documentation/source:
+- child agents use isolated context;
+- tool access is restricted;
+- concurrency/depth are bounded;
+- interrupt propagation follows ownership;
+- child steering distinguishes queued from actually delivered;
+- child background processes can require explicit ownership handoff;
+- durable scheduled work is separate from synchronous delegation.
+
+SuprAI response:
+- explicit TaskBrief;
+- capability intersection;
+- attached/detached child modes;
+- explicit process ownership handoff.
+
+### Goose
+
+Primary:
+- https://github.com/aaif-goose/goose/blob/main/documentation/docs/guides/context-engineering/subagents.mdx
+- https://github.com/aaif-goose/goose/issues/11740
+
+Useful:
+- subagents are temporary isolated workers;
+- cancellation tokens and state-machine steering exist;
+- current Goose architecture still has several siloed async mechanisms;
+- the project is actively proposing a unified task registry for processes, timers, subagents and MCP Tasks.
+
+This independently supports SuprAI's TaskManager direction.
+
+### Agent Client Protocol v2
+
+Primary:
+- https://github.com/agentclientprotocol/agent-client-protocol/blob/main/docs/protocol/v2/migration.mdx
+- https://github.com/agentclientprotocol/agent-client-protocol/blob/main/docs/protocol/v2/session-setup.mdx
+
+Important v2 semantics:
+- prompt response acknowledges durable insertion, not turn completion;
+- running/requires_action/idle are foreground state notifications;
+- background activity can continue while foreground state is idle;
+- cancellation is confirmed by later lifecycle state;
+- replay uses agent-owned message IDs.
+
+SuprAI response:
+- ADR-0021 separates Input admission, Turn work and Run execution.
+
+### OpenAI Codex app-server
+
+Relevant:
+- https://github.com/openai/codex/tree/main/codex-rs/app-server
+- https://github.com/openai/codex/blob/main/codex-rs/app-server-protocol/src/protocol/thread_history.rs
+
+Useful observations:
+- threads, turns and materialized items have separate identities;
+- active turn steering/interrupt are distinct protocol operations;
+- persisted/live lifecycle correlation is a real integration problem.
+
+SuprAI should keep stable local IDs rather than reusing provider/app-server submission IDs as canonical execution identity.
+
+## MCP Tasks extension
+
+Primary:
+- https://tasks.extensions.modelcontextprotocol.io/
+- https://tasks.extensions.modelcontextprotocol.io/specification/draft/tasks
+- https://tasks.extensions.modelcontextprotocol.io/seps/2663-tasks-extension
+
+Current 2026-07-28 extension:
+- server-directed async tools/call execution;
+- states: working, input_required, completed, failed, cancelled;
+- tasks/get, tasks/update, tasks/cancel;
+- server-provided poll interval and TTL;
+- optional task status notifications/subscriptions;
+- no global tasks/list for security/isolation reasons.
+
+SuprAI response:
+- MCP Tasks are mapped into TaskManager as an external task source.
+- SuprAI task IDs remain distinct from opaque MCP task IDs.
+- TaskManager performs infrastructure polling/push handling; the model does not poll.
+
+## Linux systemd transient tasks
+
+Primary:
+- https://www.man7.org/linux/man-pages/man1/systemd-run.1.html
+- https://systemd.io/CONTROL_GROUP_INTERFACE/
+
+Useful:
+- user service manager can create transient service units;
+- D-Bus StartTransientUnit provides a durable external handle;
+- cgroup ownership can capture descendants;
+- services can outlive the initiating GUI process.
+
+SuprAI response:
+- ADR-0027 proposes an optional SystemdTransient ProcessBackend.
+- QProcess remains baseline until restart/output/containment behavior is proven.
