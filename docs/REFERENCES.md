@@ -677,3 +677,48 @@ Useful:
 SuprAI response:
 - ADR-0027 proposes an optional SystemdTransient ProcessBackend.
 - QProcess remains baseline until restart/output/containment behavior is proven.
+
+
+## Context folding / reasoning isolation
+
+Primary:
+- Scaling Long-Horizon Agent via Context Folding, ICML 2026.
+- https://proceedings.mlr.press/v306/sun26x.html
+- https://github.com/sunnweiwei/FoldAgent
+- https://github.com/MiaoLu3/Context_Folding
+
+Important:
+- temporary branches inherit a parent history/context;
+- branch work is isolated from the main trajectory;
+- return/fold preserves only a concise outcome in the main trajectory;
+- published results report up to 10x smaller active context on long-horizon tasks;
+- strongest published agent learns branch/return behavior with FoldGRPO;
+- the released implementation directly copies main messages into a branch Agent and appends only the returned branch result to main.
+
+Training-free related work:
+- MM-ContextFold (2026): persistent compact main context + ephemeral branch contexts, then discard branch trace/raw media after textual fold.
+
+SuprAI response:
+- ADR-0028 proposes DeliberationBranch as a harness-owned, provider-independent mechanism.
+- full-snapshot branches protect canonical context but do not eliminate branch-local peak context;
+- scoped/compacted snapshots must be benchmarked.
+
+### NInfer reasoning-history controls
+
+Primary:
+- https://github.com/Neroued/ninfer/blob/master/docs/serving.md
+- current Qwen templates under tools/chat_templates/.
+
+Important correction:
+- preserve_thinking is not a universal fixed default across every artifact/template;
+- when no explicit server/request override resolves it, selected template behavior matters;
+- current Qwen3.6 artifacts document closed-turn reasoning omitted by default;
+- current Qwen3.8 template/model cards document closed-turn reasoning retained by template default;
+- request-level preserve_thinking can explicitly control the behavior when supported;
+- reasoning output is returned separately from answer content;
+- current templates can preserve reasoning within the active multi-step tool chain while omitting older closed-turn reasoning.
+
+SuprAI response:
+- do not depend on provider defaults;
+- ContextManager owns canonical retention;
+- provider-specific preserve_thinking is only a capability/optimization.
