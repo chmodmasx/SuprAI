@@ -81,7 +81,11 @@ Goal: execute real model turns using SuprAI code only.
 
 Implement:
 - NativeSuprAIRuntime;
+- durable Session/Input/Turn/Run identities;
 - explicit turn state machine;
+- foreground session state separate from background activity;
+- followup queue and explicit interrupt path;
+- owner-generation fencing for Runs;
 - provider-neutral InferenceRequest/InferenceEvent types;
 - ProviderRegistry;
 - OpenAI Responses-compatible transport;
@@ -92,11 +96,11 @@ Implement:
 - TokenBudgetService capability ladder;
 - model configuration;
 - local endpoint support;
-- canonical SQLite Session/Turn/Item stores;
+- canonical SQLite Session/Input/Turn/Run/Item stores;
 - dedicated PersistenceWorker;
 - WAL/foreign-keys/busy-timeout/migrations;
 - provider-state-independent session reconstruction;
-- cancellation;
+- cancellation request/confirmation semantics;
 - runtime event conversion.
 
 First real targets:
@@ -251,20 +255,40 @@ Implement:
 
 Record exact ABI floor.
 
-## M10 — Advanced agent UX
+## M10 — Orchestration, Tasks and advanced agent UX
 
-Candidates:
+Core orchestration:
+- queued input modes: steer/followup/collect/interrupt;
+- safe steering boundaries;
+- unified durable TaskManager;
+- task delivery/notification state;
+- background process Tasks;
+- subagent child Sessions;
+- attached vs detached child semantics;
+- push-based completion;
+- yield/resume without model polling;
+- exact cancellation scope;
+- restart reconciliation and bounded recovery;
+- MCP Tasks integration;
+- schedule/automation definitions and occurrence execution.
+
+Advanced candidates:
 - multiple profiles/agents;
 - multiple providers/models;
 - skills manager;
 - tool permissions UI;
 - session branching;
-- background jobs;
 - terminal;
 - artifacts;
 - voice/STT/TTS;
 - PDF/image/browser previews;
-- subagents.
+- nested subagents;
+- optional systemd transient-process backend after ADR-0027 proof.
+
+Exit:
+- a parent can spawn background work, remain interactive, receive completion without polling, cancel exact work, and recover/reconcile persisted Tasks after restart;
+- stale child/task completions cannot enter a replaced Session;
+- scheduled occurrences are idempotent and obey current policy.
 
 These extend NativeSuprAIRuntime; they do not introduce Hermes/OpenClaw as runtime dependencies.
 
