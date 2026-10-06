@@ -116,7 +116,7 @@ NativeSuprAIRuntime owns:
 - AgentLoop;
 - ContextManager;
 - SessionStore;
-- MessageStore;
+- ItemStore;
 - ToolRegistry;
 - ToolExecutor;
 - ApprovalManager;
