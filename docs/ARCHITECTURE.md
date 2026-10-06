@@ -787,7 +787,165 @@ Not planned:
 - depend on their gateway protocols;
 - define SuprAI domain semantics from their private implementation details.
 
-## 25. Architecture proof complete when
+## 25. Execution identity model
+
+Advanced execution follows ADR-0021.
+
+```text
+Session
+  ├─ Inputs
+  └─ Turns
+      └─ Runs
+          ├─ ProviderAttempts
+          ├─ ToolInvocations
+          └─ Tasks
+```
+
+Definitions:
+- Session: durable conversation/workspace context;
+- Input: durably admitted user/internal input;
+- Turn: one logical foreground work episode;
+- Run: one executable generation/segment of a Turn;
+- ProviderAttempt: one inference request attempt;
+- ToolInvocation: one durable tool execution;
+- Task: detached/asynchronous/background work.
+
+A Turn may span multiple Runs due to yield/resume or restart recovery.
+
+Input admission is separate from Turn completion. The session may be foreground-idle while background Tasks continue.
+
+## 26. Input queue and steering
+
+Queued input follows ADR-0022.
+
+Semantic modes:
+- steer;
+- followup;
+- collect;
+- interrupt.
+
+Steering is consumed only at safe runtime boundaries. It never terminates an already-running tool merely to apply new guidance.
+
+Sequential unstarted tool calls may be skipped when steering lands, but every skipped call receives a synthetic terminal ToolResult so canonical history remains structurally paired.
+
+Track steering custody separately:
+- accepted;
+- delivered;
+- missed;
+- rejected;
+- converted_to_followup.
+
+An accepted steer is not proof that the model consumed it.
+
+## 27. Subagents
+
+Subagents follow ADR-0023.
+
+A subagent is a `Task(source=subagent)` that owns a child Session and executes through NativeSuprAIRuntime.
+
+Default child context is isolated and explicit through a TaskBrief. Full parent history is not cloned implicitly.
+
+Child authority is the intersection of parent/requester authority, child profile restrictions, task-specific restrictions and current policy. A child can never widen privileges.
+
+Subagent work may be:
+- attached: parent Turn depends on completion;
+- detached: child may outlive the spawning Run/Turn.
+
+Completion is push/event driven. Parent models do not poll child state. A runtime control equivalent to `yieldUntil(tasks)` may suspend a Turn without consuming model tokens and resume it through a new Run generation when required Tasks settle.
+
+## 28. TaskManager and background work
+
+TaskManager follows ADR-0024.
+
+Canonical states:
+
+```text
+queued
+running
+waiting_input
+cancel_requested
+succeeded
+failed
+timed_out
+cancelled
+lost
+outcome_unknown
+```
+
+Execution status and result-delivery status are separate.
+
+Task sources include:
+- subagent;
+- process;
+- MCP task;
+- scheduled run;
+- future remote worker.
+
+The runtime never spends model turns polling Tasks. TaskManager observes/polls external executors as infrastructure and emits meaningful state transitions.
+
+MCP `io.modelcontextprotocol/tasks` maps into TaskManager but does not define SuprAI's internal task identity.
+
+## 29. Recovery ownership
+
+Restart recovery follows ADR-0025.
+
+Persisted `running` is not proof of liveness.
+
+Active work carries exact ownership/generation metadata. Recovery:
+1. verifies the old owner/executor;
+2. reconciles external state;
+3. creates a new execution generation where safe;
+4. fences late events from superseded owners.
+
+Automatic replay is allowed only when semantics make it safe.
+
+Interrupted mutating/non-idempotent effects without a durable outcome become `outcome_unknown` and are never replayed automatically.
+
+Recovery attempts are bounded and can enter a blocked/tombstoned state requiring operator/user review.
+
+## 30. Scheduling
+
+Scheduling follows ADR-0026.
+
+A Schedule is a trigger definition, not a permanently-running Task:
+
+```text
+Schedule
+  -> Occurrence
+  -> Task
+  -> Session / Turn / Run
+```
+
+Schedules define explicit:
+- timezone;
+- misfire policy;
+- overlap policy;
+- capability envelope;
+- result-delivery target.
+
+Each occurrence has an idempotency identity.
+
+Scheduled runs execute under current policy; creation-time permissions do not become permanent bypasses.
+
+Fresh isolated task Sessions are the default execution context.
+
+## 31. Linux durable process backend
+
+ADR-0027 proposes an optional systemd transient user-service backend for process Tasks that should survive the GUI process.
+
+This is not accepted baseline behavior until proven.
+
+QProcess remains the baseline process backend.
+
+Task durability must always state the effective class, e.g.:
+- run-local;
+- app-process;
+- externally-supervised;
+- remote.
+
+Never claim restart durability unless the actual executor provides it.
+
+## 32. Architecture proof complete when
 
 - Qt shell boots;
 - MockRuntime completes a scripted streaming/tool/approval turn;
