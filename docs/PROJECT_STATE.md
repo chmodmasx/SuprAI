@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: b83fac11f851315ffa9f5bba5b5165015c7b6cee
+last_verified_commit: 54ec748ff71d2b4053591ee569f17c6ac3b9f3b8
 
 working:
   - repository exists and is writable
@@ -61,6 +61,7 @@ proposed_adrs:
   - ADR-0014 safe native transcript renderer
   - ADR-0016 QtKeychain SecretStore implementation
   - ADR-0027 optional systemd transient user-service process backend
+  - ADR-0028 ephemeral deliberation branches / context folding
 
 broken: []
 
@@ -132,6 +133,8 @@ decisions:
   - AppImage runtime ABI floor must be proven, not assumed
   - QProcess is baseline for process tools/tasks
   - systemd transient user services are only a proposed optional durability backend
+  - context-folding research confirms temporary branch -> compact return as a real long-horizon pattern
+  - NInfer preserve_thinking semantics are provider/template-specific and must not be assumed globally
   - current documentation is authoritative; Git history is the archive
   - obsolete ADRs/research/docs are rewritten, merged, or deleted when better evidence replaces them
   - knowingly contradictory documentation is not retained
@@ -161,6 +164,9 @@ open_questions:
   - SuprAI project license and distribution notices
   - semantic/vector retrieval only if FTS5 measurements justify it
   - systemd transient-process backend output/log/containment proof
+  - DeliberationBranch full vs scoped vs compacted snapshot benchmark
+  - ReturnCapsule schema and merge policy
+  - generic OpenAI-compatible reasoning-history capability detection
 
 next_milestone: M1
 next_exact_steps:
