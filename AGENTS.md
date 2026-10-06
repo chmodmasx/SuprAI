@@ -14,15 +14,16 @@ Before changing code:
 
 ## 1. Product identity
 
-SuprAI is a Linux-native desktop AI workspace.
+SuprAI is a Linux-native desktop AI agent and workspace.
 
 It is NOT:
 - an Electron application;
 - a browser dashboard wrapped in a window;
+- a Hermes frontend;
 - a Hermes fork;
+- an OpenClaw frontend;
 - an OpenClaw fork;
-- a UI that directly owns agent state;
-- a frontend tied permanently to one model provider.
+- a shell whose production agent logic lives in another agent project.
 
 Primary implementation:
 - C++20;
@@ -31,9 +32,11 @@ Primary implementation:
 - CMake/Ninja;
 - AppImage first.
 
-## 2. Core invariant: UI != agent
+Hermes/OpenClaw/other agents are research references only unless a future ADR explicitly changes that rule.
 
-Three authority domains exist.
+## 2. Core invariant: UI != agent runtime
+
+Both are SuprAI, but they have separate authority.
 
 ### Presentation authority
 Owned by QML/UI:
@@ -48,40 +51,40 @@ Owned by QML/UI:
 ### Application/machine authority
 Owned by C++ application core:
 - process lifecycle;
-- backend discovery;
-- connection lifecycle;
 - local filesystem integration;
 - desktop integration;
 - secret retrieval;
 - notification/tray/global shortcut integration;
-- compatibility probing;
-- backend capability mapping.
+- provider endpoint configuration;
+- runtime lifecycle.
 
 ### Agent authority
-Owned by the active AgentBackend:
+Owned by NativeSuprAIRuntime:
 - sessions;
-- stored conversation history;
+- conversation history;
 - active turns;
-- model/tool execution;
+- model/provider calls;
+- tool execution policy;
 - tool results;
 - approvals/clarifications;
 - persistent agent memory;
 - agent profiles;
 - skills/tools;
-- token/model/provider truth.
+- context construction;
+- token/context accounting.
 
-Never duplicate agent behavior in QML.
+Never implement agent behavior in QML.
 
-## 3. Backend abstraction
+## 3. Runtime abstraction
 
-All agent implementations must satisfy a SuprAI-owned interface.
+Production agent behavior is SuprAI-owned.
 
 Conceptual interface:
 
 ```text
-AgentBackend
-  connect()
-  disconnect()
+AgentRuntime
+  start()
+  stop()
   capabilities()
   listSessions()
   createSession()
@@ -96,55 +99,77 @@ AgentBackend
   events()
 ```
 
-Initial adapters:
-- HermesBackend: JSON-RPC/WebSocket gateway.
-- MockBackend: deterministic tests.
+Initial implementations:
+- NativeSuprAIRuntime: production runtime.
+- MockRuntime: deterministic test runtime.
 
-Future:
-- NativeSuprAIBackend.
-- OpenClawBackend only if justified.
+Do not create a HermesBackend/OpenClawBackend as part of the planned product.
 
-Hermes-specific JSON or identifiers must stop at the adapter boundary.
+Any future external-runtime adapter requires an ADR and must not displace NativeSuprAIRuntime as the canonical implementation.
 
-## 4. Event model
+## 4. Native agent runtime minimum architecture
 
-Backend traffic is converted to SuprAI domain events before reaching UI.
+NativeSuprAIRuntime owns:
+- ProviderRegistry;
+- AgentLoop;
+- ContextManager;
+- SessionStore;
+- MessageStore;
+- ToolRegistry;
+- ToolExecutor;
+- ApprovalManager;
+- MCPClientManager;
+- SkillRegistry;
+- MemoryService;
+- RuntimeEventBus.
+
+Provider implementations are replaceable transports, not agent runtimes.
+
+Initial provider target:
+- OpenAI-compatible HTTP APIs, including local endpoints such as llama.cpp, vLLM and NInfer-compatible servers where protocol-compatible.
+
+Later providers may include native Anthropic/Gemini/etc. transports if required.
+
+## 5. Event model
+
+Runtime traffic is converted to SuprAI domain events before reaching UI.
 
 Examples:
-- BackendConnected
-- BackendDisconnected
+- RuntimeReady
+- RuntimeStopped
 - SessionCreated
 - SessionUpdated
 - MessageAdded
 - MessageDelta
 - TurnStarted
 - TurnFinished
+- ReasoningStatusChanged
 - ToolStarted
 - ToolUpdated
 - ToolFinished
 - UserActionRequired
-- CapabilityChanged
+- ContextUpdated
 - ErrorRaised
 
 Requirements:
 - ordered per session;
 - stale async responses cannot overwrite newer state;
 - terminal events flush immediately;
-- reconnect must not silently duplicate turns;
-- UI must distinguish loading, reconnecting, degraded, failed, and ready states.
+- cancel is explicit and observable;
+- UI distinguishes idle, working, waiting-for-user, degraded, failed, and ready states.
 
-## 5. State rules
+## 6. State rules
 
 Ask: "who is allowed to be correct about this state?"
 
-- Backend truth is cached, not owned by UI.
+- Agent truth is owned by NativeSuprAIRuntime.
 - Machine truth is owned by application core.
 - UI owns only presentation state.
-- Persisted state must have explicit scope: global, backend, profile, project, session, or window.
-- Never use one global key for data that can differ by backend/profile/project.
+- Persisted state must have explicit scope: global, profile, project, session, or window.
+- Never use one global key for data that can differ by profile/project/session.
 - Every optimistic mutation must have rollback behavior.
 
-## 6. Linux-native rules
+## 7. Linux-native rules
 
 Wayland is the primary display target.
 
@@ -159,19 +184,20 @@ Platform capabilities must be probed.
 
 Desktop integrations belong behind `platform/linux` interfaces, never scattered through QML.
 
-## 7. Security rules
+## 8. Security rules
 
 - No API keys/tokens/passwords in plaintext config.
 - Use a secure desktop secret backend when available.
 - Never expose arbitrary shell execution through a generic QML bridge.
 - Native capabilities are explicit and narrow.
-- Remote backend means tools execute where that backend runs unless a client capability explicitly states otherwise.
+- Tool execution has an explicit policy and approval path.
 - Web/HTML previews are untrusted content.
 - No popup/external navigation without an explicit policy.
 - No hidden automatic privilege escalation.
 - Any sudo/root flow must be explicit to the user.
+- MCP servers are untrusted external capabilities until configured and approved.
 
-## 8. Dependency policy
+## 9. Dependency policy
 
 Before adding a dependency:
 1. state what problem it solves;
@@ -184,7 +210,7 @@ Avoid large runtime stacks.
 
 Qt WebEngine is optional, not baseline. Do not introduce it only to render chat.
 
-## 9. Performance rules
+## 10. Performance rules
 
 Hot paths:
 - typing;
@@ -202,7 +228,7 @@ Rules:
 - do not destroy expensive views only because they are hidden;
 - profile realistic long conversations, not empty demos.
 
-## 10. Packaging rules
+## 11. Packaging rules
 
 Primary artifact: AppImage.
 
@@ -216,22 +242,27 @@ Build must:
 
 Later artifacts may include .deb.
 
-## 11. Testing contract
+## 12. Testing contract
 
 At minimum:
-- unit tests for domain/state reducers;
-- JSON-RPC transport tests;
-- backend adapter contract tests;
-- reconnect/order/idempotency tests;
+- unit tests for domain/state;
+- AgentLoop tests;
+- provider transport tests;
+- tool-call parsing/execution tests;
+- approval policy tests;
+- MCP tests;
+- context-management tests;
+- session persistence tests;
 - QML component tests where behavior matters;
-- integration tests with MockBackend;
+- integration tests with MockRuntime;
+- integration tests with a deterministic fake OpenAI-compatible server;
 - Linux packaging smoke test;
 - Wayland smoke test;
 - X11 compatibility smoke test.
 
 A feature crossing a boundary requires a test at that boundary.
 
-## 12. Documentation contract
+## 13. Documentation contract
 
 For every meaningful change:
 - update `docs/PROJECT_STATE.md`;
@@ -241,7 +272,7 @@ For every meaningful change:
 
 Do not rely on conversation memory as project state.
 
-## 13. AI handoff format
+## 14. AI handoff format
 
 Before ending a development milestone, update `docs/PROJECT_STATE.md` with:
 
