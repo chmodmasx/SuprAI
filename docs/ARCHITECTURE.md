@@ -150,15 +150,22 @@ Proposed:
       Application.*
     domain/
       Session.*
-      Message.*
-      ToolCall.*
+      Input.*
+      Turn.*
+      Run.*
+      ConversationItem.*
+      ToolInvocation.*
+      Task.*
       AgentEvent.*
       RuntimeCapabilities.*
     runtime/
       AgentRuntime.*
       native/
         NativeSuprAIRuntime.*
-        AgentLoop.*
+        TurnStateMachine.*
+        InputCoordinator.*
+        ExecutionScheduler.*
+        TaskManager.*
         RuntimeEventBus.*
       mock/
         MockRuntime.*
@@ -195,8 +202,13 @@ Proposed:
       AppDatabase.*
       PersistenceWorker.*
       SessionStore.*
+      InputStore.*
+      TurnStore.*
+      RunStore.*
       ItemStore.*
       ToolInvocationStore.*
+      TaskStore.*
+      ScheduleStore.*
       migrations/
     platform/
       linux/
