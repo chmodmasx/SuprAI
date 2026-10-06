@@ -77,20 +77,27 @@ Goal: execute real model turns using SuprAI code only.
 
 Implement:
 - NativeSuprAIRuntime;
+- explicit turn state machine;
+- provider-neutral InferenceRequest/InferenceEvent types;
 - ProviderRegistry;
-- OpenAI-compatible provider;
-- SSE/stream parser;
+- OpenAI Responses-compatible transport;
+- Chat Completions compatibility transport;
+- SSE/stream parsers;
+- provider capability resolution;
 - model configuration;
 - local endpoint support;
-- AgentLoop;
 - SessionStore;
 - MessageStore;
 - cancellation;
 - runtime event conversion.
 
-First real target:
-- any compliant local OpenAI-compatible endpoint;
-- specifically validate common local servers such as llama.cpp/vLLM/NInfer-compatible endpoints when available.
+First real targets:
+- llama.cpp;
+- vLLM;
+- NInfer;
+- then compatible remote APIs.
+
+Responses is preferred where supported; fallback to Chat must not hide arbitrary request/configuration errors.
 
 Exit:
 - user prompt -> provider -> streamed assistant response through NativeSuprAIRuntime;
@@ -100,14 +107,19 @@ Exit:
 ## M4 — Tool calling + approvals
 
 Implement:
-- normalized tool schema;
+- JSON Schema 2020-12 canonical tool schema;
+- SchemaValidator boundary;
 - ToolRegistry;
 - ToolExecutor;
 - provider tool-call translation;
 - tool lifecycle events;
-- approval policy;
-- allow/ask/deny decisions;
-- cancellation/timeouts;
+- PolicyEngine;
+- allow/ask/deny decisions with resource scopes;
+- ContainmentBackend capability probe;
+- Landlock prototype;
+- bubblewrap prototype;
+- explicit no-containment fallback;
+- cancellation/timeouts/output limits;
 - first safe built-in tools.
 
 Initial built-in tool candidates:
@@ -124,19 +136,25 @@ Exit:
 ## M5 — MCP + skills
 
 Implement:
-- MCP client;
+- native MCP client targeting final 2026-07-28 semantics;
 - stdio transport;
-- HTTP/streamable transport as justified by current MCP spec;
+- Streamable HTTP transport;
+- protocol-era/version handling;
 - server registry/config;
-- capability discovery;
 - tool/resource/prompt mapping;
+- structured tool results;
 - approval/security boundaries;
-- SuprAI skill format.
+- MRTR only as required by real integrations;
+- legacy 2025-era adapter only if interoperability testing requires it;
+- Agent Skills-compatible discovery/loader.
 
-Research Hermes/OpenClaw here only to compare solved ergonomics and failure modes.
+Do not build new behavior around deprecated MCP roots, sampling or protocol logging.
+
+Research upstream agents only to compare ergonomics and failure modes.
 
 Exit:
-- configured MCP tools participate in the same native AgentLoop as built-in tools.
+- configured MCP tools participate in the same NativeSuprAIRuntime AgentLoop as built-in tools;
+- standard SKILL.md skills are progressively discoverable/loadable.
 
 ## M6 — Context management + memory
 
@@ -147,16 +165,22 @@ Implement:
 - transcript compaction/summarization;
 - pinned project context;
 - MemoryService;
-- explicit memory scopes;
-- retrieval policy.
+- SQLite FTS5 history search;
+- bounded curated active memory;
+- user/profile/project memory scopes;
+- provenance/trust metadata;
+- explicit memory mutation/review policy.
 
 Requirements:
 - model context size is configurable/discovered;
 - no hidden uncontrolled growth;
-- summarization never silently becomes canonical history.
+- summarization never silently becomes canonical history;
+- memory retrieval never erases source/provenance;
+- no vector/embedding dependency is required for v1.
 
 Exit:
-- long sessions remain usable with deterministic context policy.
+- long sessions remain usable with deterministic context policy;
+- history search and active memory remain distinct and inspectable.
 
 ## M7 — Projects + files
 
