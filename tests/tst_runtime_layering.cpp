@@ -17,6 +17,11 @@ public:
         return m_busy;
     }
 
+    suprai::providers::ProviderCapabilities capabilities(const QString &) const override
+    {
+        return {};
+    }
+
     const QVector<suprai::providers::ProviderRequest> &requests() const
     {
         return m_requests;
