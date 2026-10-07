@@ -63,10 +63,15 @@ void RuntimeOrchestrator::start()
 
     if (!m_engine) {
         setState(RuntimeState::Failed);
-        emit errorOccurred(QStringLiteral("No hay un motor de agente configurado."));
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = QStringLiteral("No hay un motor de agente configurado."),
+            },
+        });
         return;
     }
 
+    setCapabilities(m_engine->capabilities(m_config.model));
     setState(RuntimeState::Ready);
 }
 
@@ -84,7 +89,11 @@ void RuntimeOrchestrator::shutdown()
 
     if (m_reasoningActive) {
         m_reasoningActive = false;
-        emit reasoningActiveChanged(false);
+        emitApplicationEvent({
+            .payload = ReasoningActiveChanged{
+                .active = false,
+            },
+        });
     }
 
     setState(RuntimeState::Stopped);
@@ -129,7 +138,11 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
     }
 
     if (m_state != RuntimeState::Ready || !m_engine) {
-        emit errorOccurred(QStringLiteral("El runtime no está listo."));
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = QStringLiteral("El runtime no está listo."),
+            },
+        });
         return;
     }
 
@@ -164,11 +177,20 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
         m_activeTurn->id);
 
     m_history.push_back(userItem);
-    emit userMessageAccepted(userItem.id, text);
+    emitApplicationEvent({
+        .payload = UserMessageAccepted{
+            .itemId = userItem.id,
+            .text = text,
+        },
+    });
 
     m_activeAssistantId = suprai::domain::newItemId();
     m_activeAssistantText.clear();
-    emit assistantMessageStarted(m_activeAssistantId);
+    emitApplicationEvent({
+        .payload = AssistantMessageStarted{
+            .itemId = m_activeAssistantId,
+        },
+    });
 
     setState(RuntimeState::Working);
     m_engine->generate(providerRequest());
@@ -187,7 +209,12 @@ void RuntimeOrchestrator::cancelTurn()
 void RuntimeOrchestrator::resetSession()
 {
     if (m_state == RuntimeState::Working || m_state == RuntimeState::Cancelling) {
-        emit errorOccurred(QStringLiteral("Cancelá el turno activo antes de iniciar una conversación nueva."));
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = QStringLiteral(
+                    "Cancelá el turno activo antes de iniciar una conversación nueva."),
+            },
+        });
         return;
     }
 
@@ -204,7 +231,9 @@ void RuntimeOrchestrator::resetSession()
     m_activeRun.reset();
     m_activeAssistantId.clear();
     m_activeAssistantText.clear();
-    emit conversationReset();
+    emitApplicationEvent({
+        .payload = ConversationReset{},
+    });
 }
 
 void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
@@ -213,14 +242,23 @@ void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
     case RuntimeEventType::AssistantTextDelta:
         if (!m_activeAssistantId.isEmpty()) {
             m_activeAssistantText += event.payload;
-            emit assistantTextDelta(m_activeAssistantId, event.payload);
+            emitApplicationEvent({
+                .payload = AssistantTextDelta{
+                    .itemId = m_activeAssistantId,
+                    .delta = event.payload,
+                },
+            });
         }
         break;
 
     case RuntimeEventType::ReasoningDelta:
         if (!m_reasoningActive) {
             m_reasoningActive = true;
-            emit reasoningActiveChanged(true);
+            emitApplicationEvent({
+                .payload = ReasoningActiveChanged{
+                    .active = true,
+                },
+            });
         }
         break;
 
@@ -237,7 +275,11 @@ void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
     case RuntimeEventType::ProviderFailed:
         finishAssistant(false);
         setState(RuntimeState::Ready);
-        emit errorOccurred(event.payload);
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = event.payload,
+            },
+        });
         break;
     }
 }
@@ -246,7 +288,11 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
 {
     if (m_reasoningActive) {
         m_reasoningActive = false;
-        emit reasoningActiveChanged(false);
+        emitApplicationEvent({
+            .payload = ReasoningActiveChanged{
+                .active = false,
+            },
+        });
     }
 
     if (m_activeAssistantId.isEmpty()) {
@@ -262,7 +308,12 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
             m_activeTurn ? m_activeTurn->id : QString{}));
     }
 
-    emit assistantMessageCompleted(m_activeAssistantId, m_activeAssistantText);
+    emitApplicationEvent({
+        .payload = AssistantMessageCompleted{
+            .itemId = m_activeAssistantId,
+            .finalText = m_activeAssistantText,
+        },
+    });
     m_activeAssistantId.clear();
     m_activeAssistantText.clear();
     m_activeInput.reset();
@@ -277,7 +328,32 @@ void RuntimeOrchestrator::setState(RuntimeState state)
     }
 
     m_state = state;
-    emit stateChanged(state);
+    emitApplicationEvent({
+        .payload = RuntimeStateChanged{
+            .state = state,
+        },
+    });
+}
+
+void RuntimeOrchestrator::setCapabilities(
+    const suprai::runtime::RuntimeCapabilities &capabilities)
+{
+    if (m_capabilities == capabilities) {
+        return;
+    }
+
+    m_capabilities = capabilities;
+    emitApplicationEvent({
+        .payload = RuntimeCapabilitiesChanged{
+            .capabilities = m_capabilities,
+        },
+    });
+}
+
+void RuntimeOrchestrator::emitApplicationEvent(
+    suprai::runtime::RuntimeApplicationEvent event)
+{
+    emit eventOccurred(event);
 }
 
 } // namespace suprai::runtime::internal
