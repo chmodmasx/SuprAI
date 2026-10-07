@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 951401751682f19b68e35b17fa4a2eeb49fb4115
-last_verified_code_commit: 951401751682f19b68e35b17fa4a2eeb49fb4115
+last_verified_commit: 3b42597a8c385d0e7355417e56c87cf3602ab933
+last_verified_code_commit: 3b42597a8c385d0e7355417e56c87cf3602ab933
 
 working:
   - repository exists and is writable
@@ -56,11 +56,17 @@ working:
   - untouched empty chats may remain transient until the first accepted Input
   - functional Qt/QML prototype source exists and builds in CI with Qt 6.12.0
   - current source tree enforces module public/private include boundaries
-  - current CMake targets are suprai_domain, suprai_provider_api, suprai_provider_openai, suprai_runtime, suprai_ui, and suprai
+  - current CMake targets include suprai_domain, suprai_provider_api, suprai_provider_openai, suprai_runtime, suprai_ui, suprai_platform, suprai_persistence, and suprai
   - runtime depends on provider contract, not the concrete OpenAI adapter
   - concrete providers/runtimes are selected only by ApplicationBootstrap
   - three-pane QML shell starts successfully in offscreen CI smoke test
   - NativeSuprAIRuntime runs on a dedicated QThread
+  - PersistenceWorker skeleton runs on its own dedicated QThread with explicit startup/shutdown
+  - AppPaths resolves XDG config/data/cache/state through QStandardPaths and startup ensures them
+  - logging categories suprai.app, suprai.runtime, suprai.provider, suprai.persistence, and suprai.platform are implemented
+  - explicit QML Chat/Configuración routing exists
+  - QtDBus SingleInstanceService implements org.freedesktop.Application Activate/Open/ActivateAction projection
+  - headless/no-session-bus startup degrades explicitly instead of failing
   - MockRuntime completes a deterministic streaming turn
   - OpenAI-compatible Chat Completions adapter streams assistant content
   - provider capability test verifies unknown is preserved rather than collapsed to unsupported
@@ -68,7 +74,7 @@ working:
   - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
   - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
   - GitHub Actions build/test/QML smoke run passes at verified code commit
-  - CTest suite passes 5/5 on verified prototype commit
+  - CTest suite passes 7/7 on verified prototype commit
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -222,7 +228,8 @@ open_questions:
   - exact visual language and component system
   - physical validation against the user's local NInfer endpoint
   - physical KDE Wayland / GNOME Wayland / X11 launch verification
-  - M1 XDG-path, structured-logging, single-instance and staged-deployment implementation
+  - physical KDE Wayland/X11 launch verification and GNOME Wayland proof
+  - staged Qt/QML deployment proof currently under CI
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - exact safe transcript renderer implementation after benchmark
   - QtKeychain proof on KDE/GNOME/AppImage
@@ -263,13 +270,8 @@ open_questions:
 next_milestone: M1
 next_exact_steps:
   - run the verified prototype against the user's real local NInfer endpoint
-  - add XDG path helper
-  - add structured logging categories
-  - implement single-instance / freedesktop activation skeleton
-  - add persistence-worker skeleton without yet pretending durable sessions are complete
-  - add explicit settings route while keeping secrets out of QSettings
   - verify KDE Wayland and X11 locally; add GNOME Wayland proof when available
-  - prove Qt/QML staged deployment directory
+  - complete and verify the Qt/QML staged deployment directory proof
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
   - then complete M2 domain/runtime UI contract before expanding M3 durability/tool semantics
