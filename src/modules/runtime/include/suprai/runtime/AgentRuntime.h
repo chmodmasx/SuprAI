@@ -1,6 +1,6 @@
 #pragma once
 
-#include <suprai/runtime/RuntimeState.h>
+#include <suprai/runtime/ApplicationEvent.h>
 
 #include <QObject>
 #include <QString>
@@ -27,14 +27,7 @@ public slots:
     virtual void resetSession() = 0;
 
 signals:
-    void stateChanged(suprai::runtime::RuntimeState state);
-    void userMessageAccepted(const QString &itemId, const QString &text);
-    void assistantMessageStarted(const QString &itemId);
-    void assistantTextDelta(const QString &itemId, const QString &delta);
-    void assistantMessageCompleted(const QString &itemId, const QString &finalText);
-    void reasoningActiveChanged(bool active);
-    void conversationReset();
-    void errorOccurred(const QString &message);
+    void eventEmitted(const suprai::runtime::ApplicationEvent &event);
     void stopped();
 };
 
