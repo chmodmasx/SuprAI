@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: 54ec748ff71d2b4053591ee569f17c6ac3b9f3b8
+last_verified_commit: 78f27a967480b4a15c7748f7cb7b3a75d224e666
 
 working:
   - repository exists and is writable
@@ -27,9 +27,12 @@ working:
   - unified durable TaskManager architecture is defined
   - restart recovery uses owner generations and replay-safe reconciliation
   - schedules/automations are separate from execution Tasks
-  - documentation policy is canonical and living
-  - contradiction scan already removed stale MessageStore/Message-domain terminology in favor of generalized Item/execution entities
   - documentation policy is canonical and living; stale decisions are replaced/removed rather than accumulated
+  - contradiction scans remove stale architecture/terminology instead of preserving it
+  - context folding / reasoning isolation is unified with the subagent architecture
+  - deliberation is a subagent purpose, not a separate runtime subsystem
+  - ReasoningWorkspace is ephemeral Run-local scratch state
+  - ReturnCapsule is the compact child-to-parent merge boundary
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -54,6 +57,7 @@ accepted_adrs:
   - ADR-0024 unified durable Task registry
   - ADR-0025 owner-generation-aware restart recovery
   - ADR-0026 schedules separate from Task execution
+  - ADR-0028 isolated deliberation reuses subagent infrastructure
 
 proposed_adrs:
   - ADR-0009 jsoncons as isolated JSON Schema 2020-12 validator
@@ -61,7 +65,6 @@ proposed_adrs:
   - ADR-0014 safe native transcript renderer
   - ADR-0016 QtKeychain SecretStore implementation
   - ADR-0027 optional systemd transient user-service process backend
-  - ADR-0028 ephemeral deliberation branches / context folding
 
 broken: []
 
@@ -91,7 +94,17 @@ decisions:
   - skipped-by-steering calls still receive synthetic terminal results
   - accepted steering is not equivalent to delivered steering
   - subagents execute through NativeSuprAIRuntime in child Sessions
+  - subagent purpose is metadata/policy, not a separate runtime type
+  - baseline subagent purposes include delegation, deliberation, verification, research and coding
+  - reasoning isolation/context folding reuses subagents; there is no standalone DeliberationBranch runtime
   - subagent context is isolated/explicit by default
+  - child context modes are full/scoped/compacted
+  - ReasoningWorkspace is ephemeral Run-local scratch state, not canonical history
+  - deliberation children return a compact ReturnCapsule instead of raw chain-of-thought
+  - deliberation children are read-mostly by default
+  - a child may use the same model with different reasoning effort or another configured model/profile
+  - logical subagent concurrency does not imply simultaneous GPU generation
+  - ExecutionScheduler controls physical child execution according to provider/model/hardware capacity
   - child authority is an intersection and can never widen parent authority
   - attached and detached child work have explicit lifecycle semantics
   - subagent/task completion is push/event driven; model polling loops are forbidden
@@ -133,13 +146,12 @@ decisions:
   - AppImage runtime ABI floor must be proven, not assumed
   - QProcess is baseline for process tools/tasks
   - systemd transient user services are only a proposed optional durability backend
-  - context-folding research confirms temporary branch -> compact return as a real long-horizon pattern
+  - context-folding research confirms isolated temporary work -> compact return as a real long-horizon pattern
+  - SuprAI implements that pattern through deliberation subagents rather than a second branch manager
   - NInfer preserve_thinking semantics are provider/template-specific and must not be assumed globally
-  - current documentation is authoritative; Git history is the archive
+  - provider reasoning-history controls are optimizations; canonical context retention is SuprAI-owned
+  - current documentation contains the best current truth; Git history is the archive
   - obsolete ADRs/research/docs are rewritten, merged, or deleted when better evidence replaces them
-  - knowingly contradictory documentation is not retained
-  - Git history is the archive; current documentation must contain the best current truth only
-  - new research or implementation evidence must rewrite/remove obsolete docs and ADRs in the same change
   - contradictory old/new documentation is not permitted
 
 open_questions:
@@ -164,8 +176,11 @@ open_questions:
   - SuprAI project license and distribution notices
   - semantic/vector retrieval only if FTS5 measurements justify it
   - systemd transient-process backend output/log/containment proof
-  - DeliberationBranch full vs scoped vs compacted snapshot benchmark
-  - ReturnCapsule schema and merge policy
+  - deliberation-subagent full vs scoped vs compacted context benchmark
+  - direct vs isolated vs auto deliberation policy thresholds
+  - ReturnCapsule exact schema and merge policy
+  - parent-vs-child reasoning effort/profile policy
+  - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
 
 next_milestone: M1
@@ -185,6 +200,8 @@ next_exact_steps:
   - in M3 implement Session/Input/Turn/Run identities before provider transport
   - implement followup queue + explicit interrupt before advanced steering
   - keep TaskManager schema-compatible even if background work lands later
+  - keep subagent purpose/context-mode fields schema-compatible before orchestration lands
+  - later benchmark direct reasoning vs deliberation subagents on NInfer/llama.cpp/vLLM
   - then implement normalized inference types and NativeSuprAIRuntime state machine
 
 verification_commands:
