@@ -1,7 +1,7 @@
 #include <suprai/providers/OpenAIProviderFactory.h>
 #include <suprai/providers/Provider.h>
 #include <suprai/runtime/AgentRuntime.h>
-#include <suprai/runtime/ApplicationEvent.h>
+#include <suprai/runtime/RuntimeApplicationEvent.h>
 #include <suprai/runtime/RuntimeFactory.h>
 
 #include <QHash>
@@ -145,9 +145,9 @@ private slots:
             },
             provider);
 
-        QVector<suprai::runtime::ApplicationEvent> events;
-        connect(runtime, &suprai::runtime::AgentRuntime::eventEmitted,
-                this, [&events](const suprai::runtime::ApplicationEvent &event) {
+        QVector<suprai::runtime::RuntimeApplicationEvent> events;
+        connect(runtime, &suprai::runtime::AgentRuntime::eventOccurred,
+                this, [&events](const suprai::runtime::RuntimeApplicationEvent &event) {
                     events.push_back(event);
                 });
 
@@ -156,8 +156,8 @@ private slots:
                 events.cbegin(),
                 events.cend(),
                 [](const auto &event) {
-                    return suprai::runtime::applicationEventKind(event)
-                        == suprai::runtime::ApplicationEventKind::ConversationItemCompleted;
+                    return suprai::runtime::eventPayload<
+                        suprai::runtime::ConversationItemCompleted>(event) != nullptr;
                 });
         };
 
@@ -166,8 +166,8 @@ private slots:
                 events.cbegin(),
                 events.cend(),
                 [](const auto &event) {
-                    return suprai::runtime::applicationEventKind(event)
-                        == suprai::runtime::ApplicationEventKind::Error;
+                    return suprai::runtime::eventPayload<
+                        suprai::runtime::RuntimeError>(event) != nullptr;
                 });
         };
 
