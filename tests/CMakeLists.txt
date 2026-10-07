@@ -70,12 +70,37 @@ target_link_libraries(tst_runtime_layering
 )
 add_test(NAME runtime_layering COMMAND tst_runtime_layering)
 
+
+add_executable(tst_platform
+    tst_platform.cpp
+)
+target_link_libraries(tst_platform
+    PRIVATE
+        Qt6::Core
+        Qt6::Test
+        suprai_platform
+)
+add_test(NAME platform COMMAND tst_platform)
+
+add_executable(tst_persistence_worker
+    tst_persistence_worker.cpp
+)
+target_link_libraries(tst_persistence_worker
+    PRIVATE
+        Qt6::Core
+        Qt6::Test
+        suprai_persistence
+)
+add_test(NAME persistence_worker COMMAND tst_persistence_worker)
+
 set_tests_properties(
     sse_decoder
     transcript_model
     mock_runtime
     native_runtime
     runtime_layering
+    platform
+    persistence_worker
     PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )
