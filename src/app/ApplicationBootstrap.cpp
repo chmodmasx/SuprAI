@@ -1,5 +1,6 @@
 #include "ApplicationBootstrap.h"
 
+#include <suprai/persistence/PersistenceWorker.h>
 #include <suprai/providers/OpenAIProviderFactory.h>
 #include <suprai/runtime/RuntimeFactory.h>
 
@@ -17,6 +18,12 @@ suprai::runtime::AgentRuntime *ApplicationBootstrap::createRuntime(const AppConf
     });
 
     return suprai::runtime::createNativeRuntime(config.agentConfig(), provider);
+}
+
+suprai::persistence::PersistenceWorker *ApplicationBootstrap::createPersistenceWorker(
+    const QString &stateDirectory)
+{
+    return new suprai::persistence::PersistenceWorker(stateDirectory);
 }
 
 } // namespace suprai::app
