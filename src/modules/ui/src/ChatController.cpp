@@ -7,6 +7,9 @@
 
 #include <QMetaObject>
 
+#include <type_traits>
+#include <variant>
+
 namespace suprai::ui {
 
 ChatController::ChatController(suprai::runtime::AgentRuntime *runtime, QObject *parent)
@@ -96,45 +99,33 @@ void ChatController::clearError()
 
 void ChatController::connectRuntime()
 {
-    connect(m_runtime, &suprai::runtime::AgentRuntime::stateChanged,
-            this, &ChatController::setRuntimeState);
+    connect(m_runtime, &suprai::runtime::AgentRuntime::eventEmitted,
+            this, &ChatController::handleApplicationEvent);
+}
 
-    connect(m_runtime, &suprai::runtime::AgentRuntime::userMessageAccepted,
-            this, [this](const QString &id, const QString &text) {
-                m_transcript->append(suprai::domain::makeMessageItem(
-                    suprai::domain::ConversationRole::User,
-                    text,
-                    suprai::domain::ConversationItemState::Completed,
-                    id));
-            });
+void ChatController::handleApplicationEvent(const suprai::runtime::ApplicationEvent &event)
+{
+    std::visit(
+        [this](const auto &payload) {
+            using T = std::decay_t<decltype(payload)>;
 
-    connect(m_runtime, &suprai::runtime::AgentRuntime::assistantMessageStarted,
-            this, [this](const QString &id) {
-                m_transcript->append(suprai::domain::makeMessageItem(
-                    suprai::domain::ConversationRole::Assistant,
-                    {},
-                    suprai::domain::ConversationItemState::Streaming,
-                    id));
-            });
-
-    connect(m_runtime, &suprai::runtime::AgentRuntime::assistantTextDelta,
-            this, [this](const QString &id, const QString &delta) {
-                m_transcript->appendDelta(id, delta);
-            });
-
-    connect(m_runtime, &suprai::runtime::AgentRuntime::assistantMessageCompleted,
-            this, [this](const QString &id, const QString &) {
-                m_transcript->finish(id);
-            });
-
-    connect(m_runtime, &suprai::runtime::AgentRuntime::reasoningActiveChanged,
-            this, &ChatController::setReasoning);
-
-    connect(m_runtime, &suprai::runtime::AgentRuntime::conversationReset,
-            m_transcript, &internal::TranscriptModel::clear);
-
-    connect(m_runtime, &suprai::runtime::AgentRuntime::errorOccurred,
-            this, &ChatController::setLastError);
+            if constexpr (std::is_same_v<T, suprai::runtime::RuntimeStateChangedEvent>) {
+                setRuntimeState(payload.state);
+            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationItemStartedEvent>) {
+                m_transcript->append(payload.item);
+            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationTextDeltaEvent>) {
+                m_transcript->appendDelta(payload.itemId, payload.delta);
+            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationItemCompletedEvent>) {
+                m_transcript->finish(payload.itemId);
+            } else if constexpr (std::is_same_v<T, suprai::runtime::ReasoningActivityChangedEvent>) {
+                setReasoning(payload.active);
+            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationResetEvent>) {
+                m_transcript->clear();
+            } else if constexpr (std::is_same_v<T, suprai::runtime::RuntimeErrorEvent>) {
+                setLastError(payload.message);
+            }
+        },
+        event.payload);
 }
 
 void ChatController::setRuntimeState(suprai::runtime::RuntimeState state)
