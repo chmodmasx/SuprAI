@@ -40,7 +40,13 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
           SUPRAI_RUNTIME: mock
-        run: ./build/src/suprai --smoke-test
+        run: |
+          output="$(./build/src/suprai --smoke-test 2>&1)"
+          printf '%s\n' "$output"
+          if grep -q 'shutdown_timeout' <<<"$output"; then
+            echo "Worker shutdown timeout detected" >&2
+            exit 1
+          fi
 
       - name: Stage portable install tree
         run: |
@@ -53,14 +59,19 @@ jobs:
 
       - name: Staged install smoke test
         run: |
-          xvfb-run -a env -u LD_LIBRARY_PATH \
+          output="$(xvfb-run -a env -u LD_LIBRARY_PATH \
               -u QT_PLUGIN_PATH \
               -u QML2_IMPORT_PATH \
               -u QT_ROOT_DIR \
               QT_QPA_PLATFORM=xcb \
               QT_QUICK_BACKEND=software \
               SUPRAI_RUNTIME=mock \
-              ./stage/bin/suprai --smoke-test
+              ./stage/bin/suprai --smoke-test 2>&1)"
+          printf '%s\n' "$output"
+          if grep -q 'shutdown_timeout' <<<"$output"; then
+            echo "Worker shutdown timeout detected in staged XCB smoke test" >&2
+            exit 1
+          fi
 
       - name: Staged Wayland smoke test
         run: |
@@ -91,7 +102,7 @@ jobs:
             exit 1
           fi
 
-          env -u LD_LIBRARY_PATH \
+          output="$(env -u LD_LIBRARY_PATH \
               -u QT_PLUGIN_PATH \
               -u QML2_IMPORT_PATH \
               -u QT_ROOT_DIR \
@@ -100,4 +111,9 @@ jobs:
               QT_QPA_PLATFORM=wayland \
               QT_QUICK_BACKEND=software \
               SUPRAI_RUNTIME=mock \
-              ./stage/bin/suprai --smoke-test
+              ./stage/bin/suprai --smoke-test 2>&1)"
+          printf '%s\n' "$output"
+          if grep -q 'shutdown_timeout' <<<"$output"; then
+            echo "Worker shutdown timeout detected in staged Wayland smoke test" >&2
+            exit 1
+          fi
