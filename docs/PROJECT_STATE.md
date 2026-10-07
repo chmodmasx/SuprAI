@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: 6417f0f53ff271883f46586fbc41a618baded2bf
+last_verified_commit: 4677f3944b48ca3bea298c2f68eca5845a2bc894
 
 working:
   - repository exists and is writable
