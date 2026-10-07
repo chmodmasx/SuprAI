@@ -701,7 +701,7 @@ Training-free related work:
 - MM-ContextFold (2026): persistent compact main context + ephemeral branch contexts, then discard branch trace/raw media after textual fold.
 
 SuprAI response:
-- ADR-0028 rejects a separate DeliberationBranch subsystem;
+- ADR-0028 rejects a separate standalone deliberation-branch subsystem;
 - isolated deliberation reuses ADR-0023 subagents as `Task(source=subagent, purpose=deliberation)`;
 - the child Session owns the temporary reasoning context and returns a compact ReturnCapsule;
 - raw child reasoning does not enter parent canonical context by default;
