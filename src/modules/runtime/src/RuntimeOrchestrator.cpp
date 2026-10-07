@@ -17,11 +17,40 @@ RuntimeOrchestrator::RuntimeOrchestrator(
     , m_config(std::move(config))
     , m_engine(engine)
     , m_eventAdapter(new RuntimeEventAdapter(engine, this))
+    , m_session{
+          .id = suprai::domain::newSessionId(),
+          .parentSessionId = {},
+      }
 {
     Q_ASSERT(m_engine);
 
     connect(m_eventAdapter, &RuntimeEventAdapter::runtimeEvent,
             this, &RuntimeOrchestrator::handleRuntimeEvent);
+}
+
+const suprai::domain::Session &RuntimeOrchestrator::session() const
+{
+    return m_session;
+}
+
+const QVector<suprai::domain::Input> &RuntimeOrchestrator::inputs() const
+{
+    return m_inputs;
+}
+
+const QVector<suprai::domain::Turn> &RuntimeOrchestrator::turns() const
+{
+    return m_turns;
+}
+
+const QVector<suprai::domain::Run> &RuntimeOrchestrator::runs() const
+{
+    return m_runs;
+}
+
+const QVector<suprai::domain::ConversationItem> &RuntimeOrchestrator::history() const
+{
+    return m_history;
 }
 
 void RuntimeOrchestrator::start()
@@ -49,6 +78,9 @@ void RuntimeOrchestrator::shutdown()
 
     m_activeAssistantId.clear();
     m_activeAssistantText.clear();
+    m_activeInput.reset();
+    m_activeTurn.reset();
+    m_activeRun.reset();
 
     if (m_reasoningActive) {
         m_reasoningActive = false;
@@ -101,9 +133,35 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
         return;
     }
 
+    m_activeInput = suprai::domain::Input{
+        .id = suprai::domain::newInputId(),
+        .sessionId = m_session.id,
+        .text = text,
+    };
+
+    m_activeTurn = suprai::domain::Turn{
+        .id = suprai::domain::newTurnId(),
+        .sessionId = m_session.id,
+        .inputId = m_activeInput->id,
+        .parentTurnId = m_turns.isEmpty() ? QString{} : m_turns.constLast().id,
+    };
+
+    m_activeRun = suprai::domain::Run{
+        .id = suprai::domain::newRunId(),
+        .turnId = m_activeTurn->id,
+        .generation = 1,
+    };
+
+    m_inputs.push_back(*m_activeInput);
+    m_turns.push_back(*m_activeTurn);
+    m_runs.push_back(*m_activeRun);
+
     const auto userItem = suprai::domain::makeMessageItem(
         suprai::domain::ConversationRole::User,
-        text);
+        text,
+        suprai::domain::ConversationItemState::Completed,
+        suprai::domain::newItemId(),
+        m_activeTurn->id);
 
     m_history.push_back(userItem);
     emit userMessageAccepted(userItem.id, text);
@@ -133,7 +191,17 @@ void RuntimeOrchestrator::resetSession()
         return;
     }
 
+    m_session = {
+        .id = suprai::domain::newSessionId(),
+        .parentSessionId = {},
+    };
+    m_inputs.clear();
+    m_turns.clear();
+    m_runs.clear();
     m_history.clear();
+    m_activeInput.reset();
+    m_activeTurn.reset();
+    m_activeRun.reset();
     m_activeAssistantId.clear();
     m_activeAssistantText.clear();
     emit conversationReset();
@@ -190,12 +258,16 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
             suprai::domain::ConversationRole::Assistant,
             m_activeAssistantText,
             suprai::domain::ConversationItemState::Completed,
-            m_activeAssistantId));
+            m_activeAssistantId,
+            m_activeTurn ? m_activeTurn->id : QString{}));
     }
 
     emit assistantMessageCompleted(m_activeAssistantId, m_activeAssistantText);
     m_activeAssistantId.clear();
     m_activeAssistantText.clear();
+    m_activeInput.reset();
+    m_activeTurn.reset();
+    m_activeRun.reset();
 }
 
 void RuntimeOrchestrator::setState(RuntimeState state)
