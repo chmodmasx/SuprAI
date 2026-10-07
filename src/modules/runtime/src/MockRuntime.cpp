@@ -167,9 +167,8 @@ void MockRuntime::finish()
         },
     });
     emit eventOccurred({
-        .payload = AssistantMessageCompleted{
+        .payload = ConversationItemCompleted{
             .itemId = m_activeId,
-            .finalText = m_text,
         },
     });
     m_activeId.clear();
