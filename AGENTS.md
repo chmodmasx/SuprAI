@@ -207,6 +207,21 @@ Subagents:
 - complete by event/push, not model polling;
 - may be attached or detached, but that choice is explicit.
 
+Subagent purposes include delegation, deliberation, verification, research and coding. Purpose is policy/profile metadata, not a separate runtime implementation.
+
+Reasoning isolation/context folding reuses the subagent system. Do not create a parallel DeliberationBranch runtime.
+
+A deliberation child:
+- is normally attached to the parent Turn;
+- is read-mostly by default;
+- may use full/scoped/compacted child context;
+- may use the same model with different reasoning effort;
+- keeps raw reasoning in a Run-local ReasoningWorkspace;
+- returns a compact ReturnCapsule to the parent;
+- does not inject raw child reasoning into parent canonical context.
+
+Logical subagent concurrency does not imply simultaneous GPU generation. ExecutionScheduler decides physical execution according to provider/model/hardware capacity.
+
 ### Tasks
 
 The model must never poll in a loop just to discover whether background work finished.
