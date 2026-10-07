@@ -1,7 +1,8 @@
 # ADR-0018: Provider-aware token accounting and context budgeting
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -96,3 +97,18 @@ Provider-native final-request counting avoids reproducing each model's template 
 ## Consequences
 
 Token accounting is a provider capability, not a tokenizer utility hidden inside ContextManager.
+
+
+## Runtime feedback calibration
+
+Provider-reported input-token usage from a completed request is evidence for future budgeting.
+
+When SuprAI had to estimate a request and the provider later reports actual input usage:
+- retain the estimate method and actual count as capability/evidence metadata;
+- use the actual count as a conservative calibration signal for subsequent comparable requests;
+- never use calibration to increase an uncertain budget beyond a verified provider/runtime limit;
+- reset/re-evaluate calibration when provider/model/template/tool configuration changes materially.
+
+Dense content can tokenize much more heavily than character-based estimates. The budgeting path therefore treats prior actual usage as a floor/evidence signal, not merely telemetry.
+
+A safe provider retry of an unchanged prepared request reuses the same prepared request/budget result. It does not run a second independent compaction merely because the transport attempt is retried.
