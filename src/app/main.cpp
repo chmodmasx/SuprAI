@@ -71,6 +71,7 @@ int main(int argc, char *argv[])
     }
 
     qRegisterMetaType<suprai::runtime::RuntimeState>();
+    qRegisterMetaType<suprai::runtime::ApplicationEvent>();
 
     suprai::app::AppSettings settings;
 
