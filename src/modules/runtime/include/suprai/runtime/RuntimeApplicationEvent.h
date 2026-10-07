@@ -1,5 +1,6 @@
 #pragma once
 
+#include <suprai/domain/ConversationItem.h>
 #include <suprai/runtime/RuntimeCapabilities.h>
 #include <suprai/runtime/RuntimeState.h>
 
@@ -18,23 +19,17 @@ struct RuntimeCapabilitiesChanged {
     RuntimeCapabilities capabilities;
 };
 
-struct UserMessageAccepted {
-    QString itemId;
-    QString text;
+struct ConversationItemStarted {
+    suprai::domain::ConversationItem item;
 };
 
-struct AssistantMessageStarted {
-    QString itemId;
-};
-
-struct AssistantTextDelta {
+struct ConversationTextDelta {
     QString itemId;
     QString delta;
 };
 
-struct AssistantMessageCompleted {
+struct ConversationItemCompleted {
     QString itemId;
-    QString finalText;
 };
 
 struct ReasoningActiveChanged {
@@ -51,10 +46,9 @@ struct RuntimeError {
 using RuntimeApplicationEventPayload = std::variant<
     RuntimeStateChanged,
     RuntimeCapabilitiesChanged,
-    UserMessageAccepted,
-    AssistantMessageStarted,
-    AssistantTextDelta,
-    AssistantMessageCompleted,
+    ConversationItemStarted,
+    ConversationTextDelta,
+    ConversationItemCompleted,
     ReasoningActiveChanged,
     ConversationReset,
     RuntimeError>;
