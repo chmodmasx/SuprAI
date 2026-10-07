@@ -38,7 +38,7 @@ Hermes Agent, Hermes Desktop, OpenClaw and similar projects are research referen
               v                      v
 +-------------------------+   +------------------------+
 | SuprAI Domain Models    |   | Linux Platform Layer   |
-| session/message/tool/...|   | tray/dbus/portal/etc. |
+| session/input/turn/item |   | tray/dbus/portal/etc. |
 +-------------+-----------+   +------------------------+
               |
               v
@@ -438,7 +438,7 @@ Responsibilities:
 - request approvals;
 - execute tools;
 - call MCP servers;
-- persist sessions/messages;
+- persist sessions/inputs/turns/runs/items through repository ports;
 - publish domain events;
 - manage cancellation;
 - coordinate memory/skills.
