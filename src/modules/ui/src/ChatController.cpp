@@ -101,22 +101,20 @@ void ChatController::connectRuntime()
 
     connect(m_runtime, &suprai::runtime::AgentRuntime::userMessageAccepted,
             this, [this](const QString &id, const QString &text) {
-                m_transcript->append({
-                    .id = id,
-                    .role = suprai::domain::ConversationRole::User,
-                    .text = text,
-                    .streaming = false,
-                });
+                m_transcript->append(suprai::domain::makeMessageItem(
+                    suprai::domain::ConversationRole::User,
+                    text,
+                    suprai::domain::ConversationItemState::Completed,
+                    id));
             });
 
     connect(m_runtime, &suprai::runtime::AgentRuntime::assistantMessageStarted,
             this, [this](const QString &id) {
-                m_transcript->append({
-                    .id = id,
-                    .role = suprai::domain::ConversationRole::Assistant,
-                    .text = {},
-                    .streaming = true,
-                });
+                m_transcript->append(suprai::domain::makeMessageItem(
+                    suprai::domain::ConversationRole::Assistant,
+                    {},
+                    suprai::domain::ConversationItemState::Streaming,
+                    id));
             });
 
     connect(m_runtime, &suprai::runtime::AgentRuntime::assistantTextDelta,
