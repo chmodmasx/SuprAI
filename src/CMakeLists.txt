@@ -2,11 +2,15 @@ add_library(suprai_domain INTERFACE)
 target_include_directories(suprai_domain INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(suprai_domain INTERFACE Qt6::Core)
 
-# Provider contract: runtime depends only on this target.
-add_library(suprai_provider_api INTERFACE)
-target_include_directories(suprai_provider_api INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+# Provider contract: runtime depends only on this target. It is a tiny STATIC
+# library (rather than INTERFACE) because Provider is a QObject and needs AUTOMOC.
+add_library(suprai_provider_api STATIC
+    providers/Provider.h
+    providers/Provider.cpp
+)
+target_include_directories(suprai_provider_api PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(suprai_provider_api
-    INTERFACE
+    PUBLIC
         Qt6::Core
         suprai_domain
 )
