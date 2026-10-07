@@ -28,7 +28,7 @@ Goal: prove the Qt foundation before agent complexity.
 
 Status: **IN PROGRESS**.
 
-Verified vertical slice at commit `3b42597a8c385d0e7355417e56c87cf3602ab933`:
+Verified vertical slice at commit `98fb72265f38d375145206dbaa039e93d0b8a103`:
 - CMake/C++20/Qt 6 application builds in CI with Qt 6.12.0;
 - module PUBLIC/PRIVATE include boundaries are enforced by target-scoped CMake paths;
 - `ApplicationBootstrap` is the concrete composition root;
@@ -41,6 +41,11 @@ Verified vertical slice at commit `3b42597a8c385d0e7355417e56c87cf3602ab933`:
 - org.freedesktop.Application-compatible Activate/Open/ActivateAction projection exists through QtDBus;
 - a second process can forward activation to the registered primary when a session bus is available;
 - environments without a session bus degrade explicitly instead of preventing startup;
+- worker shutdown is independent of the already-stopped main Qt event loop and CI rejects shutdown timeouts;
+- CMake install staging deploys QML imports, Qt runtime closure, qt.conf, Qt Widgets and explicit X11/Wayland QPA support;
+- staged runtime launches successfully with Qt development environment variables removed;
+- staged XCB path is smoke-tested under Xvfb;
+- staged Wayland path is smoke-tested under headless Weston;
 - MockRuntime streams a deterministic turn;
 - a concrete OpenAI-compatible provider is injected through the provider port;
 - NativeSuprAIRuntime is a thin facade over RuntimeOrchestrator -> AgentEngine;
@@ -53,8 +58,7 @@ Verified vertical slice at commit `3b42597a8c385d0e7355417e56c87cf3602ab933`:
 - ordinary chat rendering remains plain text in this prototype.
 
 Still required before M1 can be COMPLETE:
-- physical KDE Wayland and X11 launch proof;
-- staged Qt/QML deployment proof;
+- physical KDE Wayland and X11 launch proof on a real desktop;
 - GNOME Wayland proof when available.
 
 Implement:
@@ -79,8 +83,8 @@ Implement:
 - single-instance policy.
 
 Tests:
-- process starts under Wayland;
-- process starts under X11;
+- process starts under virtual/headless Wayland in CI and physical Wayland before M1 closes;
+- process starts under virtual X11/XCB in CI and physical X11 before M1 closes;
 - QML loads cleanly;
 - clean shutdown;
 - module targets compile with only declared dependencies;
