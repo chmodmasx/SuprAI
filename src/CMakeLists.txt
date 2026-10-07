@@ -84,6 +84,7 @@ target_link_libraries(suprai_persistence
 # Runtime ----------------------------------------------------------------------
 add_library(suprai_runtime STATIC
     modules/runtime/include/suprai/runtime/AgentRuntime.h
+    modules/runtime/include/suprai/runtime/ApplicationEvent.h
     modules/runtime/include/suprai/runtime/RuntimeConfig.h
     modules/runtime/include/suprai/runtime/RuntimeFactory.h
     modules/runtime/include/suprai/runtime/RuntimeState.h
