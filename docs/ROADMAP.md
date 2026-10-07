@@ -330,6 +330,5 @@ If forced to choose:
 - mobile;
 - custom inference engine;
 - custom browser engine;
-- public plugin ABI before real consumers prove its shape;
-- compatibility adapters for Hermes/OpenClaw;
-- public binary plugin ABI before real external consumers prove its shape.
+- public binary plugin ABI before real external consumers prove its shape;
+- compatibility adapters for Hermes/OpenClaw.
