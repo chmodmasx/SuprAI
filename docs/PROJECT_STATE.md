@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 3b42597a8c385d0e7355417e56c87cf3602ab933
-last_verified_code_commit: 3b42597a8c385d0e7355417e56c87cf3602ab933
+last_verified_commit: 98fb72265f38d375145206dbaa039e93d0b8a103
+last_verified_code_commit: 98fb72265f38d375145206dbaa039e93d0b8a103
 
 working:
   - repository exists and is writable
@@ -67,6 +67,13 @@ working:
   - explicit QML Chat/Configuración routing exists
   - QtDBus SingleInstanceService implements org.freedesktop.Application Activate/Open/ActivateAction projection
   - headless/no-session-bus startup degrades explicitly instead of failing
+  - worker shutdown is independent of the main event loop and verified without timeout warnings
+  - CI fails smoke tests if shutdown_timeout appears
+  - CMake install staging deploys Qt/QML runtime closure and qt.conf
+  - Qt6Widgets runtime is staged explicitly because QApplication is intentionally linked
+  - Qt Wayland client package and QPA plugin are explicit build/deployment requirements
+  - staged XCB runtime passes independently under Xvfb with Qt dev environment variables removed
+  - staged Wayland runtime passes independently under Weston headless with Qt dev environment variables removed
   - MockRuntime completes a deterministic streaming turn
   - OpenAI-compatible Chat Completions adapter streams assistant content
   - provider capability test verifies unknown is preserved rather than collapsed to unsupported
@@ -229,7 +236,6 @@ open_questions:
   - physical validation against the user's local NInfer endpoint
   - physical KDE Wayland / GNOME Wayland / X11 launch verification
   - physical KDE Wayland/X11 launch verification and GNOME Wayland proof
-  - staged Qt/QML deployment proof currently under CI
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - exact safe transcript renderer implementation after benchmark
   - QtKeychain proof on KDE/GNOME/AppImage
@@ -270,8 +276,7 @@ open_questions:
 next_milestone: M1
 next_exact_steps:
   - run the verified prototype against the user's real local NInfer endpoint
-  - verify KDE Wayland and X11 locally; add GNOME Wayland proof when available
-  - complete and verify the Qt/QML staged deployment directory proof
+  - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
   - then complete M2 domain/runtime UI contract before expanding M3 durability/tool semantics
