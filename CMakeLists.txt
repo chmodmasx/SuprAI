@@ -22,6 +22,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     QuickControls2
     Network
     DBus
+    Sql
     WaylandClient
 )
 
