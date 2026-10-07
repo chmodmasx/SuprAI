@@ -274,18 +274,44 @@ Desktop integrations belong behind `platform/linux` interfaces, never scattered 
 - Any sudo/root flow must be explicit to the user.
 - MCP servers are untrusted external capabilities until configured and approved.
 
-## 10. Dependency policy
+## 10. Dependency and modularity policy
+
+ADR-0029 is mandatory.
+
+SuprAI is a modular monolith.
+
+Every architecture-significant module must have:
+- an explicit public contract;
+- private implementation details;
+- explicit allowed dependencies;
+- its own CMake target where practical;
+- boundary/contract tests.
+
+Rules:
+- never include another module's internal/private headers;
+- never let QML call provider/SQL/MCP implementation objects directly;
+- never let runtime depend on concrete provider/database/platform implementations;
+- never read another module's SQLite tables directly;
+- never instantiate sibling-module concrete implementations outside the composition root;
+- avoid global service locators/singletons as hidden dependency injection;
+- use registries for open-ended families such as providers, tools and skills;
+- keep optional capability absence representable and safe;
+- confine build-time feature switches to CMake/composition/adapter boundaries;
+- do not scatter `#ifdef` through domain/runtime logic.
 
 Before adding a dependency:
 1. state what problem it solves;
 2. explain why Qt/C++ standard library cannot solve it adequately;
-3. record security/packaging impact;
-4. record AppImage impact;
-5. create/update an ADR for architecture-significant dependencies.
+3. record which module owns it;
+4. record security/packaging impact;
+5. record AppImage impact;
+6. create/update an ADR for architecture-significant dependencies.
 
 Avoid large runtime stacks.
 
 Qt WebEngine is optional, not baseline. Do not introduce it only to render chat.
+
+There is no public binary plugin ABI yet. Do not add one without a separate ADR and real consumers proving the need.
 
 ## 11. Performance rules
 
