@@ -128,7 +128,8 @@ void ChatController::connectRuntime()
 void ChatController::handleRuntimeEvent(
     const suprai::runtime::RuntimeApplicationEvent &event)
 {
-    if (const auto *state = suprai::runtime::eventPayload<suprai::runtime::RuntimeStateChanged>(event)) {
+    if (const auto *state =
+            suprai::runtime::eventPayload<suprai::runtime::RuntimeStateChanged>(event)) {
         setRuntimeState(state->state);
         return;
     }
@@ -139,34 +140,20 @@ void ChatController::handleRuntimeEvent(
         return;
     }
 
-    if (const auto *accepted =
-            suprai::runtime::eventPayload<suprai::runtime::UserMessageAccepted>(event)) {
-        m_transcript->append(suprai::domain::makeMessageItem(
-            suprai::domain::ConversationRole::User,
-            accepted->text,
-            suprai::domain::ConversationItemState::Completed,
-            accepted->itemId));
-        return;
-    }
-
     if (const auto *started =
-            suprai::runtime::eventPayload<suprai::runtime::AssistantMessageStarted>(event)) {
-        m_transcript->append(suprai::domain::makeMessageItem(
-            suprai::domain::ConversationRole::Assistant,
-            {},
-            suprai::domain::ConversationItemState::Streaming,
-            started->itemId));
+            suprai::runtime::eventPayload<suprai::runtime::ConversationItemStarted>(event)) {
+        m_transcript->append(started->item);
         return;
     }
 
     if (const auto *delta =
-            suprai::runtime::eventPayload<suprai::runtime::AssistantTextDelta>(event)) {
+            suprai::runtime::eventPayload<suprai::runtime::ConversationTextDelta>(event)) {
         m_transcript->appendDelta(delta->itemId, delta->delta);
         return;
     }
 
     if (const auto *completed =
-            suprai::runtime::eventPayload<suprai::runtime::AssistantMessageCompleted>(event)) {
+            suprai::runtime::eventPayload<suprai::runtime::ConversationItemCompleted>(event)) {
         m_transcript->finish(completed->itemId);
         return;
     }
