@@ -1,7 +1,8 @@
 # ADR-0015: Explicit thread ownership
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -18,8 +19,9 @@ Main/UI thread
         | queued signals/commands
         v
 Runtime thread
-  NativeSuprAIRuntime
-  Agent state machine
+  NativeSuprAIRuntime facade
+  RuntimeOrchestrator
+  AgentEngine / turn state machine
   provider network objects
   MCP/process coordination
         |
@@ -35,7 +37,7 @@ Heavy pure computations may use QThreadPool/QtConcurrent only when measured.
 ## Rules
 
 - QML-visible models live on the UI thread.
-- NativeSuprAIRuntime is a worker QObject moved to a dedicated QThread with an event loop.
+- NativeSuprAIRuntime/runtime worker ownership is moved to a dedicated QThread with an event loop; RuntimeOrchestrator and AgentEngine runtime QObjects remain on that runtime thread unless a later ADR proves a separate execution thread is needed.
 - QNetworkAccessManager/replies, QProcess and timers used by the runtime are created/used in their owning thread.
 - PersistenceWorker owns its QSqlDatabase connection.
 - Cross-thread interaction uses queued signals/slots or immutable value commands/events.
@@ -51,7 +53,7 @@ Keeping runtime work off the UI thread also prevents context building, parsing, 
 
 ## Event delivery
 
-High-frequency stream deltas may be coalesced at the UI boundary.
+High-frequency stream deltas may be coalesced at the UI boundary. UI/telemetry/log observers must not be synchronously awaited by the provider token-stream path.
 
 Coalescing must preserve:
 - item order;
