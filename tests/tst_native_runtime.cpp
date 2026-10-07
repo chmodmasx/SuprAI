@@ -1,3 +1,4 @@
+#include "providers/OpenAIChatProvider.h"
 #include "runtime/NativeSuprAIRuntime.h"
 #include "runtime/RuntimeConfig.h"
 
@@ -109,13 +110,17 @@ private slots:
         FakeOpenAIServer server;
         QVERIFY(server.start());
 
-        suprai::runtime::RuntimeConfig config;
-        config.baseUrl = server.baseUrl();
-        config.model = QStringLiteral("test-model");
-        config.apiKey = QStringLiteral("no-key");
-        config.systemPrompt = QStringLiteral("Test system prompt");
+        auto *provider = new suprai::providers::OpenAIChatProvider({
+            .baseUrl = server.baseUrl(),
+            .apiKey = QStringLiteral("no-key"),
+        });
 
-        suprai::runtime::NativeSuprAIRuntime runtime(config);
+        suprai::runtime::AgentRuntimeConfig config{
+            .model = QStringLiteral("test-model"),
+            .systemPrompt = QStringLiteral("Test system prompt"),
+        };
+
+        suprai::runtime::NativeSuprAIRuntime runtime(config, provider);
 
         QSignalSpy completed(&runtime, &suprai::runtime::AgentRuntime::assistantMessageCompleted);
         QSignalSpy errors(&runtime, &suprai::runtime::AgentRuntime::errorOccurred);

@@ -1,15 +1,11 @@
 #pragma once
 
+#include "providers/Provider.h"
 #include "runtime/AgentRuntime.h"
 #include "runtime/RuntimeConfig.h"
 
 #include <QString>
 #include <QVector>
-
-namespace suprai::providers {
-class Provider;
-struct ProviderMessage;
-}
 
 namespace suprai::runtime {
 
@@ -23,7 +19,10 @@ class NativeSuprAIRuntime final : public AgentRuntime
     Q_OBJECT
 
 public:
-    explicit NativeSuprAIRuntime(RuntimeConfig config, QObject *parent = nullptr);
+    NativeSuprAIRuntime(
+        AgentRuntimeConfig config,
+        suprai::providers::Provider *provider,
+        QObject *parent = nullptr);
 
 public slots:
     void start() override;
@@ -38,7 +37,7 @@ private:
     void finishAssistant();
     QVector<suprai::providers::ProviderMessage> providerMessages() const;
 
-    RuntimeConfig m_config;
+    AgentRuntimeConfig m_config;
     suprai::providers::Provider *m_provider = nullptr;
     QVector<RuntimeMessage> m_history;
     RuntimeState m_state = RuntimeState::Stopped;

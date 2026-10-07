@@ -1,6 +1,6 @@
+#include "app/ApplicationBootstrap.h"
 #include "app/AppSettings.h"
 #include "runtime/AgentRuntime.h"
-#include "runtime/RuntimeFactory.h"
 #include "runtime/RuntimeState.h"
 #include "ui/ChatController.h"
 
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     QThread runtimeThread;
     runtimeThread.setObjectName(QStringLiteral("SuprAIRuntime"));
 
-    auto *runtime = suprai::runtime::RuntimeFactory::create(settings.runtimeConfig());
+    auto *runtime = suprai::app::ApplicationBootstrap::createRuntime(settings.runtimeConfig());
     runtime->moveToThread(&runtimeThread);
 
     QObject::connect(&runtimeThread, &QThread::started,
@@ -59,8 +59,6 @@ int main(int argc, char *argv[])
 
     const bool smokeTest = QCoreApplication::arguments().contains(QStringLiteral("--smoke-test"));
     if (smokeTest) {
-        // Give QML and the queued runtime startup enough time to complete one
-        // event-loop cycle, then exercise the normal shutdown path.
         QTimer::singleShot(500, &app, &QCoreApplication::quit);
     }
 

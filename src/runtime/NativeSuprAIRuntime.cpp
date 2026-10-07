@@ -1,17 +1,27 @@
 #include "runtime/NativeSuprAIRuntime.h"
 
 #include "domain/ConversationItem.h"
-#include "providers/OpenAIChatProvider.h"
-#include "providers/Provider.h"
 
+#include <Q_ASSERT>
 #include <utility>
 
 namespace suprai::runtime {
 
-NativeSuprAIRuntime::NativeSuprAIRuntime(RuntimeConfig config, QObject *parent)
+NativeSuprAIRuntime::NativeSuprAIRuntime(
+    AgentRuntimeConfig config,
+    suprai::providers::Provider *provider,
+    QObject *parent)
     : AgentRuntime(parent)
     , m_config(std::move(config))
+    , m_provider(provider)
 {
+    Q_ASSERT(m_provider);
+
+    if (m_provider && !m_provider->parent()) {
+        m_provider->setParent(this);
+    }
+
+    connectProvider();
 }
 
 void NativeSuprAIRuntime::start()
@@ -22,15 +32,12 @@ void NativeSuprAIRuntime::start()
 
     setState(RuntimeState::Starting);
 
-    auto *provider = new suprai::providers::OpenAIChatProvider(
-        {
-            .baseUrl = m_config.baseUrl,
-            .apiKey = m_config.apiKey,
-        },
-        this);
+    if (!m_provider) {
+        setState(RuntimeState::Failed);
+        emit errorOccurred(QStringLiteral("No hay un provider configurado."));
+        return;
+    }
 
-    m_provider = provider;
-    connectProvider();
     setState(RuntimeState::Ready);
 }
 
@@ -131,6 +138,10 @@ void NativeSuprAIRuntime::resetSession()
 
 void NativeSuprAIRuntime::connectProvider()
 {
+    if (!m_provider) {
+        return;
+    }
+
     connect(m_provider, &suprai::providers::Provider::textDelta, this, [this](const QString &delta) {
         if (m_activeAssistantId.isEmpty()) {
             return;
@@ -163,6 +174,9 @@ void NativeSuprAIRuntime::connectProvider()
             emit assistantMessageCompleted(m_activeAssistantId, m_activeAssistantText);
         }
 
+        // Cancelled partial output is visible in the transcript, but it is not
+        // canonical history in this prototype. Persistence/partial-attempt
+        // semantics land with the durable Turn/Run model.
         m_activeAssistantId.clear();
         m_activeAssistantText.clear();
         setState(RuntimeState::Ready);

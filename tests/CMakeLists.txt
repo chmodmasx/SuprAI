@@ -5,7 +5,7 @@ target_link_libraries(tst_sse_decoder
     PRIVATE
         Qt6::Core
         Qt6::Test
-        suprai_providers
+        suprai_provider_openai
 )
 add_test(NAME sse_decoder COMMAND tst_sse_decoder)
 
@@ -40,6 +40,7 @@ target_link_libraries(tst_native_runtime
         Qt6::Network
         Qt6::Test
         suprai_runtime
+        suprai_provider_openai
 )
 add_test(NAME native_runtime COMMAND tst_native_runtime)
 
