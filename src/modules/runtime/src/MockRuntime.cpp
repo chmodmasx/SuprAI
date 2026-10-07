@@ -1,6 +1,7 @@
 #include "MockRuntime.h"
 
 #include <suprai/domain/ConversationItem.h>
+#include <suprai/runtime/ApplicationEvent.h>
 
 #include <QTimer>
 
@@ -42,7 +43,13 @@ void MockRuntime::submitPrompt(const QString &prompt)
         return;
     }
 
-    emit userMessageAccepted(suprai::domain::newItemId(), text);
+    emit eventEmitted({
+        .payload = ConversationItemStartedEvent{
+            .item = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::User,
+                text),
+        },
+    });
 
     m_activeId = suprai::domain::newItemId();
     m_text.clear();
@@ -53,8 +60,20 @@ void MockRuntime::submitPrompt(const QString &prompt)
         QStringLiteral("Cambiá SUPRAI_RUNTIME=native para usar un endpoint OpenAI-compatible real."),
     };
 
-    emit assistantMessageStarted(m_activeId);
-    emit reasoningActiveChanged(true);
+    emit eventEmitted({
+        .payload = ConversationItemStartedEvent{
+            .item = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::Assistant,
+                {},
+                suprai::domain::ConversationItemState::Streaming,
+                m_activeId),
+        },
+    });
+
+    emit eventEmitted({
+        .payload = ReasoningActivityChangedEvent{.active = true},
+    });
+
     setState(RuntimeState::Working);
     m_timer->start();
 }
@@ -69,8 +88,17 @@ void MockRuntime::cancelTurn()
     if (m_timer) {
         m_timer->stop();
     }
-    emit reasoningActiveChanged(false);
-    emit assistantMessageCompleted(m_activeId, m_text);
+
+    emit eventEmitted({
+        .payload = ReasoningActivityChangedEvent{.active = false},
+    });
+
+    emit eventEmitted({
+        .payload = ConversationItemCompletedEvent{
+            .itemId = m_activeId,
+        },
+    });
+
     m_activeId.clear();
     m_text.clear();
     setState(RuntimeState::Ready);
@@ -81,7 +109,10 @@ void MockRuntime::resetSession()
     if (m_state == RuntimeState::Working || m_state == RuntimeState::Cancelling) {
         return;
     }
-    emit conversationReset();
+
+    emit eventEmitted({
+        .payload = ConversationResetEvent{},
+    });
 }
 
 void MockRuntime::emitNextChunk()
@@ -92,12 +123,20 @@ void MockRuntime::emitNextChunk()
     }
 
     if (m_index == 1) {
-        emit reasoningActiveChanged(false);
+        emit eventEmitted({
+            .payload = ReasoningActivityChangedEvent{.active = false},
+        });
     }
 
     const auto chunk = m_chunks.at(m_index++);
     m_text += chunk;
-    emit assistantTextDelta(m_activeId, chunk);
+
+    emit eventEmitted({
+        .payload = ConversationTextDeltaEvent{
+            .itemId = m_activeId,
+            .delta = chunk,
+        },
+    });
 
     if (m_index >= m_chunks.size()) {
         finish();
@@ -110,8 +149,16 @@ void MockRuntime::finish()
         m_timer->stop();
     }
 
-    emit reasoningActiveChanged(false);
-    emit assistantMessageCompleted(m_activeId, m_text);
+    emit eventEmitted({
+        .payload = ReasoningActivityChangedEvent{.active = false},
+    });
+
+    emit eventEmitted({
+        .payload = ConversationItemCompletedEvent{
+            .itemId = m_activeId,
+        },
+    });
+
     m_activeId.clear();
     m_text.clear();
     setState(RuntimeState::Ready);
@@ -122,8 +169,11 @@ void MockRuntime::setState(RuntimeState state)
     if (m_state == state) {
         return;
     }
+
     m_state = state;
-    emit stateChanged(state);
+    emit eventEmitted({
+        .payload = RuntimeStateChangedEvent{.state = state},
+    });
 }
 
 } // namespace suprai::runtime::internal
