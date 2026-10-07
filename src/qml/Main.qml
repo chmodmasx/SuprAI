@@ -14,7 +14,7 @@ ApplicationWindow {
 
     color: "#1f1f1f"
 
-    readonly property color background: "#1f1f1f"
+    readonly property color pageColor: "#1f1f1f"
     readonly property color panel: "#292929"
     readonly property color panelAlt: "#313131"
     readonly property color border: "#4E4E4E"
@@ -103,7 +103,7 @@ ApplicationWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: root.background
+            color: root.pageColor
 
             ColumnLayout {
                 anchors.fill: parent
