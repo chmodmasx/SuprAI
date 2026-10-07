@@ -40,3 +40,21 @@ jobs:
           QT_QUICK_BACKEND: software
           SUPRAI_RUNTIME: mock
         run: ./build/src/suprai --smoke-test
+
+      - name: Stage portable install tree
+        run: |
+          rm -rf stage
+          cmake --install build --prefix "$PWD/stage"
+          test -x stage/bin/suprai
+          test -f stage/bin/qt.conf
+
+      - name: Staged install smoke test
+        run: |
+          env -u LD_LIBRARY_PATH \
+              -u QT_PLUGIN_PATH \
+              -u QML2_IMPORT_PATH \
+              -u QT_ROOT_DIR \
+              QT_QPA_PLATFORM=offscreen \
+              QT_QUICK_BACKEND=software \
+              SUPRAI_RUNTIME=mock \
+              ./stage/bin/suprai --smoke-test
