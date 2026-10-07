@@ -1,3 +1,5 @@
+include(GNUInstallDirs)
+
 set(SUPRAI_MODULES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules)
 
 # Domain -----------------------------------------------------------------------
@@ -171,5 +173,23 @@ target_link_libraries(suprai
 )
 
 install(TARGETS suprai
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+set(SUPRAI_DEPLOY_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_suprai.cmake")
+file(GENERATE
+    OUTPUT "${SUPRAI_DEPLOY_SCRIPT}"
+    CONTENT "
+include(\"${QT_DEPLOY_SUPPORT}\")
+qt_deploy_qml_imports(
+    TARGET suprai
+    PLUGINS_FOUND suprai_qml_plugins
+)
+qt_deploy_runtime_dependencies(
+    EXECUTABLE \"\${QT_DEPLOY_BIN_DIR}/$<TARGET_FILE_NAME:suprai>\"
+    ADDITIONAL_MODULES \${suprai_qml_plugins}
+    GENERATE_QT_CONF
+)
+"
+)
+install(SCRIPT "${SUPRAI_DEPLOY_SCRIPT}")
