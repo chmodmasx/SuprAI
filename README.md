@@ -20,6 +20,10 @@ Implemented:
 - provider port separated from concrete adapters;
 - OpenAI-compatible Chat Completions streaming adapter;
 - application composition root that injects the selected provider/runtime;
+- NativeSuprAIRuntime implemented as a thin production facade;
+- RuntimeOrchestrator owns stateful conversation/runtime coordination;
+- AgentEngine owns the low-level provider execution kernel;
+- typed AgentEngineEvent -> RuntimeEvent adapter boundary;
 - raw provider `reasoning_content` treated as ephemeral and excluded from later reconstructed prompts;
 - explicit public/private module include boundaries enforced by CMake targets;
 - CI build, unit/integration tests and QML startup smoke test.
@@ -54,6 +58,12 @@ AgentRuntime
 MockRuntime      NativeSuprAIRuntime
                        |
                        v
+              RuntimeOrchestrator
+                       |
+                       v
+                  AgentEngine
+                       |
+                       v
                   Provider port
                        ^
                        |
@@ -65,22 +75,9 @@ ApplicationBootstrap
 
 Current source modules expose only their public `include/suprai/...` surface. Concrete runtime/provider implementations live in private source directories and are not visible to unrelated consumers.
 
-The current M1 vertical slice still connects `NativeSuprAIRuntime` directly to the provider port. That is prototype implementation state, not the final internal runtime shape. ADR-0002 now requires M3 to split the production runtime internally into:
+The runtime split required by ADR-0002 is already implemented in the current vertical slice. The current AgentEngine still has only the minimal provider execution behavior needed by the prototype; durable Turn/Run state, tool iteration and the rest of M3 build on this boundary rather than replacing it.
 
-```text
-NativeSuprAIRuntime facade
-          |
-          v
-RuntimeOrchestrator
-          |
-          v
-AgentEngine
-          |
-          v
-provider/tool ports
-```
-
-This is deliberate: adding or replacing a provider should not require changes to QML or orchestration, and stateful session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
+This is deliberate: adding or replacing a provider should not require changes to QML or stateful orchestration, and session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
 
 ## Build
 
