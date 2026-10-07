@@ -82,6 +82,18 @@ target_link_libraries(tst_platform
 )
 add_test(NAME platform COMMAND tst_platform)
 
+add_executable(tst_chat_controller
+    tst_chat_controller.cpp
+)
+target_link_libraries(tst_chat_controller
+    PRIVATE
+        Qt6::Core
+        Qt6::Test
+        suprai_ui
+        suprai_runtime
+)
+add_test(NAME chat_controller COMMAND tst_chat_controller)
+
 add_executable(tst_persistence_worker
     tst_persistence_worker.cpp
 )
