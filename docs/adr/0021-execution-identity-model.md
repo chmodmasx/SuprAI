@@ -1,7 +1,8 @@
 # ADR-0021: Distinct Session, Input, Turn, Run, Attempt and Task identities
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -77,3 +78,27 @@ A single Session/Message model cannot express:
 ## Consequences
 
 Database schema and runtime APIs must preserve these identities from the beginning, even if early milestones only use a subset.
+
+## Implemented foundation
+
+The in-memory prototype now creates distinct semantic IDs for:
+- Session;
+- Input;
+- Turn;
+- Run;
+- ConversationItem;
+- ToolInvocation;
+- Attachment.
+
+IDs use readable semantic prefixes plus UUID identity. Prefixes are for diagnostics/type recognition; correctness still uses the actual ID field and owning relationships.
+
+RuntimeOrchestrator currently:
+- owns one active Session identity;
+- creates one Input per accepted prompt;
+- creates one Turn for that Input;
+- creates generation-1 Run for the current provider execution;
+- groups user/assistant ConversationItems by Turn ID;
+- links the next linear Turn to the prior Turn as parent lineage;
+- creates a new Session identity and clears prototype lineage on resetSession().
+
+This is an in-memory proof only. Durability, ProviderAttempt identity, recovery generations and database constraints remain M3 work.
