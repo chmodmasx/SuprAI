@@ -53,11 +53,29 @@ target_link_libraries(tst_native_runtime
 )
 add_test(NAME native_runtime COMMAND tst_native_runtime)
 
+
+add_executable(tst_runtime_layering
+    tst_runtime_layering.cpp
+)
+target_include_directories(tst_runtime_layering
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/modules/runtime/src
+)
+target_link_libraries(tst_runtime_layering
+    PRIVATE
+        Qt6::Core
+        Qt6::Test
+        suprai_runtime
+        suprai_provider_api
+)
+add_test(NAME runtime_layering COMMAND tst_runtime_layering)
+
 set_tests_properties(
     sse_decoder
     transcript_model
     mock_runtime
     native_runtime
+    runtime_layering
     PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )
