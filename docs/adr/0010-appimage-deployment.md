@@ -8,16 +8,23 @@ Updated: 2026-10-07
 
 Make the CMake install tree / AppDir the source of truth.
 
-Preferred pipeline:
+The staging part of this pipeline is now implemented and CI-verified:
 
 ```text
 CMake build
-  -> cmake --install into AppDir
-  -> qt_generate_deploy_qml_app_script / Qt deployment APIs
-  -> verify Qt libs/plugins/QML modules
-  -> add desktop metadata/AppRun
+  -> cmake --install into portable stage
+  -> qt_deploy_qml_imports
+  -> qt_deploy_runtime_dependencies
+  -> explicit Qt6Widgets runtime artifact
+  -> explicit QWaylandIntegrationPlugin runtime artifact
+  -> qt.conf
+  -> XCB staged smoke under Xvfb
+  -> Wayland staged smoke under Weston headless
+
+Still pending:
+  -> desktop metadata/AppRun
   -> AppImage finalizer
-  -> smoke tests
+  -> ABI-floor/clean-VM smoke tests
 ```
 
 Use `appimagetool` directly or linuxdeploy narrowly as a finalizer if it proves useful.
@@ -100,3 +107,22 @@ Before public distribution:
 - https://doc.qt.io/qt-6.12/supported-platforms.html
 - https://docs.appimage.org/reference/best-practices.html
 - https://github.com/linuxdeploy/linuxdeploy-plugin-qt
+
+
+## Verified staging proof
+
+Verified on GitHub Actions Ubuntu 24.04 with Qt 6.12:
+- normal build succeeds;
+- 7/7 tests pass;
+- regular QML startup smoke succeeds;
+- install-stage creation succeeds;
+- stage contains qt.conf;
+- stage contains XCB and Wayland QPA plugins;
+- stage launches under XCB/Xvfb with LD_LIBRARY_PATH, QT_PLUGIN_PATH, QML2_IMPORT_PATH and QT_ROOT_DIR removed;
+- stage launches under Wayland/Weston headless under the same isolation;
+- clean worker shutdown is required by CI.
+
+Implementation detail:
+Qt 6.12 deployment did not automatically include the deliberate QApplication/Qt6Widgets dependency nor the Wayland QPA plugin in this configuration. SuprAI therefore installs the official imported runtime artifacts explicitly through CMake and still uses Qt deployment APIs for dependency/QML closure. This is preferable to hard-coded filesystem copies.
+
+This proof does not establish the final AppImage ABI floor or support for Ubuntu 22.04/Debian 12. Those remain release-gate work.
