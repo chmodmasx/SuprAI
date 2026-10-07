@@ -1,6 +1,6 @@
 #pragma once
 
-#include <suprai/runtime/ApplicationEvent.h>
+#include <suprai/runtime/RuntimeApplicationEvent.h>
 
 #include <QObject>
 #include <QString>
@@ -27,7 +27,10 @@ public slots:
     virtual void resetSession() = 0;
 
 signals:
-    void eventEmitted(const suprai::runtime::ApplicationEvent &event);
+    void eventOccurred(const suprai::runtime::RuntimeApplicationEvent &event);
+
+    // Lifecycle/control signal used by the application thread owner.
+    // Presentation state travels through RuntimeApplicationEvent instead.
     void stopped();
 };
 
