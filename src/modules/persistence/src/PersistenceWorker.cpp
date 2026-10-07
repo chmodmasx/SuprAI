@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QThread>
 
+#include <utility>
+
 namespace suprai::persistence {
 
 PersistenceWorker::PersistenceWorker(QString stateDirectory, QObject *parent)
