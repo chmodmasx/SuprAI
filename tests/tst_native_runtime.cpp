@@ -1,6 +1,7 @@
 #include <suprai/providers/OpenAIProviderFactory.h>
 #include <suprai/providers/Provider.h>
 #include <suprai/runtime/AgentRuntime.h>
+#include <suprai/runtime/ApplicationEvent.h>
 #include <suprai/runtime/RuntimeFactory.h>
 
 #include <QHash>
@@ -9,6 +10,9 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTest>
+#include <QVector>
+
+#include <algorithm>
 
 class FakeOpenAIServer final : public QObject
 {
@@ -142,20 +146,43 @@ private slots:
             },
             provider);
 
-        QSignalSpy completed(runtime, &suprai::runtime::AgentRuntime::assistantMessageCompleted);
-        QSignalSpy errors(runtime, &suprai::runtime::AgentRuntime::errorOccurred);
+        QVector<suprai::runtime::ApplicationEvent> events;
+        connect(runtime, &suprai::runtime::AgentRuntime::eventEmitted,
+                this, [&events](const suprai::runtime::ApplicationEvent &event) {
+                    events.push_back(event);
+                });
+
+        const auto completedCount = [&events]() {
+            return std::count_if(
+                events.cbegin(),
+                events.cend(),
+                [](const auto &event) {
+                    return suprai::runtime::applicationEventKind(event)
+                        == suprai::runtime::ApplicationEventKind::ConversationItemCompleted;
+                });
+        };
+
+        const auto errorCount = [&events]() {
+            return std::count_if(
+                events.cbegin(),
+                events.cend(),
+                [](const auto &event) {
+                    return suprai::runtime::applicationEventKind(event)
+                        == suprai::runtime::ApplicationEventKind::Error;
+                });
+        };
 
         runtime->start();
         runtime->submitPrompt(QStringLiteral("primer mensaje"));
 
-        QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 3000);
-        QCOMPARE(errors.size(), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(completedCount(), 1, 3000);
+        QCOMPARE(errorCount(), 0);
         QCOMPARE(server.requestBodies().size(), 1);
 
         runtime->submitPrompt(QStringLiteral("segundo mensaje"));
 
-        QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 2, 3000);
-        QCOMPARE(errors.size(), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(completedCount(), 2, 3000);
+        QCOMPARE(errorCount(), 0);
         QCOMPARE(server.requestBodies().size(), 2);
 
         const QByteArray secondRequest = server.requestBodies().at(1);
