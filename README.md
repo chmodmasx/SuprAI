@@ -48,7 +48,7 @@ Not implemented yet:
 - projects/files;
 - safe Markdown renderer;
 - editable persisted provider settings and secure SecretStore;
-- AppImage release artifact;
+- final AppImage release artifact and ABI-floor proof;
 - physical KDE/GNOME Wayland and X11 smoke tests.
 
 ## Module shape
