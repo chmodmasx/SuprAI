@@ -14,6 +14,8 @@ ApplicationWindow {
 
     color: "#1f1f1f"
 
+    property string currentRoute: "chat"
+
     readonly property color pageColor: "#1f1f1f"
     readonly property color panel: "#292929"
     readonly property color panelAlt: "#313131"
@@ -55,7 +57,26 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     text: "+ Nueva conversación"
                     enabled: !chatController.busy
-                    onClicked: chatController.newConversation()
+                    onClicked: {
+                        root.currentRoute = "chat"
+                        chatController.newConversation()
+                    }
+                }
+
+                Button {
+                    Layout.fillWidth: true
+                    text: "Chat"
+                    checkable: true
+                    checked: root.currentRoute === "chat"
+                    onClicked: root.currentRoute = "chat"
+                }
+
+                Button {
+                    Layout.fillWidth: true
+                    text: "Configuración"
+                    checkable: true
+                    checked: root.currentRoute === "settings"
+                    onClicked: root.currentRoute = "settings"
                 }
 
                 Rectangle {
@@ -108,6 +129,7 @@ ApplicationWindow {
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
+                visible: root.currentRoute === "chat"
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -326,6 +348,18 @@ ApplicationWindow {
                         }
                     }
                 }
+            }
+
+            SettingsPage {
+                anchors.fill: parent
+                visible: root.currentRoute === "settings"
+                settings: appSettings
+                panelColor: root.panel
+                panelAltColor: root.panelAlt
+                borderColor: root.border
+                foregroundColor: root.foreground
+                mutedColor: root.muted
+                accentColor: root.accent
             }
         }
 
