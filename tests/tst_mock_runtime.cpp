@@ -1,32 +1,74 @@
 #include <suprai/runtime/AgentRuntime.h>
+#include <suprai/runtime/ApplicationEvent.h>
 #include <suprai/runtime/RuntimeFactory.h>
 
-#include <QSignalSpy>
 #include <QTest>
+#include <QVector>
 
 class MockRuntimeTest final : public QObject
 {
     Q_OBJECT
 
 private slots:
-    void completesAStreamingTurn()
+    void completesAStreamingTurnThroughApplicationEvents()
     {
         auto *runtime = suprai::runtime::createMockRuntime();
 
-        QSignalSpy accepted(runtime, &suprai::runtime::AgentRuntime::userMessageAccepted);
-        QSignalSpy started(runtime, &suprai::runtime::AgentRuntime::assistantMessageStarted);
-        QSignalSpy deltas(runtime, &suprai::runtime::AgentRuntime::assistantTextDelta);
-        QSignalSpy completed(runtime, &suprai::runtime::AgentRuntime::assistantMessageCompleted);
+        QVector<suprai::runtime::ApplicationEvent> events;
+        connect(runtime, &suprai::runtime::AgentRuntime::eventEmitted,
+                this, [&events](const suprai::runtime::ApplicationEvent &event) {
+                    events.push_back(event);
+                });
 
         runtime->start();
         runtime->submitPrompt(QStringLiteral("test"));
 
-        QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 2000);
+        QTRY_VERIFY_WITH_TIMEOUT(
+            std::any_of(
+                events.cbegin(),
+                events.cend(),
+                [](const auto &event) {
+                    return suprai::runtime::applicationEventKind(event)
+                        == suprai::runtime::ApplicationEventKind::ConversationItemCompleted;
+                }),
+            2000);
 
-        QCOMPARE(accepted.size(), 1);
-        QCOMPARE(started.size(), 1);
-        QVERIFY(deltas.size() >= 1);
-        QVERIFY(!completed.first().at(1).toString().isEmpty());
+        int startedItems = 0;
+        int deltas = 0;
+        int completedItems = 0;
+        bool sawWorking = false;
+        bool sawReadyAfterWork = false;
+
+        for (const auto &event : events) {
+            switch (suprai::runtime::applicationEventKind(event)) {
+            case suprai::runtime::ApplicationEventKind::RuntimeStateChanged: {
+                const auto &state =
+                    std::get<suprai::runtime::RuntimeStateChangedEvent>(event.payload).state;
+                sawWorking |= state == suprai::runtime::RuntimeState::Working;
+                if (sawWorking && state == suprai::runtime::RuntimeState::Ready) {
+                    sawReadyAfterWork = true;
+                }
+                break;
+            }
+            case suprai::runtime::ApplicationEventKind::ConversationItemStarted:
+                ++startedItems;
+                break;
+            case suprai::runtime::ApplicationEventKind::ConversationTextDelta:
+                ++deltas;
+                break;
+            case suprai::runtime::ApplicationEventKind::ConversationItemCompleted:
+                ++completedItems;
+                break;
+            default:
+                break;
+            }
+        }
+
+        QCOMPARE(startedItems, 2);
+        QVERIFY(deltas >= 1);
+        QCOMPARE(completedItems, 1);
+        QVERIFY(sawWorking);
+        QVERIFY(sawReadyAfterWork);
 
         runtime->shutdown();
         delete runtime;
