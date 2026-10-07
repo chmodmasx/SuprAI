@@ -128,6 +128,48 @@ private slots:
         delete provider;
     }
 
+    void runtimeCapabilitiesPreserveUnknown()
+    {
+        auto *provider = suprai::providers::createOpenAIChatProvider({
+            .baseUrl = QStringLiteral("http://127.0.0.1:1/v1"),
+            .apiKey = QStringLiteral("no-key"),
+        });
+
+        auto *runtime = suprai::runtime::createNativeRuntime(
+            {
+                .model = QStringLiteral("test-model"),
+                .systemPrompt = {},
+            },
+            provider);
+
+        bool seen = false;
+        suprai::runtime::RuntimeCapabilities capabilities;
+
+        connect(runtime, &suprai::runtime::AgentRuntime::eventOccurred,
+                this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
+            if (const auto *changed =
+                    suprai::runtime::eventPayload<
+                        suprai::runtime::RuntimeCapabilitiesChanged>(event)) {
+                capabilities = changed->capabilities;
+                seen = true;
+            }
+        });
+
+        runtime->start();
+
+        QVERIFY(seen);
+        QCOMPARE(capabilities.textGeneration, suprai::runtime::CapabilityState::Supported);
+        QCOMPARE(capabilities.toolCalling, suprai::runtime::CapabilityState::Unsupported);
+        QCOMPARE(capabilities.imageInput, suprai::runtime::CapabilityState::Unsupported);
+        QCOMPARE(capabilities.reasoningOutput, suprai::runtime::CapabilityState::Unknown);
+        QCOMPARE(
+            capabilities.exactInputTokenCounting,
+            suprai::runtime::CapabilityState::Unsupported);
+
+        runtime->shutdown();
+        delete runtime;
+    }
+
     void reasoningIsEphemeralAcrossTurns()
     {
         FakeOpenAIServer server;
