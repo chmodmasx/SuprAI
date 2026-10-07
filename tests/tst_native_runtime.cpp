@@ -1,4 +1,5 @@
 #include <suprai/providers/OpenAIProviderFactory.h>
+#include <suprai/providers/Provider.h>
 #include <suprai/runtime/AgentRuntime.h>
 #include <suprai/runtime/RuntimeFactory.h>
 
