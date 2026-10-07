@@ -71,10 +71,15 @@ suprai::providers::ProviderRequest RuntimeOrchestrator::providerRequest() const
         });
     }
 
-    for (const auto &message : m_history) {
+    for (const auto &item : m_history) {
+        const auto *message = suprai::domain::messageContent(item);
+        if (!message) {
+            continue;
+        }
+
         messages.push_back({
-            .role = message.role,
-            .content = message.content,
+            .role = suprai::domain::roleName(message->role),
+            .content = message->text,
         });
     }
 
@@ -96,12 +101,12 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
         return;
     }
 
-    const QString userId = suprai::domain::newItemId();
-    m_history.push_back({
-        .role = QStringLiteral("user"),
-        .content = text,
-    });
-    emit userMessageAccepted(userId, text);
+    const auto userItem = suprai::domain::makeMessageItem(
+        suprai::domain::ConversationRole::User,
+        text);
+
+    m_history.push_back(userItem);
+    emit userMessageAccepted(userItem.id, text);
 
     m_activeAssistantId = suprai::domain::newItemId();
     m_activeAssistantText.clear();
@@ -181,10 +186,11 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
     }
 
     if (persistAnswer) {
-        m_history.push_back({
-            .role = QStringLiteral("assistant"),
-            .content = m_activeAssistantText,
-        });
+        m_history.push_back(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant,
+            m_activeAssistantText,
+            suprai::domain::ConversationItemState::Completed,
+            m_activeAssistantId));
     }
 
     emit assistantMessageCompleted(m_activeAssistantId, m_activeAssistantText);
