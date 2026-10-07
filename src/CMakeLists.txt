@@ -79,6 +79,7 @@ target_include_directories(suprai_persistence
 target_link_libraries(suprai_persistence
     PUBLIC
         Qt6::Core
+        Qt6::Sql
 )
 
 # Runtime ----------------------------------------------------------------------
