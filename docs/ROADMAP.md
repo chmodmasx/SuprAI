@@ -28,12 +28,19 @@ Goal: prove the Qt foundation before agent complexity.
 
 Status: **IN PROGRESS**.
 
-Verified vertical slice at commit `b2f8e66a7a3e56608dccf233b468eb71a70f2971`:
+Verified vertical slice at commit `3b42597a8c385d0e7355417e56c87cf3602ab933`:
 - CMake/C++20/Qt 6 application builds in CI with Qt 6.12.0;
 - module PUBLIC/PRIVATE include boundaries are enforced by target-scoped CMake paths;
 - `ApplicationBootstrap` is the concrete composition root;
 - QML three-pane shell starts successfully in the offscreen smoke test;
 - runtime runs on a dedicated QThread;
+- persistence worker skeleton runs on a separate dedicated QThread and shuts down cleanly;
+- XDG config/data/cache/state paths are resolved through QStandardPaths and created explicitly;
+- logging uses stable suprai.app/runtime/provider/persistence/platform Qt categories;
+- QML has explicit Chat and Configuración routes;
+- org.freedesktop.Application-compatible Activate/Open/ActivateAction projection exists through QtDBus;
+- a second process can forward activation to the registered primary when a session bus is available;
+- environments without a session bus degrade explicitly instead of preventing startup;
 - MockRuntime streams a deterministic turn;
 - a concrete OpenAI-compatible provider is injected through the provider port;
 - NativeSuprAIRuntime is a thin facade over RuntimeOrchestrator -> AgentEngine;
@@ -42,17 +49,13 @@ Verified vertical slice at commit `b2f8e66a7a3e56608dccf233b468eb71a70f2971`:
 - a fake OpenAI-compatible integration test completes two streamed turns;
 - a dedicated runtime-layering test verifies that raw reasoning stays outside orchestrator history;
 - raw `reasoning_content` from the first turn is verified absent from the second request;
-- 5/5 CTest tests pass;
+- 7/7 CTest tests pass;
 - ordinary chat rendering remains plain text in this prototype.
 
 Still required before M1 can be COMPLETE:
-- XDG path helper;
-- structured logging;
-- single-instance/activation implementation;
-- persistence-worker skeleton;
-- explicit settings route;
-- physical Wayland and X11 launch proof;
-- staged Qt/QML deployment proof.
+- physical KDE Wayland and X11 launch proof;
+- staged Qt/QML deployment proof;
+- GNOME Wayland proof when available.
 
 Implement:
 - CMake project;
