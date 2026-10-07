@@ -21,7 +21,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.12.0'
-          modules: 'qtwayland'
+          modules: 'qtwaylandcompositor'
           cache: true
 
       - name: Configure
