@@ -1,7 +1,8 @@
 # ADR-0017: Conversation history is append-oriented generalized items
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -91,3 +92,27 @@ OpenClaw additionally demonstrates the value of append-only structurally paired 
 - Responses maps naturally;
 - retries/branches preserve audit history;
 - future subagents and background work can attach lineage without changing the base schema.
+
+## Implemented foundation
+
+The current domain layer now implements the generalized item shape directly rather than using a `{role,text}` placeholder.
+
+Implemented typed content alternatives:
+- MessageContent;
+- ReasoningSummaryContent;
+- ToolCallContent;
+- ToolResultContent;
+- AttachmentContent;
+- RuntimeAnnotationContent.
+
+ConversationItem stores:
+- item ID;
+- owning Turn ID;
+- item lifecycle state;
+- one typed content variant.
+
+The current TranscriptModel intentionally projects only MessageContent. Non-message canonical/domain items can therefore exist without forcing QML to understand tool/attachment/runtime semantics prematurely.
+
+RuntimeOrchestrator now stores generalized ConversationItem values as its in-memory prototype history and converts only MessageContent into the current Chat Completions provider request at the provider boundary.
+
+Raw provider reasoning is still not inserted as a ReasoningSummary item automatically. A reasoning summary is canonical only when SuprAI explicitly creates one under the reasoning/deliberation policy.
