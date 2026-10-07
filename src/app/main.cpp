@@ -9,6 +9,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QThread>
+#include <QTimer>
 
 int main(int argc, char *argv[])
 {
@@ -55,6 +56,13 @@ int main(int argc, char *argv[])
 
     runtimeThread.start();
     engine.loadFromModule(QStringLiteral("SuprAI"), QStringLiteral("Main"));
+
+    const bool smokeTest = QCoreApplication::arguments().contains(QStringLiteral("--smoke-test"));
+    if (smokeTest) {
+        // Give QML and the queued runtime startup enough time to complete one
+        // event-loop cycle, then exercise the normal shutdown path.
+        QTimer::singleShot(500, &app, &QCoreApplication::quit);
+    }
 
     const int result = app.exec();
 
