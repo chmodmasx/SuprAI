@@ -3,6 +3,9 @@
 #include "AgentEngine.h"
 #include "RuntimeOrchestrator.h"
 
+#include <suprai/domain/ConversationItem.h>
+#include <suprai/runtime/ApplicationEvent.h>
+
 #include <utility>
 
 namespace suprai::runtime::internal {
@@ -15,22 +18,91 @@ NativeSuprAIRuntime::NativeSuprAIRuntime(
     , m_engine(new AgentEngine(provider, this))
     , m_orchestrator(new RuntimeOrchestrator(std::move(config), m_engine, this))
 {
+    const auto currentTurnId = [this]() -> QString {
+        return m_orchestrator->turns().isEmpty()
+            ? QString{}
+            : m_orchestrator->turns().constLast().id;
+    };
+
     connect(m_orchestrator, &RuntimeOrchestrator::stateChanged,
-            this, &AgentRuntime::stateChanged);
+            this, [this](RuntimeState state) {
+                emit eventEmitted({
+                    .payload = RuntimeStateChangedEvent{.state = state},
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::userMessageAccepted,
-            this, &AgentRuntime::userMessageAccepted);
+            this, [this, currentTurnId](const QString &itemId, const QString &text) {
+                emit eventEmitted({
+                    .payload = ConversationItemStartedEvent{
+                        .item = suprai::domain::makeMessageItem(
+                            suprai::domain::ConversationRole::User,
+                            text,
+                            suprai::domain::ConversationItemState::Completed,
+                            itemId,
+                            currentTurnId()),
+                    },
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::assistantMessageStarted,
-            this, &AgentRuntime::assistantMessageStarted);
+            this, [this, currentTurnId](const QString &itemId) {
+                emit eventEmitted({
+                    .payload = ConversationItemStartedEvent{
+                        .item = suprai::domain::makeMessageItem(
+                            suprai::domain::ConversationRole::Assistant,
+                            {},
+                            suprai::domain::ConversationItemState::Streaming,
+                            itemId,
+                            currentTurnId()),
+                    },
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::assistantTextDelta,
-            this, &AgentRuntime::assistantTextDelta);
+            this, [this](const QString &itemId, const QString &delta) {
+                emit eventEmitted({
+                    .payload = ConversationTextDeltaEvent{
+                        .itemId = itemId,
+                        .delta = delta,
+                    },
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::assistantMessageCompleted,
-            this, &AgentRuntime::assistantMessageCompleted);
+            this, [this](const QString &itemId, const QString &) {
+                emit eventEmitted({
+                    .payload = ConversationItemCompletedEvent{
+                        .itemId = itemId,
+                    },
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::reasoningActiveChanged,
-            this, &AgentRuntime::reasoningActiveChanged);
+            this, [this](bool active) {
+                emit eventEmitted({
+                    .payload = ReasoningActivityChangedEvent{
+                        .active = active,
+                    },
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::conversationReset,
-            this, &AgentRuntime::conversationReset);
+            this, [this] {
+                emit eventEmitted({
+                    .payload = ConversationResetEvent{},
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::errorOccurred,
-            this, &AgentRuntime::errorOccurred);
+            this, [this](const QString &message) {
+                emit eventEmitted({
+                    .payload = RuntimeErrorEvent{
+                        .message = message,
+                    },
+                });
+            });
+
     connect(m_orchestrator, &RuntimeOrchestrator::stopped,
             this, &AgentRuntime::stopped);
 }
