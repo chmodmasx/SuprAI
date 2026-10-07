@@ -1,7 +1,8 @@
 # ADR-0010: Stage AppImage with Qt CMake deployment APIs
 
 Status: proposed
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Proposed decision
 
@@ -43,6 +44,24 @@ Build ingredients must be compiled on a base no newer than the oldest supported 
 Qt 6.12 officially supports Ubuntu 22.04 x86_64/GCC 11, making Ubuntu 22.04 a strong candidate x86_64 build baseline.
 
 Important: official Qt Online Installer binaries are built on Ubuntu 24.04/glibc 2.39, so using those binaries would undermine an Ubuntu-22.04-compatible AppImage. For the old-baseline build we may need Qt built on/from the baseline or another verified compatible Qt artifact.
+
+## Implemented partial proof
+
+The CMake-owned portable staging mechanism is now implemented.
+
+Verified in GitHub Actions with Qt 6.12:
+- `cmake --install` creates a standalone staging tree;
+- `qt_deploy_qml_imports()` deploys QML imports;
+- `qt_deploy_runtime_dependencies()` deploys runtime closure and `qt.conf`;
+- Qt Widgets is staged explicitly as an imported runtime artifact because the Linux dependency scan omitted that deliberate `QApplication` dependency in the proof environment;
+- `Qt6::QWaylandIntegrationPlugin` is staged explicitly and its runtime dependencies are included;
+- application plugin policy explicitly includes `QWaylandIntegrationPlugin` and `QXcbIntegrationPlugin`;
+- staged tree contains both `libqwayland.so` and `libqxcb.so`;
+- staged application launches with Qt build/install environment variables removed under XCB via Xvfb;
+- staged application launches under Wayland via a headless Weston compositor;
+- runtime and persistence worker shutdown complete without timeout.
+
+This is a staging proof, not an AppImage/ABI-floor proof. Therefore this ADR remains proposed.
 
 ## Required proof before acceptance
 
