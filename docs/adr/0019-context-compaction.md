@@ -1,7 +1,8 @@
 # ADR-0019: Context compaction is a derived, auditable artifact
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -120,3 +121,67 @@ Mature agents preserve recent history, keep tool pairs together, and record comp
 ## Consequences
 
 Long sessions can remain efficient without sacrificing auditability or provider independence.
+
+
+## Emergency overflow recovery
+
+If a provider rejects the candidate request as over-context after normal budgeting:
+- mark the previous estimate as disproven evidence;
+- force one deterministic recovery pass;
+- prefer reductions that do not require another successful model call first;
+- rebuild and recount the candidate request;
+- bound recovery attempts.
+
+Emergency recovery may:
+- replace old model-facing tool-result bodies with deterministic bounded projections;
+- retain only already-valid CompactionArtifacts plus recent canonical tail;
+- drop optional derived context before canonical/recent user intent;
+- require user action if the non-history baseline itself does not fit.
+
+Emergency recovery never deletes or rewrites canonical history.
+
+## Oversized ToolResult artifacts
+
+Large tool results must not automatically become large model-context debt.
+
+A full result can be retained as canonical data or a session/project-scoped artifact while ContextManager projects a bounded representation into inference:
+
+```text
+ToolResult
+   |
+   +--> full result / LargeResultArtifact
+   |
+   +--> model projection
+           preview
+           structural metadata
+           artifact reference
+           recovery/read hint
+```
+
+A baseline LargeResultArtifact records:
+- artifact_id;
+- session_id;
+- tool_invocation_id;
+- media/content type;
+- size metadata;
+- provenance;
+- retention policy;
+- integrity/hash metadata where useful.
+
+The model-facing projection may preserve:
+- head/tail excerpts;
+- structured summary;
+- error/final-status fields;
+- native media references;
+- an opaque artifact ID for later bounded reads.
+
+Rules:
+- full result remains auditable independently of prompt projection;
+- artifact authority is scoped to the owning session/project/tool policy;
+- shell/filesystem tools do not implicitly resolve internal artifact IDs;
+- retrieval uses a dedicated bounded artifact-read capability;
+- provider projection is allowed to be much smaller than canonical storage;
+- UI and model-facing truncation limits are separate;
+- truncation/reduction is explicit, never silent.
+
+This mechanism is preferred before expensive summarization for old oversized tool output.
