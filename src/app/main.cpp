@@ -3,18 +3,22 @@
 
 #include <suprai/persistence/PersistenceWorker.h>
 #include <suprai/platform/AppPaths.h>
+#include <suprai/platform/ApplicationIdentity.h>
 #include <suprai/platform/Logging.h>
+#include <suprai/platform/SingleInstanceService.h>
 #include <suprai/runtime/AgentRuntime.h>
 #include <suprai/runtime/RuntimeState.h>
 #include <suprai/ui/ChatController.h>
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QMetaObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QThread>
 #include <QTimer>
+#include <QWindow>
 
 int main(int argc, char *argv[])
 {
@@ -24,6 +28,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain(QStringLiteral("supralinux.org"));
     QCoreApplication::setApplicationName(QStringLiteral("SuprAI"));
     QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QGuiApplication::setDesktopFileName(suprai::platform::applicationId());
 
     suprai::platform::initializeLogging();
 
@@ -46,6 +51,24 @@ int main(int argc, char *argv[])
         << "data=" + appPaths.dataDir
         << "cache=" + appPaths.cacheDir
         << "state=" + appPaths.stateDir;
+
+    suprai::platform::SingleInstanceService singleInstance;
+    const auto instanceResult = singleInstance.start();
+
+    if (instanceResult == suprai::platform::SingleInstanceStartResult::SecondaryActivated) {
+        qCInfo(suprai::platform::logPlatform).noquote()
+            << "event=secondary_instance_forwarded";
+        return 0;
+    }
+
+    if (instanceResult == suprai::platform::SingleInstanceStartResult::Unavailable) {
+        qCWarning(suprai::platform::logPlatform).noquote()
+            << "event=dbus_activation_unavailable";
+    } else {
+        qCInfo(suprai::platform::logPlatform).noquote()
+            << "event=dbus_activation_primary"
+            << "service=" + suprai::platform::applicationId();
+    }
 
     qRegisterMetaType<suprai::runtime::RuntimeState>();
 
@@ -133,6 +156,25 @@ int main(int argc, char *argv[])
             QCoreApplication::exit(1);
         },
         Qt::QueuedConnection);
+
+    QObject::connect(
+        &singleInstance,
+        &suprai::platform::SingleInstanceService::activationRequested,
+        &app,
+        [&engine](const QVariantMap &) {
+            if (engine.rootObjects().isEmpty()) {
+                return;
+            }
+
+            auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+            if (!window) {
+                return;
+            }
+
+            window->show();
+            window->raise();
+            window->requestActivate();
+        });
 
     persistenceThread.start();
     runtimeThread.start();
