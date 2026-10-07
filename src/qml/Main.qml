@@ -433,6 +433,34 @@ ApplicationWindow {
                     font.pixelSize: 12
                 }
 
+                Label {
+                    text: "Capabilities"
+                    color: root.muted
+                    font.pixelSize: 11
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 2
+                    columnSpacing: 10
+                    rowSpacing: 6
+
+                    Label { text: "Texto"; color: root.muted; font.pixelSize: 11 }
+                    Label { text: chatController.textGenerationCapability; color: root.foreground; font.pixelSize: 11 }
+
+                    Label { text: "Tools"; color: root.muted; font.pixelSize: 11 }
+                    Label { text: chatController.toolCallingCapability; color: root.foreground; font.pixelSize: 11 }
+
+                    Label { text: "Visión"; color: root.muted; font.pixelSize: 11 }
+                    Label { text: chatController.imageInputCapability; color: root.foreground; font.pixelSize: 11 }
+
+                    Label { text: "Reasoning"; color: root.muted; font.pixelSize: 11 }
+                    Label { text: chatController.reasoningOutputCapability; color: root.foreground; font.pixelSize: 11 }
+
+                    Label { text: "Conteo exacto"; color: root.muted; font.pixelSize: 11 }
+                    Label { text: chatController.exactInputTokenCountingCapability; color: root.foreground; font.pixelSize: 11 }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     height: 1
