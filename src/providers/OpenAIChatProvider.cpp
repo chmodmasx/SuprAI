@@ -8,6 +8,8 @@
 #include <QNetworkRequest>
 #include <QUrl>
 
+#include <utility>
+
 namespace suprai::providers {
 
 OpenAIChatProvider::OpenAIChatProvider(OpenAIChatProviderConfig config, QObject *parent)
@@ -40,7 +42,7 @@ void OpenAIChatProvider::generate(const ProviderRequest &request)
 
     m_decoder.reset();
     m_errorPreview.clear();
-    m_terminalEmitted = false;
+    m_pendingError.clear();
     m_cancelRequested = false;
 
     QJsonArray messages;
@@ -57,7 +59,7 @@ void OpenAIChatProvider::generate(const ProviderRequest &request)
         {QStringLiteral("stream"), true},
     };
 
-    QNetworkRequest networkRequest(QUrl(endpoint()));
+    QNetworkRequest networkRequest{QUrl(endpoint())};
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     networkRequest.setRawHeader("Accept", "text/event-stream");
     if (!m_config.apiKey.isEmpty()) {
@@ -100,7 +102,8 @@ void OpenAIChatProvider::handleReadyRead()
 void OpenAIChatProvider::consumeEvent(const QByteArray &payload)
 {
     if (payload == "[DONE]") {
-        finishSuccess();
+        // Terminal notification is emitted from handleFinished(), after m_reply
+        // has been cleared. This prevents a new request from racing the old reply.
         return;
     }
 
@@ -114,9 +117,11 @@ void OpenAIChatProvider::consumeEvent(const QByteArray &payload)
 
     if (root.contains(QStringLiteral("error"))) {
         const auto error = root.value(QStringLiteral("error")).toObject();
-        const auto message = error.value(QStringLiteral("message")).toString(
+        m_pendingError = error.value(QStringLiteral("message")).toString(
             QStringLiteral("El endpoint devolvió un error."));
-        finishFailure(message);
+        if (m_reply) {
+            m_reply->abort();
+        }
         return;
     }
 
@@ -144,51 +149,46 @@ void OpenAIChatProvider::handleFinished()
         return;
     }
 
-    if (m_cancelRequested) {
-        if (!m_terminalEmitted) {
-            m_terminalEmitted = true;
-            emit cancelled();
-        }
-    } else if (!m_terminalEmitted) {
-        const auto status = m_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    auto *reply = m_reply.data();
+    const auto status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const auto networkError = reply->error();
+    const QString networkErrorString = reply->errorString();
 
-        if (m_reply->error() != QNetworkReply::NoError || status >= 400) {
-            QString detail = QString::fromUtf8(m_errorPreview).trimmed();
-            if (detail.size() > 2000) {
-                detail.truncate(2000);
-            }
-
-            const QString message = detail.isEmpty()
-                ? QStringLiteral("Error HTTP/provider: %1").arg(m_reply->errorString())
-                : QStringLiteral("Error HTTP/provider: %1").arg(detail);
-            finishFailure(message);
-        } else {
-            // Some compatible servers close a successful stream without a [DONE] frame.
-            finishSuccess();
+    QString errorMessage = m_pendingError;
+    if (errorMessage.isEmpty() && !m_cancelRequested
+        && (networkError != QNetworkReply::NoError || status >= 400)) {
+        QString detail = QString::fromUtf8(m_errorPreview).trimmed();
+        if (detail.size() > 2000) {
+            detail.truncate(2000);
         }
+
+        errorMessage = detail.isEmpty()
+            ? QStringLiteral("Error HTTP/provider: %1").arg(networkErrorString)
+            : QStringLiteral("Error HTTP/provider: %1").arg(detail);
     }
 
-    m_reply->deleteLater();
+    // Clear ownership before notifying the runtime. A terminal signal may cause
+    // the UI to submit another request immediately.
     m_reply = nullptr;
+    reply->deleteLater();
+
+    if (m_cancelRequested) {
+        emit cancelled();
+    } else if (!errorMessage.isEmpty()) {
+        finishFailure(errorMessage);
+    } else {
+        // Some compatible servers close a successful stream without [DONE].
+        finishSuccess();
+    }
 }
 
 void OpenAIChatProvider::finishSuccess()
 {
-    if (m_terminalEmitted) {
-        return;
-    }
-
-    m_terminalEmitted = true;
     emit completed();
 }
 
 void OpenAIChatProvider::finishFailure(const QString &message)
 {
-    if (m_terminalEmitted) {
-        return;
-    }
-
-    m_terminalEmitted = true;
     emit failed(message);
 }
 
