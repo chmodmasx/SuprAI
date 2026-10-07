@@ -1,9 +1,9 @@
 # SuprAI Project State
 
 ```yaml
-milestone: M0
-status: complete_plus_deep_research
-last_verified_commit: 325c852323dbabe8b4aeafe956eb97a5c7a06a7b
+milestone: M1
+status: in_progress_vertical_slice_verified
+last_verified_commit: 9d5f6694deb62bb864de6cd03e55dfb4de866918
 
 working:
   - repository exists and is writable
@@ -37,6 +37,18 @@ working:
   - modular-monolith architecture is accepted
   - architecture-significant subsystems have explicit public/private boundaries and CMake targets
   - ApplicationBootstrap is the concrete composition root
+  - functional Qt/QML prototype source exists and builds in CI with Qt 6.12.0
+  - current source tree enforces module public/private include boundaries
+  - current CMake targets are suprai_domain, suprai_provider_api, suprai_provider_openai, suprai_runtime, suprai_ui, and suprai
+  - runtime depends on provider contract, not the concrete OpenAI adapter
+  - concrete providers/runtimes are selected only by ApplicationBootstrap
+  - three-pane QML shell starts successfully in offscreen CI smoke test
+  - NativeSuprAIRuntime runs on a dedicated QThread
+  - MockRuntime completes a deterministic streaming turn
+  - OpenAI-compatible Chat Completions adapter streams assistant content
+  - provider-separated reasoning_content is ephemeral and excluded from later reconstructed prompts
+  - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
+  - CTest suite passes 4/4 on verified prototype commit
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -150,6 +162,10 @@ decisions:
   - initial process model is one modular native application
   - modularity is enforced through CMake targets, public/private headers and directed dependencies
   - concrete implementations are wired only at the application composition root
+  - current production wiring uses provider factory -> Provider port -> NativeSuprAIRuntime
+  - current native vertical slice uses Chat Completions only; Responses remains planned
+  - current prototype conversation history is in-memory and is not durable
+  - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
   - open-ended providers/tools/skills use registries instead of central switch statements
   - optional capabilities must be safely absent/degraded
@@ -168,6 +184,9 @@ decisions:
 
 open_questions:
   - exact visual language and component system
+  - physical validation against the user's local NInfer endpoint
+  - physical KDE Wayland / GNOME Wayland / X11 launch verification
+  - M1 XDG-path, structured-logging, single-instance and staged-deployment implementation
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - exact safe transcript renderer implementation after benchmark
   - QtKeychain proof on KDE/GNOME/AppImage
@@ -206,29 +225,23 @@ open_questions:
 
 next_milestone: M1
 next_exact_steps:
-  - create modular CMake/Qt source skeleton from ADR-0029
-  - establish per-module public/private include boundaries and composition root
-  - keep M1/M2 boundaries compatible with a later AgentEngine vs RuntimeOrchestrator split
-  - pin initial development Qt version and minimum CMake/compiler
-  - use QApplication because tray integration may require Qt::Widgets while UI remains QML
-  - create C++ application bootstrap
-  - create QML shell with left navigation, chat area and inspector
-  - add XDG path helper and structured logging
-  - establish UI-facing model boundaries
-  - add basic tests and CI build
-  - verify Wayland and X11 launch paths
-  - prove Qt CMake QML deployment into a staged directory
-  - keep AppImage proof minimal at M1; full release pipeline remains later
-  - then implement AgentRuntime + MockRuntime
-  - in M3 implement Session/Input/Turn/Run identities before provider transport
-  - implement followup queue + explicit interrupt before advanced steering
-  - keep TaskManager schema-compatible even if background work lands later
-  - keep subagent purpose/context-mode fields schema-compatible before orchestration lands
-  - later benchmark direct reasoning vs deliberation subagents on NInfer/llama.cpp/vLLM
-  - then implement normalized inference types and NativeSuprAIRuntime state machine
+  - run the verified prototype against the user's real local NInfer endpoint
+  - add XDG path helper
+  - add structured logging categories
+  - implement single-instance / freedesktop activation skeleton
+  - add persistence-worker skeleton without yet pretending durable sessions are complete
+  - add explicit settings route while keeping secrets out of QSettings
+  - verify KDE Wayland and X11 locally; add GNOME Wayland proof when available
+  - prove Qt/QML staged deployment directory
+  - keep public/private module boundaries enforced as new subsystems arrive
+  - then complete M2 domain/runtime UI contract before expanding M3 durability/tool semantics
 
 verification_commands:
-  - none_yet_no_code
+  - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSUPRAI_BUILD_TESTS=ON
+  - cmake --build build --parallel
+  - ctest --test-dir build --output-on-failure
+  - QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software SUPRAI_RUNTIME=mock ./build/src/suprai --smoke-test
+
 ```
 
 Update this file at every milestone handoff.
