@@ -19,16 +19,20 @@ QVariant TranscriptModel::data(const QModelIndex &index, int role) const
     }
 
     const auto &item = m_items.at(index.row());
+    const auto *message = suprai::domain::messageContent(item);
+    if (!message) {
+        return {};
+    }
 
     switch (role) {
     case IdRole:
         return item.id;
     case SpeakerRole:
-        return suprai::domain::roleName(item.role);
+        return suprai::domain::roleName(message->role);
     case TextRole:
-        return item.text;
+        return message->text;
     case StreamingRole:
-        return item.streaming;
+        return suprai::domain::isStreaming(item);
     default:
         return {};
     }
@@ -46,6 +50,14 @@ QHash<int, QByteArray> TranscriptModel::roleNames() const
 
 void TranscriptModel::append(const suprai::domain::ConversationItem &item)
 {
+    if (suprai::domain::itemKind(item) != suprai::domain::ConversationItemKind::Message) {
+        return;
+    }
+
+    if (m_rowsById.contains(item.id)) {
+        return;
+    }
+
     const int row = m_items.size();
     beginInsertRows({}, row, row);
     m_items.push_back(item);
@@ -60,7 +72,12 @@ void TranscriptModel::appendDelta(const QString &itemId, const QString &delta)
         return;
     }
 
-    m_items[row].text += delta;
+    auto *message = suprai::domain::messageContent(m_items[row]);
+    if (!message || m_items[row].state != suprai::domain::ConversationItemState::Streaming) {
+        return;
+    }
+
+    message->text += delta;
     const auto modelIndex = index(row);
     emit dataChanged(modelIndex, modelIndex, {TextRole});
 }
@@ -68,11 +85,11 @@ void TranscriptModel::appendDelta(const QString &itemId, const QString &delta)
 void TranscriptModel::finish(const QString &itemId)
 {
     const int row = rowForId(itemId);
-    if (row < 0 || !m_items[row].streaming) {
+    if (row < 0 || !suprai::domain::isStreaming(m_items[row])) {
         return;
     }
 
-    m_items[row].streaming = false;
+    m_items[row].state = suprai::domain::ConversationItemState::Completed;
     const auto modelIndex = index(row);
     emit dataChanged(modelIndex, modelIndex, {StreamingRole});
 }
