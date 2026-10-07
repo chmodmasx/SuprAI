@@ -105,6 +105,25 @@ class NativeRuntimeTest final : public QObject
     Q_OBJECT
 
 private slots:
+    void chatAdapterCapabilitiesAreExplicit()
+    {
+        auto *provider = suprai::providers::createOpenAIChatProvider({
+            .baseUrl = QStringLiteral("http://127.0.0.1:1/v1"),
+            .apiKey = QStringLiteral("no-key"),
+        });
+
+        const auto capabilities = provider->capabilities(QStringLiteral("test-model"));
+
+        QVERIFY(capabilities.chatCompletions == suprai::providers::CapabilitySupport::Supported);
+        QVERIFY(capabilities.responses == suprai::providers::CapabilitySupport::Unsupported);
+        QVERIFY(capabilities.toolCalling == suprai::providers::CapabilitySupport::Unsupported);
+        QVERIFY(capabilities.imageInput == suprai::providers::CapabilitySupport::Unsupported);
+        QVERIFY(capabilities.reasoningOutput == suprai::providers::CapabilitySupport::Unknown);
+        QVERIFY(capabilities.inputTokenCounting == suprai::providers::CapabilitySupport::Unsupported);
+
+        delete provider;
+    }
+
     void reasoningIsEphemeralAcrossTurns()
     {
         FakeOpenAIServer server;
