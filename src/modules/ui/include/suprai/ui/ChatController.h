@@ -1,5 +1,6 @@
 #pragma once
 
+#include <suprai/runtime/ApplicationEvent.h>
 #include <suprai/runtime/RuntimeState.h>
 
 #include <QAbstractItemModel>
@@ -48,6 +49,7 @@ signals:
 
 private:
     void connectRuntime();
+    void handleApplicationEvent(const suprai::runtime::ApplicationEvent &event);
     void setRuntimeState(suprai::runtime::RuntimeState state);
     void setReasoning(bool active);
     void setLastError(const QString &message);
