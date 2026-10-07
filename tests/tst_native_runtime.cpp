@@ -6,7 +6,6 @@
 
 #include <QHash>
 #include <QHostAddress>
-#include <QSignalSpy>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTest>
