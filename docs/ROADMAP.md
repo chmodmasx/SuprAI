@@ -103,6 +103,7 @@ M2 is not complete: the durable generalized domain model, tool/approval/clarific
 Implement:
 - AgentRuntime abstract interface;
 - runtime capabilities;
+- domain/application event contract distinct from future AgentEngine events;
 - Session/Input/Turn/Run/ConversationItem/ToolInvocation/Task domain value types as needed by the UI contract;
 - runtime event bus;
 - MockRuntime scripted fixture;
@@ -134,7 +135,10 @@ An intentionally small M3 vertical slice was prototyped early:
 This is not the final M3 runtime. Durable Session/Input/Turn/Run state, Responses, capability probing, persistence, token budgeting and explicit turn-state-machine semantics remain.
 
 Implement:
-- NativeSuprAIRuntime;
+- NativeSuprAIRuntime production facade;
+- RuntimeOrchestrator / AgentEngine split from ADR-0002;
+- typed AgentEngineEvent -> domain/application event adapter;
+- blocking interceptor vs non-blocking observer boundary;
 - durable Session/Input/Turn/Run identities;
 - explicit turn state machine;
 - foreground session state separate from background activity;
@@ -145,7 +149,8 @@ Implement:
 - OpenAI Responses-compatible transport;
 - Chat Completions compatibility transport;
 - SSE/stream parsers;
-- provider capability resolution;
+- provider capability resolution with supported/unsupported/unknown semantics;
+- capability provenance/probing without treating missing metadata as denial;
 - provider effective context-window discovery;
 - TokenBudgetService capability ladder;
 - model configuration;
@@ -155,6 +160,8 @@ Implement:
 - WAL/foreign-keys/busy-timeout/migrations;
 - provider-state-independent session reconstruction;
 - cancellation request/confirmation semantics;
+- retry only before observable generation;
+- lazy persistence for untouched empty sessions;
 - runtime event conversion.
 
 First real targets:
@@ -171,7 +178,9 @@ Exit:
 - effective runtime context limit is discovered or explicitly configured;
 - sessions persist/resume after provider restart without provider conversation state;
 - runtime and persistence work do not block the UI thread;
-- no Hermes/OpenClaw runtime involved.
+- slow UI/telemetry/log observers cannot throttle provider streaming;
+- missing provider capability metadata does not silently remove supported tools/images;
+- no Hermes/OpenClaw/Cline runtime involved.
 
 ## M4 — Tool calling + approvals
 
@@ -189,6 +198,10 @@ Implement:
 - bubblewrap prototype;
 - explicit no-containment fallback;
 - cancellation/timeouts/output limits;
+- independent caps for live output, model projection and persisted logs/artifacts;
+- identity-bound approval requests;
+- prepared ChangeSet -> preview -> approval -> exact-apply file mutation path;
+- revalidation/invalidation when the target changes after preview;
 - durable side-effect journal;
 - crash recovery with outcome_unknown for ambiguous mutating invocations;
 - first safe built-in tools.
@@ -202,7 +215,9 @@ Initial built-in tool candidates:
 
 Exit:
 - multi-step model -> tool -> result -> model loop works;
-- dangerous operations are never silently escalated.
+- dangerous operations are never silently escalated;
+- an approved file edit applies exactly the reviewed ChangeSet or is invalidated;
+- runaway tool/process output cannot grow memory/UI/model context without bounds.
 
 ## M5 — MCP + skills
 
@@ -233,11 +248,15 @@ Implement:
 - ContextManager;
 - TokenBudgetService integration;
 - provider-native exact counting where available;
+- provider-reported actual usage feedback for conservative estimator calibration;
 - explicit output reserve and safety margin;
 - context-window policy;
 - derived CompactionArtifact persistence;
 - transcript compaction/summarization without rewriting canonical history;
+- deterministic emergency overflow recovery;
 - tool-call/result-safe compaction boundaries;
+- LargeResultArtifact storage + bounded model-facing tool-result projection;
+- explicit bounded artifact-read capability;
 - prompt/KV-cache optimization layer that is never correctness-critical;
 - pinned project context;
 - MemoryService;
@@ -268,10 +287,16 @@ Implement:
 - native safe previews;
 - drag/drop attachments;
 - git repository recognition;
-- project instructions/context.
+- project instructions/context;
+- optional WorkspaceCheckpointService prototype for Git projects;
+- compare/restore workspace state independently from conversation lineage;
+- restore conversation only / workspace only / both semantics;
+- transactional restore safeguards that do not silently discard newer user commits;
+- evaluate isolated Git-worktree execution mode for coding tasks.
 
 Exit:
-- project-aware agent workflow works locally.
+- project-aware agent workflow works locally;
+- checkpoint-enabled Git project can compare and safely restore workspace state independently of chat history.
 
 ## M8 — Linux desktop integration
 
@@ -317,6 +342,8 @@ Core orchestration:
 - unified durable TaskManager;
 - task delivery/notification state;
 - background process Tasks;
+- ToolInvocation -> Task ownership handoff for "Continue while running";
+- bounded detached command logs/artifacts;
 - subagent child Sessions;
 - subagent purposes: delegation/deliberation/verification/research/coding;
 - child context modes: full/scoped/compacted;
@@ -336,6 +363,8 @@ Core orchestration:
 
 Advanced candidates:
 - multiple profiles/agents;
+- Plan/Act-like planning/action behavior implemented as profiles/policies rather than a core mode boolean;
+- LoopGuard for repeated no-progress tool/error cycles;
 - multiple providers/models;
 - skills manager;
 - tool permissions UI;
@@ -350,6 +379,7 @@ Advanced candidates:
 
 Exit:
 - a parent can spawn background work, remain interactive, receive completion without polling, cancel exact work, and recover/reconcile persisted Tasks after restart;
+- a long-running foreground command can transfer ownership to TaskManager without becoming an orphan process or blocking the foreground Turn;
 - a reasoning-heavy Turn can use an attached deliberation child and merge only a compact ReturnCapsule into the parent context;
 - full/scoped/compacted child-context modes are benchmarked against direct reasoning;
 - raw child reasoning does not become parent canonical-history debt;
