@@ -178,17 +178,21 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
 
     m_history.push_back(userItem);
     emitApplicationEvent({
-        .payload = UserMessageAccepted{
-            .itemId = userItem.id,
-            .text = text,
+        .payload = ConversationItemStarted{
+            .item = userItem,
         },
     });
 
     m_activeAssistantId = suprai::domain::newItemId();
     m_activeAssistantText.clear();
     emitApplicationEvent({
-        .payload = AssistantMessageStarted{
-            .itemId = m_activeAssistantId,
+        .payload = ConversationItemStarted{
+            .item = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::Assistant,
+                {},
+                suprai::domain::ConversationItemState::Streaming,
+                m_activeAssistantId,
+                m_activeTurn->id),
         },
     });
 
@@ -243,7 +247,7 @@ void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
         if (!m_activeAssistantId.isEmpty()) {
             m_activeAssistantText += event.payload;
             emitApplicationEvent({
-                .payload = AssistantTextDelta{
+                .payload = ConversationTextDelta{
                     .itemId = m_activeAssistantId,
                     .delta = event.payload,
                 },
@@ -309,9 +313,8 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
     }
 
     emitApplicationEvent({
-        .payload = AssistantMessageCompleted{
+        .payload = ConversationItemCompleted{
             .itemId = m_activeAssistantId,
-            .finalText = m_activeAssistantText,
         },
     });
     m_activeAssistantId.clear();
