@@ -44,6 +44,36 @@ target_link_libraries(suprai_provider_openai
         Qt6::Network
 )
 
+# Platform ---------------------------------------------------------------------
+add_library(suprai_platform STATIC
+    modules/platform/include/suprai/platform/AppPaths.h
+    modules/platform/include/suprai/platform/Logging.h
+    modules/platform/src/AppPaths.cpp
+    modules/platform/src/Logging.cpp
+)
+target_include_directories(suprai_platform
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/platform/include
+)
+target_link_libraries(suprai_platform
+    PUBLIC
+        Qt6::Core
+)
+
+# Persistence ------------------------------------------------------------------
+add_library(suprai_persistence STATIC
+    modules/persistence/include/suprai/persistence/PersistenceWorker.h
+    modules/persistence/src/PersistenceWorker.cpp
+)
+target_include_directories(suprai_persistence
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/persistence/include
+)
+target_link_libraries(suprai_persistence
+    PUBLIC
+        Qt6::Core
+)
+
 # Runtime ----------------------------------------------------------------------
 add_library(suprai_runtime STATIC
     modules/runtime/include/suprai/runtime/AgentRuntime.h
@@ -130,6 +160,8 @@ target_link_libraries(suprai
         suprai_ui
         suprai_runtime
         suprai_provider_openai
+        suprai_platform
+        suprai_persistence
 )
 
 install(TARGETS suprai
