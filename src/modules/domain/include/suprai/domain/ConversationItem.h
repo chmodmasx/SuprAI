@@ -6,6 +6,8 @@
 #include <QString>
 
 #include <optional>
+#include <type_traits>
+#include <utility>
 #include <variant>
 
 namespace suprai::domain {
