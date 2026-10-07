@@ -1,6 +1,6 @@
-#include "providers/OpenAIChatProvider.h"
-#include "runtime/NativeSuprAIRuntime.h"
-#include "runtime/RuntimeConfig.h"
+#include <suprai/providers/OpenAIProviderFactory.h>
+#include <suprai/runtime/AgentRuntime.h>
+#include <suprai/runtime/RuntimeFactory.h>
 
 #include <QHash>
 #include <QHostAddress>
@@ -110,29 +110,29 @@ private slots:
         FakeOpenAIServer server;
         QVERIFY(server.start());
 
-        auto *provider = new suprai::providers::OpenAIChatProvider({
+        auto *provider = suprai::providers::createOpenAIChatProvider({
             .baseUrl = server.baseUrl(),
             .apiKey = QStringLiteral("no-key"),
         });
 
-        suprai::runtime::AgentRuntimeConfig config{
-            .model = QStringLiteral("test-model"),
-            .systemPrompt = QStringLiteral("Test system prompt"),
-        };
+        auto *runtime = suprai::runtime::createNativeRuntime(
+            {
+                .model = QStringLiteral("test-model"),
+                .systemPrompt = QStringLiteral("Test system prompt"),
+            },
+            provider);
 
-        suprai::runtime::NativeSuprAIRuntime runtime(config, provider);
+        QSignalSpy completed(runtime, &suprai::runtime::AgentRuntime::assistantMessageCompleted);
+        QSignalSpy errors(runtime, &suprai::runtime::AgentRuntime::errorOccurred);
 
-        QSignalSpy completed(&runtime, &suprai::runtime::AgentRuntime::assistantMessageCompleted);
-        QSignalSpy errors(&runtime, &suprai::runtime::AgentRuntime::errorOccurred);
-
-        runtime.start();
-        runtime.submitPrompt(QStringLiteral("primer mensaje"));
+        runtime->start();
+        runtime->submitPrompt(QStringLiteral("primer mensaje"));
 
         QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 3000);
         QCOMPARE(errors.size(), 0);
         QCOMPARE(server.requestBodies().size(), 1);
 
-        runtime.submitPrompt(QStringLiteral("segundo mensaje"));
+        runtime->submitPrompt(QStringLiteral("segundo mensaje"));
 
         QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 2, 3000);
         QCOMPARE(errors.size(), 0);
@@ -147,7 +147,8 @@ private slots:
         QVERIFY(secondRequest.contains("primer mensaje"));
         QVERIFY(secondRequest.contains("segundo mensaje"));
 
-        runtime.shutdown();
+        runtime->shutdown();
+        delete runtime;
     }
 };
 

@@ -1,5 +1,6 @@
-#include "domain/ConversationItem.h"
-#include "ui/TranscriptModel.h"
+#include "TranscriptModel.h"
+
+#include <suprai/domain/ConversationItem.h>
 
 #include <QTest>
 
@@ -10,7 +11,7 @@ class TranscriptModelTest final : public QObject
 private slots:
     void streamsIntoOneItem()
     {
-        suprai::ui::TranscriptModel model;
+        suprai::ui::internal::TranscriptModel model;
 
         model.append({
             .id = QStringLiteral("assistant-1"),
@@ -23,17 +24,17 @@ private slots:
         model.appendDelta(QStringLiteral("assistant-1"), QStringLiteral(" mundo"));
 
         QCOMPARE(model.rowCount(), 1);
-        QCOMPARE(model.data(model.index(0), suprai::ui::TranscriptModel::TextRole).toString(),
+        QCOMPARE(model.data(model.index(0), suprai::ui::internal::TranscriptModel::TextRole).toString(),
                  QStringLiteral("hola mundo"));
 
         model.finish(QStringLiteral("assistant-1"));
-        QCOMPARE(model.data(model.index(0), suprai::ui::TranscriptModel::StreamingRole).toBool(),
+        QCOMPARE(model.data(model.index(0), suprai::ui::internal::TranscriptModel::StreamingRole).toBool(),
                  false);
     }
 
     void clearResetsModel()
     {
-        suprai::ui::TranscriptModel model;
+        suprai::ui::internal::TranscriptModel model;
         model.append({
             .id = QStringLiteral("user-1"),
             .role = suprai::domain::ConversationRole::User,

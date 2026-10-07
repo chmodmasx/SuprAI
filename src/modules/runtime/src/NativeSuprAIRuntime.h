@@ -1,26 +1,26 @@
 #pragma once
 
-#include "providers/Provider.h"
-#include "runtime/AgentRuntime.h"
-#include "runtime/RuntimeConfig.h"
+#include <suprai/providers/Provider.h>
+#include <suprai/runtime/AgentRuntime.h>
+#include <suprai/runtime/RuntimeConfig.h>
 
 #include <QString>
 #include <QVector>
 
-namespace suprai::runtime {
+namespace suprai::runtime::internal {
 
 struct RuntimeMessage {
     QString role;
     QString content;
 };
 
-class NativeSuprAIRuntime final : public AgentRuntime
+class NativeSuprAIRuntime final : public suprai::runtime::AgentRuntime
 {
     Q_OBJECT
 
 public:
     NativeSuprAIRuntime(
-        AgentRuntimeConfig config,
+        suprai::runtime::AgentRuntimeConfig config,
         suprai::providers::Provider *provider,
         QObject *parent = nullptr);
 
@@ -32,18 +32,18 @@ public slots:
     void resetSession() override;
 
 private:
-    void setState(RuntimeState state);
+    void setState(suprai::runtime::RuntimeState state);
     void connectProvider();
     void finishAssistant();
     QVector<suprai::providers::ProviderMessage> providerMessages() const;
 
-    AgentRuntimeConfig m_config;
+    suprai::runtime::AgentRuntimeConfig m_config;
     suprai::providers::Provider *m_provider = nullptr;
     QVector<RuntimeMessage> m_history;
-    RuntimeState m_state = RuntimeState::Stopped;
+    suprai::runtime::RuntimeState m_state = suprai::runtime::RuntimeState::Stopped;
     QString m_activeAssistantId;
     QString m_activeAssistantText;
     bool m_reasoningActive = false;
 };
 
-} // namespace suprai::runtime
+} // namespace suprai::runtime::internal

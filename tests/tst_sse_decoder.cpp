@@ -1,4 +1,4 @@
-#include "providers/SseDecoder.h"
+#include "SseDecoder.h"
 
 #include <QTest>
 
@@ -9,7 +9,7 @@ class SseDecoderTest final : public QObject
 private slots:
     void handlesSplitFrames()
     {
-        suprai::providers::SseDecoder decoder;
+        suprai::providers::internal::SseDecoder decoder;
 
         auto events = decoder.feed("data: {\"a\":");
         QCOMPARE(events.size(), 0);
@@ -22,7 +22,7 @@ private slots:
 
     void ignoresNonDataLines()
     {
-        suprai::providers::SseDecoder decoder;
+        suprai::providers::internal::SseDecoder decoder;
         const auto events = decoder.feed(": ping\nevent: message\ndata: hello\n");
         QCOMPARE(events.size(), 1);
         QCOMPARE(events.first(), QByteArray("hello"));

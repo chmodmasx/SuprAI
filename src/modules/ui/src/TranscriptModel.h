@@ -1,12 +1,12 @@
 #pragma once
 
-#include "domain/ConversationItem.h"
+#include <suprai/domain/ConversationItem.h>
 
 #include <QAbstractListModel>
 #include <QHash>
 #include <QVector>
 
-namespace suprai::ui {
+namespace suprai::ui::internal {
 
 class TranscriptModel final : public QAbstractListModel
 {
@@ -33,10 +33,9 @@ public:
 
 private:
     int rowForId(const QString &itemId) const;
-    void rebuildIndex();
 
     QVector<suprai::domain::ConversationItem> m_items;
     QHash<QString, int> m_rowsById;
 };
 
-} // namespace suprai::ui
+} // namespace suprai::ui::internal

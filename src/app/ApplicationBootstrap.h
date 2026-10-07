@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/RuntimeConfig.h"
+#include "AppConfig.h"
 
 namespace suprai::runtime {
 class AgentRuntime;
@@ -11,8 +11,7 @@ namespace suprai::app {
 class ApplicationBootstrap
 {
 public:
-    static suprai::runtime::AgentRuntime *createRuntime(
-        const suprai::runtime::RuntimeConfig &config);
+    static suprai::runtime::AgentRuntime *createRuntime(const AppConfig &config);
 };
 
 } // namespace suprai::app

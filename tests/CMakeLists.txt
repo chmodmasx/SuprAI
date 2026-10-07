@@ -1,6 +1,10 @@
 add_executable(tst_sse_decoder
     tst_sse_decoder.cpp
 )
+target_include_directories(tst_sse_decoder
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/modules/providers/openai/src
+)
 target_link_libraries(tst_sse_decoder
     PRIVATE
         Qt6::Core
@@ -12,11 +16,16 @@ add_test(NAME sse_decoder COMMAND tst_sse_decoder)
 add_executable(tst_transcript_model
     tst_transcript_model.cpp
 )
+target_include_directories(tst_transcript_model
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/modules/ui/src
+)
 target_link_libraries(tst_transcript_model
     PRIVATE
         Qt6::Core
         Qt6::Test
         suprai_ui
+        suprai_domain
 )
 add_test(NAME transcript_model COMMAND tst_transcript_model)
 

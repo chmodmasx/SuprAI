@@ -1,9 +1,9 @@
-#include "ui/ChatController.h"
+#include <suprai/ui/ChatController.h>
 
-#include "domain/ConversationItem.h"
-#include "runtime/AgentRuntime.h"
-#include "runtime/RuntimeState.h"
-#include "ui/TranscriptModel.h"
+#include "TranscriptModel.h"
+
+#include <suprai/domain/ConversationItem.h>
+#include <suprai/runtime/AgentRuntime.h>
 
 #include <QMetaObject>
 
@@ -12,7 +12,7 @@ namespace suprai::ui {
 ChatController::ChatController(suprai::runtime::AgentRuntime *runtime, QObject *parent)
     : QObject(parent)
     , m_runtime(runtime)
-    , m_transcript(new TranscriptModel(this))
+    , m_transcript(new internal::TranscriptModel(this))
 {
     connectRuntime();
 }
@@ -133,7 +133,7 @@ void ChatController::connectRuntime()
             this, &ChatController::setReasoning);
 
     connect(m_runtime, &suprai::runtime::AgentRuntime::conversationReset,
-            m_transcript, &TranscriptModel::clear);
+            m_transcript, &internal::TranscriptModel::clear);
 
     connect(m_runtime, &suprai::runtime::AgentRuntime::errorOccurred,
             this, &ChatController::setLastError);

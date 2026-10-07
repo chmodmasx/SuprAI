@@ -1,45 +1,67 @@
+set(SUPRAI_MODULES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules)
+
+# Domain -----------------------------------------------------------------------
 add_library(suprai_domain INTERFACE)
-target_include_directories(suprai_domain INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(suprai_domain
+    INTERFACE
+        ${SUPRAI_MODULES_DIR}/domain/include
+)
 target_link_libraries(suprai_domain INTERFACE Qt6::Core)
 
-# Provider contract: runtime depends only on this target. It is a tiny STATIC
-# library (rather than INTERFACE) because Provider is a QObject and needs AUTOMOC.
+# Provider port ----------------------------------------------------------------
 add_library(suprai_provider_api STATIC
-    providers/Provider.h
-    providers/Provider.cpp
+    modules/providers/api/include/suprai/providers/Provider.h
+    modules/providers/api/src/Provider.cpp
 )
-target_include_directories(suprai_provider_api PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(suprai_provider_api
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/providers/api/include
+)
 target_link_libraries(suprai_provider_api
     PUBLIC
         Qt6::Core
         suprai_domain
 )
 
-# Concrete OpenAI-compatible adapter. Only the composition root/tests link it.
+# OpenAI-compatible provider adapter -------------------------------------------
 add_library(suprai_provider_openai STATIC
-    providers/SseDecoder.h
-    providers/SseDecoder.cpp
-    providers/OpenAIChatProvider.h
-    providers/OpenAIChatProvider.cpp
+    modules/providers/openai/include/suprai/providers/OpenAIProviderFactory.h
+    modules/providers/openai/src/OpenAIChatProvider.h
+    modules/providers/openai/src/OpenAIChatProvider.cpp
+    modules/providers/openai/src/SseDecoder.h
+    modules/providers/openai/src/SseDecoder.cpp
 )
-target_include_directories(suprai_provider_openai PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(suprai_provider_openai
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/providers/openai/include
+    PRIVATE
+        ${SUPRAI_MODULES_DIR}/providers/openai/src
+)
 target_link_libraries(suprai_provider_openai
     PUBLIC
-        Qt6::Core
-        Qt6::Network
         suprai_provider_api
+    PRIVATE
+        Qt6::Network
 )
 
+# Runtime ----------------------------------------------------------------------
 add_library(suprai_runtime STATIC
-    runtime/RuntimeState.h
-    runtime/RuntimeConfig.h
-    runtime/AgentRuntime.h
-    runtime/NativeSuprAIRuntime.h
-    runtime/NativeSuprAIRuntime.cpp
-    runtime/MockRuntime.h
-    runtime/MockRuntime.cpp
+    modules/runtime/include/suprai/runtime/AgentRuntime.h
+    modules/runtime/include/suprai/runtime/RuntimeConfig.h
+    modules/runtime/include/suprai/runtime/RuntimeFactory.h
+    modules/runtime/include/suprai/runtime/RuntimeState.h
+    modules/runtime/src/MockRuntime.h
+    modules/runtime/src/MockRuntime.cpp
+    modules/runtime/src/NativeSuprAIRuntime.h
+    modules/runtime/src/NativeSuprAIRuntime.cpp
+    modules/runtime/src/RuntimeFactory.cpp
 )
-target_include_directories(suprai_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(suprai_runtime
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/runtime/include
+    PRIVATE
+        ${SUPRAI_MODULES_DIR}/runtime/src
+)
 target_link_libraries(suprai_runtime
     PUBLIC
         Qt6::Core
@@ -47,26 +69,39 @@ target_link_libraries(suprai_runtime
         suprai_provider_api
 )
 
+# UI facade --------------------------------------------------------------------
 add_library(suprai_ui STATIC
-    ui/TranscriptModel.h
-    ui/TranscriptModel.cpp
-    ui/ChatController.h
-    ui/ChatController.cpp
+    modules/ui/include/suprai/ui/ChatController.h
+    modules/ui/src/ChatController.cpp
+    modules/ui/src/TranscriptModel.h
+    modules/ui/src/TranscriptModel.cpp
 )
-target_include_directories(suprai_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(suprai_ui
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/ui/include
+    PRIVATE
+        ${SUPRAI_MODULES_DIR}/ui/src
+)
 target_link_libraries(suprai_ui
     PUBLIC
         Qt6::Core
-        suprai_domain
         suprai_runtime
+    PRIVATE
+        suprai_domain
 )
 
+# Composition root / application -----------------------------------------------
 qt_add_executable(suprai
     app/main.cpp
+    app/AppConfig.h
     app/AppSettings.h
     app/AppSettings.cpp
     app/ApplicationBootstrap.h
     app/ApplicationBootstrap.cpp
+)
+target_include_directories(suprai
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
 
 qt_add_qml_module(suprai

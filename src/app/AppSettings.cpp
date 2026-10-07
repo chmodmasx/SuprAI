@@ -1,6 +1,5 @@
-#include "app/AppSettings.h"
+#include "AppSettings.h"
 
-#include <QByteArray>
 #include <QProcessEnvironment>
 #include <QSettings>
 
@@ -10,47 +9,47 @@ AppSettings::AppSettings(QObject *parent)
     : QObject(parent)
     , m_settings(new QSettings(QStringLiteral("SuprAI"), QStringLiteral("SuprAI"), this))
 {
-    m_runtimeConfig.mode = envOrDefault(
+    m_config.runtimeMode = envOrDefault(
         "SUPRAI_RUNTIME",
         m_settings->value(QStringLiteral("runtime/mode"), QStringLiteral("native")).toString());
 
-    m_runtimeConfig.baseUrl = envOrDefault(
+    m_config.baseUrl = envOrDefault(
         "SUPRAI_BASE_URL",
         m_settings->value(QStringLiteral("provider/baseUrl"), QStringLiteral("http://127.0.0.1:8090/v1")).toString());
 
-    m_runtimeConfig.model = envOrDefault(
+    m_config.model = envOrDefault(
         "SUPRAI_MODEL",
         m_settings->value(QStringLiteral("provider/model"), QStringLiteral("bonsai2-27b")).toString());
 
     // Prototype rule: secrets are never persisted in QSettings.
     // Until SecretStore lands, API keys come from the process environment only.
-    m_runtimeConfig.apiKey = envOrDefault("SUPRAI_API_KEY", QStringLiteral("no-key"));
+    m_config.apiKey = envOrDefault("SUPRAI_API_KEY", QStringLiteral("no-key"));
 
-    m_runtimeConfig.systemPrompt = envOrDefault(
+    m_config.systemPrompt = envOrDefault(
         "SUPRAI_SYSTEM_PROMPT",
-        m_runtimeConfig.systemPrompt);
+        m_config.systemPrompt);
 }
 
 AppSettings::~AppSettings() = default;
 
 QString AppSettings::runtimeMode() const
 {
-    return m_runtimeConfig.mode;
+    return m_config.runtimeMode;
 }
 
 QString AppSettings::baseUrl() const
 {
-    return m_runtimeConfig.baseUrl;
+    return m_config.baseUrl;
 }
 
 QString AppSettings::model() const
 {
-    return m_runtimeConfig.model;
+    return m_config.model;
 }
 
-suprai::runtime::RuntimeConfig AppSettings::runtimeConfig() const
+AppConfig AppSettings::config() const
 {
-    return m_runtimeConfig;
+    return m_config;
 }
 
 QString AppSettings::envOrDefault(const char *name, const QString &fallback)

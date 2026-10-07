@@ -1,8 +1,9 @@
-#include "app/ApplicationBootstrap.h"
-#include "app/AppSettings.h"
-#include "runtime/AgentRuntime.h"
-#include "runtime/RuntimeState.h"
-#include "ui/ChatController.h"
+#include "ApplicationBootstrap.h"
+#include "AppSettings.h"
+
+#include <suprai/runtime/AgentRuntime.h>
+#include <suprai/runtime/RuntimeState.h>
+#include <suprai/ui/ChatController.h>
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
     QThread runtimeThread;
     runtimeThread.setObjectName(QStringLiteral("SuprAIRuntime"));
 
-    auto *runtime = suprai::app::ApplicationBootstrap::createRuntime(settings.runtimeConfig());
+    auto *runtime = suprai::app::ApplicationBootstrap::createRuntime(settings.config());
     runtime->moveToThread(&runtimeThread);
 
     QObject::connect(&runtimeThread, &QThread::started,

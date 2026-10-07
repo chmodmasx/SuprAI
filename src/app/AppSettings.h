@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/RuntimeConfig.h"
+#include "AppConfig.h"
 
 #include <QObject>
 #include <QString>
@@ -25,13 +25,13 @@ public:
     QString baseUrl() const;
     QString model() const;
 
-    suprai::runtime::RuntimeConfig runtimeConfig() const;
+    AppConfig config() const;
 
 private:
     static QString envOrDefault(const char *name, const QString &fallback);
 
     QSettings *m_settings = nullptr;
-    suprai::runtime::RuntimeConfig m_runtimeConfig;
+    AppConfig m_config;
 };
 
 } // namespace suprai::app

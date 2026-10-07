@@ -1,6 +1,6 @@
-#include "providers/SseDecoder.h"
+#include "SseDecoder.h"
 
-namespace suprai::providers {
+namespace suprai::providers::internal {
 
 QVector<QByteArray> SseDecoder::feed(const QByteArray &chunk)
 {
@@ -36,4 +36,4 @@ void SseDecoder::reset()
     m_buffer.clear();
 }
 
-} // namespace suprai::providers
+} // namespace suprai::providers::internal

@@ -1,4 +1,4 @@
-#include "providers/OpenAIChatProvider.h"
+#include "OpenAIChatProvider.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -12,7 +12,18 @@
 
 namespace suprai::providers {
 
-OpenAIChatProvider::OpenAIChatProvider(OpenAIChatProviderConfig config, QObject *parent)
+Provider *createOpenAIChatProvider(OpenAIProviderConfig config, QObject *parent)
+{
+    return new internal::OpenAIChatProvider(std::move(config), parent);
+}
+
+} // namespace suprai::providers
+
+namespace suprai::providers::internal {
+
+OpenAIChatProvider::OpenAIChatProvider(
+    suprai::providers::OpenAIProviderConfig config,
+    QObject *parent)
     : Provider(parent)
     , m_config(std::move(config))
     , m_network(new QNetworkAccessManager(this))
@@ -102,8 +113,6 @@ void OpenAIChatProvider::handleReadyRead()
 void OpenAIChatProvider::consumeEvent(const QByteArray &payload)
 {
     if (payload == "[DONE]") {
-        // Terminal notification is emitted from handleFinished(), after m_reply
-        // has been cleared. This prevents a new request from racing the old reply.
         return;
     }
 
@@ -167,8 +176,6 @@ void OpenAIChatProvider::handleFinished()
             : QStringLiteral("Error HTTP/provider: %1").arg(detail);
     }
 
-    // Clear ownership before notifying the runtime. A terminal signal may cause
-    // the UI to submit another request immediately.
     m_reply = nullptr;
     reply->deleteLater();
 
@@ -177,7 +184,6 @@ void OpenAIChatProvider::handleFinished()
     } else if (!errorMessage.isEmpty()) {
         finishFailure(errorMessage);
     } else {
-        // Some compatible servers close a successful stream without [DONE].
         finishSuccess();
     }
 }
@@ -192,4 +198,4 @@ void OpenAIChatProvider::finishFailure(const QString &message)
     emit failed(message);
 }
 
-} // namespace suprai::providers
+} // namespace suprai::providers::internal

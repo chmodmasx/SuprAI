@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/RuntimeState.h"
+#include <suprai/runtime/RuntimeState.h>
 
 #include <QObject>
 #include <QString>

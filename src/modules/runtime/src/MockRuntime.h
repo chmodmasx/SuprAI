@@ -1,14 +1,14 @@
 #pragma once
 
-#include "runtime/AgentRuntime.h"
+#include <suprai/runtime/AgentRuntime.h>
 
 #include <QStringList>
 
 class QTimer;
 
-namespace suprai::runtime {
+namespace suprai::runtime::internal {
 
-class MockRuntime final : public AgentRuntime
+class MockRuntime final : public suprai::runtime::AgentRuntime
 {
     Q_OBJECT
 
@@ -24,15 +24,15 @@ public slots:
 
 private:
     void emitNextChunk();
-    void setState(RuntimeState state);
+    void setState(suprai::runtime::RuntimeState state);
     void finish();
 
     QTimer *m_timer = nullptr;
-    RuntimeState m_state = RuntimeState::Stopped;
+    suprai::runtime::RuntimeState m_state = suprai::runtime::RuntimeState::Stopped;
     QString m_activeId;
     QString m_text;
     QStringList m_chunks;
     qsizetype m_index = 0;
 };
 
-} // namespace suprai::runtime
+} // namespace suprai::runtime::internal

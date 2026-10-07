@@ -1,6 +1,6 @@
-#include "ui/TranscriptModel.h"
+#include "TranscriptModel.h"
 
-namespace suprai::ui {
+namespace suprai::ui::internal {
 
 TranscriptModel::TranscriptModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -68,11 +68,7 @@ void TranscriptModel::appendDelta(const QString &itemId, const QString &delta)
 void TranscriptModel::finish(const QString &itemId)
 {
     const int row = rowForId(itemId);
-    if (row < 0) {
-        return;
-    }
-
-    if (!m_items[row].streaming) {
+    if (row < 0 || !m_items[row].streaming) {
         return;
     }
 
@@ -99,12 +95,4 @@ int TranscriptModel::rowForId(const QString &itemId) const
     return it == m_rowsById.cend() ? -1 : it.value();
 }
 
-void TranscriptModel::rebuildIndex()
-{
-    m_rowsById.clear();
-    for (int row = 0; row < m_items.size(); ++row) {
-        m_rowsById.insert(m_items.at(row).id, row);
-    }
-}
-
-} // namespace suprai::ui
+} // namespace suprai::ui::internal

@@ -3,7 +3,7 @@
 #include <QByteArray>
 #include <QVector>
 
-namespace suprai::providers {
+namespace suprai::providers::internal {
 
 class SseDecoder
 {
@@ -15,4 +15,4 @@ private:
     QByteArray m_buffer;
 };
 
-} // namespace suprai::providers
+} // namespace suprai::providers::internal

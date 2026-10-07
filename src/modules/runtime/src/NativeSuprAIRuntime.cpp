@@ -1,13 +1,13 @@
-#include "runtime/NativeSuprAIRuntime.h"
+#include "NativeSuprAIRuntime.h"
 
-#include "domain/ConversationItem.h"
+#include <suprai/domain/ConversationItem.h>
 
 #include <utility>
 
-namespace suprai::runtime {
+namespace suprai::runtime::internal {
 
 NativeSuprAIRuntime::NativeSuprAIRuntime(
-    AgentRuntimeConfig config,
+    suprai::runtime::AgentRuntimeConfig config,
     suprai::providers::Provider *provider,
     QObject *parent)
     : AgentRuntime(parent)
@@ -150,8 +150,6 @@ void NativeSuprAIRuntime::connectProvider()
     });
 
     connect(m_provider, &suprai::providers::Provider::reasoningDelta, this, [this](const QString &) {
-        // Raw reasoning is deliberately not appended to m_history.
-        // It is ephemeral provider output in this prototype.
         if (!m_reasoningActive) {
             m_reasoningActive = true;
             emit reasoningActiveChanged(true);
@@ -173,9 +171,6 @@ void NativeSuprAIRuntime::connectProvider()
             emit assistantMessageCompleted(m_activeAssistantId, m_activeAssistantText);
         }
 
-        // Cancelled partial output is visible in the transcript, but it is not
-        // canonical history in this prototype. Persistence/partial-attempt
-        // semantics land with the durable Turn/Run model.
         m_activeAssistantId.clear();
         m_activeAssistantText.clear();
         setState(RuntimeState::Ready);
@@ -229,4 +224,4 @@ void NativeSuprAIRuntime::setState(RuntimeState state)
     emit stateChanged(state);
 }
 
-} // namespace suprai::runtime
+} // namespace suprai::runtime::internal

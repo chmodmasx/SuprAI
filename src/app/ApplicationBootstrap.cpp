@@ -1,25 +1,22 @@
-#include "app/ApplicationBootstrap.h"
+#include "ApplicationBootstrap.h"
 
-#include "providers/OpenAIChatProvider.h"
-#include "runtime/AgentRuntime.h"
-#include "runtime/MockRuntime.h"
-#include "runtime/NativeSuprAIRuntime.h"
+#include <suprai/providers/OpenAIProviderFactory.h>
+#include <suprai/runtime/RuntimeFactory.h>
 
 namespace suprai::app {
 
-suprai::runtime::AgentRuntime *ApplicationBootstrap::createRuntime(
-    const suprai::runtime::RuntimeConfig &config)
+suprai::runtime::AgentRuntime *ApplicationBootstrap::createRuntime(const AppConfig &config)
 {
-    if (config.mode.compare(QStringLiteral("mock"), Qt::CaseInsensitive) == 0) {
-        return new suprai::runtime::MockRuntime;
+    if (config.runtimeMode.compare(QStringLiteral("mock"), Qt::CaseInsensitive) == 0) {
+        return suprai::runtime::createMockRuntime();
     }
 
-    auto *provider = new suprai::providers::OpenAIChatProvider({
+    auto *provider = suprai::providers::createOpenAIChatProvider({
         .baseUrl = config.baseUrl,
         .apiKey = config.apiKey,
     });
 
-    return new suprai::runtime::NativeSuprAIRuntime(config.agentConfig(), provider);
+    return suprai::runtime::createNativeRuntime(config.agentConfig(), provider);
 }
 
 } // namespace suprai::app

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "providers/Provider.h"
-#include "providers/SseDecoder.h"
+#include "SseDecoder.h"
+
+#include <suprai/providers/OpenAIProviderFactory.h>
+#include <suprai/providers/Provider.h>
 
 #include <QByteArray>
 #include <QPointer>
@@ -10,24 +12,21 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 
-namespace suprai::providers {
+namespace suprai::providers::internal {
 
-struct OpenAIChatProviderConfig {
-    QString baseUrl;
-    QString apiKey;
-};
-
-class OpenAIChatProvider final : public Provider
+class OpenAIChatProvider final : public suprai::providers::Provider
 {
     Q_OBJECT
 
 public:
-    explicit OpenAIChatProvider(OpenAIChatProviderConfig config, QObject *parent = nullptr);
+    explicit OpenAIChatProvider(
+        suprai::providers::OpenAIProviderConfig config,
+        QObject *parent = nullptr);
 
     bool isBusy() const override;
 
 public slots:
-    void generate(const ProviderRequest &request) override;
+    void generate(const suprai::providers::ProviderRequest &request) override;
     void cancel() override;
 
 private:
@@ -38,7 +37,7 @@ private:
     void finishFailure(const QString &message);
     QString endpoint() const;
 
-    OpenAIChatProviderConfig m_config;
+    suprai::providers::OpenAIProviderConfig m_config;
     QNetworkAccessManager *m_network = nullptr;
     QPointer<QNetworkReply> m_reply;
     SseDecoder m_decoder;
@@ -47,4 +46,4 @@ private:
     bool m_cancelRequested = false;
 };
 
-} // namespace suprai::providers
+} // namespace suprai::providers::internal

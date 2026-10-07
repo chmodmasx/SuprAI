@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/RuntimeState.h"
+#include <suprai/runtime/RuntimeState.h>
 
 #include <QAbstractItemModel>
 #include <QObject>
@@ -12,7 +12,9 @@ class AgentRuntime;
 
 namespace suprai::ui {
 
+namespace internal {
 class TranscriptModel;
+}
 
 class ChatController final : public QObject
 {
@@ -51,7 +53,7 @@ private:
     void setLastError(const QString &message);
 
     suprai::runtime::AgentRuntime *m_runtime = nullptr;
-    TranscriptModel *m_transcript = nullptr;
+    internal::TranscriptModel *m_transcript = nullptr;
     suprai::runtime::RuntimeState m_runtimeState = suprai::runtime::RuntimeState::Stopped;
     bool m_reasoning = false;
     QString m_lastError;

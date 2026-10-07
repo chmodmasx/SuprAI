@@ -1,10 +1,10 @@
-#include "runtime/MockRuntime.h"
+#include "MockRuntime.h"
 
-#include "domain/ConversationItem.h"
+#include <suprai/domain/ConversationItem.h>
 
 #include <QTimer>
 
-namespace suprai::runtime {
+namespace suprai::runtime::internal {
 
 MockRuntime::MockRuntime(QObject *parent)
     : AgentRuntime(parent)
@@ -49,7 +49,7 @@ void MockRuntime::submitPrompt(const QString &prompt)
     m_index = 0;
     m_chunks = {
         QStringLiteral("Este es el MockRuntime. "),
-        QStringLiteral("La UI, el streaming, el runtime y el modelo de transcript están desacoplados. "),
+        QStringLiteral("La UI, el streaming, el runtime y el provider están desacoplados. "),
         QStringLiteral("Cambiá SUPRAI_RUNTIME=native para usar un endpoint OpenAI-compatible real."),
     };
 
@@ -126,4 +126,4 @@ void MockRuntime::setState(RuntimeState state)
     emit stateChanged(state);
 }
 
-} // namespace suprai::runtime
+} // namespace suprai::runtime::internal
