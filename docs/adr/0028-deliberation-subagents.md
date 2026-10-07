@@ -307,7 +307,7 @@ Measure:
 ## Consequences
 
 Accepted:
-- no standalone standalone deliberation-branch architecture;
+- no standalone deliberation-branch architecture;
 - deliberation is a subagent purpose;
 - ReasoningWorkspace is Run-local ephemeral state;
 - ReturnCapsule is the parent merge boundary;
