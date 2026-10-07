@@ -7,6 +7,8 @@
 #include <suprai/platform/Logging.h>
 #include <suprai/platform/SingleInstanceService.h>
 #include <suprai/runtime/AgentRuntime.h>
+#include <suprai/runtime/RuntimeApplicationEvent.h>
+#include <suprai/runtime/RuntimeCapabilities.h>
 #include <suprai/runtime/RuntimeState.h>
 #include <suprai/ui/ChatController.h>
 
@@ -71,6 +73,8 @@ int main(int argc, char *argv[])
     }
 
     qRegisterMetaType<suprai::runtime::RuntimeState>();
+    qRegisterMetaType<suprai::runtime::RuntimeCapabilities>();
+    qRegisterMetaType<suprai::runtime::RuntimeApplicationEvent>();
     qRegisterMetaType<suprai::runtime::ApplicationEvent>();
 
     suprai::app::AppSettings settings;
