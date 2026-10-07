@@ -15,7 +15,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev
+          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev xvfb
 
       - name: Install Qt 6.12
         uses: jurplel/install-qt-action@v4
@@ -50,11 +50,11 @@ jobs:
 
       - name: Staged install smoke test
         run: |
-          env -u LD_LIBRARY_PATH \
+          xvfb-run -a env -u LD_LIBRARY_PATH \
               -u QT_PLUGIN_PATH \
               -u QML2_IMPORT_PATH \
               -u QT_ROOT_DIR \
-              QT_QPA_PLATFORM=offscreen \
+              QT_QPA_PLATFORM=xcb \
               QT_QUICK_BACKEND=software \
               SUPRAI_RUNTIME=mock \
               ./stage/bin/suprai --smoke-test
