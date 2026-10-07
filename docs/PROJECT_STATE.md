@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: 55610aa2ef31242a6246034d37a05f2b8d6b490b
+last_verified_commit: 6417f0f53ff271883f46586fbc41a618baded2bf
 
 working:
   - repository exists and is writable
@@ -33,6 +33,9 @@ working:
   - deliberation is a subagent purpose, not a separate runtime subsystem
   - ReasoningWorkspace is ephemeral Run-local scratch state
   - ReturnCapsule is the compact child-to-parent merge boundary
+  - modular-monolith architecture is accepted
+  - architecture-significant subsystems have explicit public/private boundaries and CMake targets
+  - ApplicationBootstrap is the concrete composition root
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -58,6 +61,7 @@ accepted_adrs:
   - ADR-0025 owner-generation-aware restart recovery
   - ADR-0026 schedules separate from Task execution
   - ADR-0028 isolated deliberation reuses subagent infrastructure
+  - ADR-0029 modular monolith with explicit ports and composition root
 
 proposed_adrs:
   - ADR-0009 jsoncons as isolated JSON Schema 2020-12 validator
@@ -96,7 +100,7 @@ decisions:
   - subagents execute through NativeSuprAIRuntime in child Sessions
   - subagent purpose is metadata/policy, not a separate runtime type
   - baseline subagent purposes include delegation, deliberation, verification, research and coding
-  - reasoning isolation/context folding reuses subagents; there is no standalone standalone deliberation-branch runtime
+  - reasoning isolation/context folding reuses subagents; there is no separate deliberation-branch runtime
   - subagent context is isolated/explicit by default
   - child context modes are full/scoped/compacted
   - ReasoningWorkspace is ephemeral Run-local scratch state, not canonical history
@@ -143,6 +147,13 @@ decisions:
   - Qt WebEngine is optional and not used for ordinary chat
   - secure desktop storage for secrets
   - initial process model is one modular native application
+  - modularity is enforced through CMake targets, public/private headers and directed dependencies
+  - concrete implementations are wired only at the application composition root
+  - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
+  - open-ended providers/tools/skills use registries instead of central switch statements
+  - optional capabilities must be safely absent/degraded
+  - no module may read another module's SQLite tables directly
+  - there is no public binary plugin ABI yet; a future ABI requires a separate ADR
   - AppImage runtime ABI floor must be proven, not assumed
   - QProcess is baseline for process tools/tasks
   - systemd transient user services are only a proposed optional durability backend
@@ -156,6 +167,7 @@ decisions:
 
 open_questions:
   - exact visual language and component system
+  - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - exact safe transcript renderer implementation after benchmark
   - QtKeychain proof on KDE/GNOME/AppImage
   - exact first built-in tool set
@@ -185,7 +197,8 @@ open_questions:
 
 next_milestone: M1
 next_exact_steps:
-  - create CMake/Qt source skeleton
+  - create modular CMake/Qt source skeleton from ADR-0029
+  - establish per-module public/private include boundaries and composition root
   - pin initial development Qt version and minimum CMake/compiler
   - use QApplication because tray integration may require Qt::Widgets while UI remains QML
   - create C++ application bootstrap
