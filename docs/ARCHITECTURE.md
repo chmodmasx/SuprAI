@@ -901,7 +901,7 @@ Parent Session
       -> compact result merged into parent
 ```
 
-Do not create a standalone `DeliberationBranchManager`.
+Do not create a standalone `standalone deliberation-branch manager`.
 
 `ReasoningWorkspace` is ephemeral Run-local scratch state. It may contain provider-separated reasoning, temporary plans, hypotheses and provisional conclusions. It is not canonical conversation history and does not itself create context isolation.
 
