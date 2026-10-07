@@ -61,19 +61,24 @@ Owned by C++ application core:
 - runtime lifecycle.
 
 ### Agent authority
-Owned by NativeSuprAIRuntime:
-- sessions;
-- conversation history;
-- active turns;
-- model/provider calls;
-- tool execution policy;
-- tool results;
+Owned through the NativeSuprAIRuntime production facade, with internal ownership split explicitly:
+
+RuntimeOrchestrator owns:
+- sessions and canonical conversation lineage;
+- active Turn/Run lifecycle;
+- persistence coordination;
 - approvals/clarifications;
-- persistent agent memory;
-- agent profiles;
-- skills/tools;
-- context construction;
-- token/context accounting.
+- Task/subagent coordination;
+- context/memory/project orchestration;
+- recovery and event projection.
+
+AgentEngine owns:
+- low-level provider/tool iteration for an active Run;
+- normalized inference consumption;
+- engine state-machine transitions;
+- low-level cancellation/iteration/completion limits.
+
+Provider/model wire objects, SQLite details and UI state do not become AgentEngine authority.
 
 Never implement agent behavior in QML.
 
@@ -111,19 +116,32 @@ Any future external-runtime adapter requires an ADR and must not displace Native
 
 ## 4. Native agent runtime minimum architecture
 
-NativeSuprAIRuntime owns:
-- ProviderRegistry;
-- AgentLoop;
+NativeSuprAIRuntime is the production AgentRuntime facade. Internally:
+
+```text
+NativeSuprAIRuntime
+        |
+        v
+RuntimeOrchestrator
+        |
+        v
+AgentEngine
+        |
+        +--> provider ports
+        +--> tool execution ports
+```
+
+RuntimeOrchestrator composes:
 - ContextManager;
-- SessionStore;
-- ItemStore;
-- ToolRegistry;
-- ToolExecutor;
-- ApprovalManager;
+- persistence/repository ports;
+- ApprovalManager / PolicyEngine;
+- TaskManager;
 - MCPClientManager;
 - SkillRegistry;
 - MemoryService;
-- RuntimeEventBus.
+- event translation.
+
+AgentEngine must remain comparatively small and must not grow into a session/persistence/task/UI god object.
 
 Provider implementations are replaceable transports, not agent runtimes.
 
@@ -134,7 +152,18 @@ Later providers may include native Anthropic/Gemini/etc. transports if required.
 
 ## 5. Event model
 
-Runtime traffic is converted to SuprAI domain events before reaching UI.
+Runtime traffic is layered before reaching UI:
+
+```text
+provider wire event
+ -> normalized InferenceEvent
+ -> AgentEngineEvent
+ -> RuntimeEventAdapter
+ -> SuprAI domain/application event
+ -> UI projection
+```
+
+Engine/provider events are never QML contracts.
 
 Examples:
 - RuntimeReady
@@ -158,13 +187,18 @@ Requirements:
 - stale async responses cannot overwrite newer state;
 - terminal events flush immediately;
 - cancel is explicit and observable;
-- UI distinguishes idle, working, waiting-for-user, degraded, failed, and ready states.
+- UI distinguishes idle, working, waiting-for-user, degraded, failed, and ready states;
+- high-frequency observer delivery may be queued/coalesced after ordering semantics are preserved;
+- UI/telemetry/log observers must never synchronously throttle provider token generation.
+
+Blocking interceptors such as policy, approval, request preparation and tool-result validation are separate from observational subscribers.
 
 ## 6. State rules
 
 Ask: "who is allowed to be correct about this state?"
 
-- Agent truth is owned by NativeSuprAIRuntime.
+- Agent/session truth is owned by RuntimeOrchestrator through NativeSuprAIRuntime.
+- Active Run execution state is owned by AgentEngine/TurnStateMachine and projected upward explicitly.
 - Machine truth is owned by application core.
 - UI owns only presentation state.
 - Persisted state must have explicit scope: global, profile, project, session, or window.
@@ -230,7 +264,10 @@ TaskManager owns:
 - background process/subagent/MCP/scheduled work tracking;
 - external polling where required;
 - completion/progress events;
-- cancellation/reconciliation.
+- cancellation/reconciliation;
+- explicit ownership transfer when a foreground ToolInvocation chooses "Continue while running".
+
+A running process is not a Task merely because the UI stopped watching it. Ownership transfer must be explicit and durable.
 
 Execution status and delivery status are separate.
 
@@ -268,6 +305,8 @@ Desktop integrations belong behind `platform/linux` interfaces, never scattered 
 - Never expose arbitrary shell execution through a generic QML bridge.
 - Native capabilities are explicit and narrow.
 - Tool execution has an explicit policy and approval path.
+- Every approval is bound to exact Session/Turn/Run/Task/ToolInvocation/UserAction identity.
+- File mutation approvals bind to a prepared ChangeSet and expected base/version; stale approved changes are invalidated, not applied.
 - Web/HTML previews are untrusted content.
 - No popup/external navigation without an explicit policy.
 - No hidden automatic privilege escalation.
@@ -326,6 +365,7 @@ Hot paths:
 
 Rules:
 - batch high-frequency updates where semantics permit;
+- never await UI/telemetry/log observation in the provider token-stream critical path;
 - do not rebuild the whole transcript for each token;
 - use model/view boundaries for long lists;
 - do not destroy expensive views only because they are hidden;
@@ -349,7 +389,8 @@ Later artifacts may include .deb.
 
 At minimum:
 - unit tests for domain/state;
-- AgentLoop tests;
+- AgentEngine/TurnStateMachine tests;
+- RuntimeOrchestrator event-mapping/lifecycle tests;
 - provider transport tests;
 - tool-call parsing/execution tests;
 - approval policy tests;
