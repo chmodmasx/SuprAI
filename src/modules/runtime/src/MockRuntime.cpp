@@ -56,9 +56,10 @@ void MockRuntime::submitPrompt(const QString &prompt)
     }
 
     emit eventOccurred({
-        .payload = UserMessageAccepted{
-            .itemId = suprai::domain::newItemId(),
-            .text = text,
+        .payload = ConversationItemStarted{
+            .item = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::User,
+                text),
         },
     });
 
@@ -72,8 +73,12 @@ void MockRuntime::submitPrompt(const QString &prompt)
     };
 
     emit eventOccurred({
-        .payload = AssistantMessageStarted{
-            .itemId = m_activeId,
+        .payload = ConversationItemStarted{
+            .item = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::Assistant,
+                {},
+                suprai::domain::ConversationItemState::Streaming,
+                m_activeId),
         },
     });
     emit eventOccurred({
@@ -101,9 +106,8 @@ void MockRuntime::cancelTurn()
         },
     });
     emit eventOccurred({
-        .payload = AssistantMessageCompleted{
+        .payload = ConversationItemCompleted{
             .itemId = m_activeId,
-            .finalText = m_text,
         },
     });
     m_activeId.clear();
@@ -140,7 +144,7 @@ void MockRuntime::emitNextChunk()
     const auto chunk = m_chunks.at(m_index++);
     m_text += chunk;
     emit eventOccurred({
-        .payload = AssistantTextDelta{
+        .payload = ConversationTextDelta{
             .itemId = m_activeId,
             .delta = chunk,
         },
