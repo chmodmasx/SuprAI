@@ -55,6 +55,13 @@ Verified vertical slice at commit `98fb72265f38d375145206dbaa039e93d0b8a103`:
 - a dedicated runtime-layering test verifies that raw reasoning stays outside orchestrator history;
 - raw `reasoning_content` from the first turn is verified absent from the second request;
 - 7/7 CTest tests pass;
+- worker shutdown completes cleanly and CI fails on any shutdown timeout;
+- CMake install staging deploys Qt runtime, QML imports and qt.conf;
+- Qt6Widgets is staged explicitly because QApplication is a deliberate runtime dependency;
+- Qt Wayland client/QPA and XCB QPA are staged explicitly as product requirements;
+- staged install launches with the Qt development environment variables removed;
+- staged XCB smoke passes under Xvfb;
+- staged Wayland smoke passes under Weston headless;
 - ordinary chat rendering remains plain text in this prototype.
 
 Still required before M1 can be COMPLETE:
