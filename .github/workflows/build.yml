@@ -51,6 +51,10 @@ jobs:
             echo "Worker shutdown timeout detected" >&2
             exit 1
           fi
+          if grep -q 'persistence_worker_error' <<<"$output"; then
+            echo "Persistence worker failed during smoke test" >&2
+            exit 1
+          fi
 
       - name: Stage portable install tree
         run: |
@@ -60,6 +64,7 @@ jobs:
           test -f stage/bin/qt.conf
           test -f stage/plugins/platforms/libqxcb.so
           test -f stage/plugins/platforms/libqwayland.so
+          test -f stage/plugins/sqldrivers/libqsqlite.so
 
       - name: Staged install smoke test
         run: |
@@ -74,6 +79,10 @@ jobs:
           printf '%s\n' "$output"
           if grep -q 'shutdown_timeout' <<<"$output"; then
             echo "Worker shutdown timeout detected in staged XCB smoke test" >&2
+            exit 1
+          fi
+          if grep -q 'persistence_worker_error' <<<"$output"; then
+            echo "Persistence worker failed in staged XCB smoke test" >&2
             exit 1
           fi
 
@@ -119,5 +128,9 @@ jobs:
           printf '%s\n' "$output"
           if grep -q 'shutdown_timeout' <<<"$output"; then
             echo "Worker shutdown timeout detected in staged Wayland smoke test" >&2
+            exit 1
+          fi
+          if grep -q 'persistence_worker_error' <<<"$output"; then
+            echo "Persistence worker failed in staged Wayland smoke test" >&2
             exit 1
           fi
