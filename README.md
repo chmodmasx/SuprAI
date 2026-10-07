@@ -18,7 +18,8 @@ Implemented:
 - AgentRuntime public contract;
 - deterministic MockRuntime;
 - provider port separated from concrete adapters;
-- OpenAI-compatible Chat Completions streaming adapter;
+- tri-state provider capability contract: Unknown / Supported / Unsupported;
+- OpenAI-compatible Chat Completions streaming adapter with explicit effective capability reporting;
 - application composition root that injects the selected provider/runtime;
 - NativeSuprAIRuntime implemented as a thin production facade;
 - RuntimeOrchestrator owns stateful conversation/runtime coordination;
