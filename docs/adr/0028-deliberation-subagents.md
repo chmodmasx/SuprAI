@@ -5,7 +5,7 @@ Date: 2026-10-06
 
 ## Decision
 
-SuprAI will not create a separate `DeliberationBranch` runtime subsystem.
+SuprAI will not create a separate `standalone deliberation-branch` runtime subsystem.
 
 Reasoning isolation/context folding is implemented by the existing subagent architecture defined in ADR-0023:
 
@@ -53,7 +53,7 @@ Other purposes may include:
 All use NativeSuprAIRuntime.
 
 Do not create:
-- DeliberationBranchManager;
+- standalone deliberation-branch manager;
 - separate reasoning-agent runtime;
 - separate branch persistence lifecycle.
 
@@ -307,7 +307,7 @@ Measure:
 ## Consequences
 
 Accepted:
-- no standalone DeliberationBranch architecture;
+- no standalone standalone deliberation-branch architecture;
 - deliberation is a subagent purpose;
 - ReasoningWorkspace is Run-local ephemeral state;
 - ReturnCapsule is the parent merge boundary;
