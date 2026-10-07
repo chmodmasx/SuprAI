@@ -26,6 +26,30 @@ Status: COMPLETE.
 
 Goal: prove the Qt foundation before agent complexity.
 
+Status: **IN PROGRESS**.
+
+Verified vertical slice at commit `9d5f6694deb62bb864de6cd03e55dfb4de866918`:
+- CMake/C++20/Qt 6 application builds in CI with Qt 6.12.0;
+- module PUBLIC/PRIVATE include boundaries are enforced by target-scoped CMake paths;
+- `ApplicationBootstrap` is the concrete composition root;
+- QML three-pane shell starts successfully in the offscreen smoke test;
+- runtime runs on a dedicated QThread;
+- MockRuntime streams a deterministic turn;
+- a concrete OpenAI-compatible provider is injected through the provider port;
+- a fake OpenAI-compatible integration test completes two streamed turns;
+- raw `reasoning_content` from the first turn is verified absent from the second request;
+- 4/4 CTest tests pass;
+- ordinary chat rendering remains plain text in this prototype.
+
+Still required before M1 can be COMPLETE:
+- XDG path helper;
+- structured logging;
+- single-instance/activation implementation;
+- persistence-worker skeleton;
+- explicit settings route;
+- physical Wayland and X11 launch proof;
+- staged Qt/QML deployment proof.
+
 Implement:
 - CMake project;
 - C++20 executable;
@@ -65,6 +89,17 @@ Exit:
 
 Goal: prove the complete agent-facing UI contract independently from model/network behavior.
 
+Early prototype proof already exists for:
+- AgentRuntime boundary;
+- MockRuntime;
+- transcript QAbstractListModel;
+- composer;
+- streaming deltas;
+- cancellation;
+- error display.
+
+M2 is not complete: the durable generalized domain model, tool/approval/clarification UI, runtime capability model and safe Markdown proof remain.
+
 Implement:
 - AgentRuntime abstract interface;
 - runtime capabilities;
@@ -87,6 +122,16 @@ Exit:
 ## M3 — Native SuprAI runtime foundation
 
 Goal: execute real model turns using SuprAI code only.
+
+An intentionally small M3 vertical slice was prototyped early:
+- NativeSuprAIRuntime can execute streamed OpenAI-compatible Chat Completions;
+- SSE parsing and cancellation path exist;
+- provider implementation is injected through a narrow public port;
+- provider transport configuration stays in the application composition layer;
+- separated `reasoning_content` is ephemeral and is not replayed into the next prompt;
+- this behavior is covered by a deterministic fake-server integration test.
+
+This is not the final M3 runtime. Durable Session/Input/Turn/Run state, Responses, capability probing, persistence, token budgeting and explicit turn-state-machine semantics remain.
 
 Implement:
 - NativeSuprAIRuntime;
