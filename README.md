@@ -65,7 +65,22 @@ ApplicationBootstrap
 
 Current source modules expose only their public `include/suprai/...` surface. Concrete runtime/provider implementations live in private source directories and are not visible to unrelated consumers.
 
-This is deliberate: adding or replacing a provider should not require changes to QML or agent orchestration, and replacing UI/runtime implementations should not require exposing implementation details across modules.
+The current M1 vertical slice still connects `NativeSuprAIRuntime` directly to the provider port. That is prototype implementation state, not the final internal runtime shape. ADR-0002 now requires M3 to split the production runtime internally into:
+
+```text
+NativeSuprAIRuntime facade
+          |
+          v
+RuntimeOrchestrator
+          |
+          v
+AgentEngine
+          |
+          v
+provider/tool ports
+```
+
+This is deliberate: adding or replacing a provider should not require changes to QML or orchestration, and stateful session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
 
 ## Build
 
