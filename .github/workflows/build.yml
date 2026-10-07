@@ -15,7 +15,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev xvfb
+          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev xvfb weston
 
       - name: Install Qt 6.12
         uses: jurplel/install-qt-action@v4
@@ -57,6 +57,46 @@ jobs:
               -u QML2_IMPORT_PATH \
               -u QT_ROOT_DIR \
               QT_QPA_PLATFORM=xcb \
+              QT_QUICK_BACKEND=software \
+              SUPRAI_RUNTIME=mock \
+              ./stage/bin/suprai --smoke-test
+
+      - name: Staged Wayland smoke test
+        run: |
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/suprai-weston"
+          export WAYLAND_DISPLAY="wayland-suprai"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+
+          weston \
+            --backend=headless-backend.so \
+            --socket="$WAYLAND_DISPLAY" \
+            --idle-time=0 \
+            --width=1280 \
+            --height=800 \
+            >"$RUNNER_TEMP/weston.log" 2>&1 &
+          WESTON_PID=$!
+          trap 'kill "$WESTON_PID" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 50); do
+            if [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+              break
+            fi
+            sleep 0.1
+          done
+
+          if [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+            cat "$RUNNER_TEMP/weston.log"
+            exit 1
+          fi
+
+          env -u LD_LIBRARY_PATH \
+              -u QT_PLUGIN_PATH \
+              -u QML2_IMPORT_PATH \
+              -u QT_ROOT_DIR \
+              XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+              WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+              QT_QPA_PLATFORM=wayland \
               QT_QUICK_BACKEND=software \
               SUPRAI_RUNTIME=mock \
               ./stage/bin/suprai --smoke-test
