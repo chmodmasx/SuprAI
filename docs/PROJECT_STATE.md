@@ -3,7 +3,7 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 457d556ae4efc2e4b7bbbc429b49deaed6b67d22
+last_verified_commit: ed2bcb4275507bb2c32e429681162b73f544f130
 last_verified_code_commit: 9d5f6694deb62bb864de6cd03e55dfb4de866918
 
 working:
@@ -192,7 +192,7 @@ decisions:
   - initial process model is one modular native application
   - modularity is enforced through CMake targets, public/private headers and directed dependencies
   - concrete implementations are wired only at the application composition root
-  - current production wiring uses provider factory -> Provider port -> NativeSuprAIRuntime
+  - current prototype wiring uses provider factory -> Provider port -> NativeSuprAIRuntime; M3 will insert the accepted RuntimeOrchestrator/AgentEngine layering
   - current native vertical slice uses Chat Completions only; Responses remains planned
   - current prototype conversation history is in-memory and is not durable
   - target persistence may keep untouched empty chats transient until the first accepted Input
