@@ -22,7 +22,7 @@ public:
         return m_requests;
     }
 
-public slots:
+public:
     void generate(const suprai::providers::ProviderRequest &request) override
     {
         m_busy = true;
