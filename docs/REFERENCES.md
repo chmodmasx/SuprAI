@@ -542,8 +542,10 @@ Current useful semantics:
 
 SuprAI response:
 - ADR-0023 models subagents as Task-owned child Sessions.
-- attached and detached semantics are explicit.
-- completion is event-driven, not model polling.
+- purposes include delegation, deliberation, verification, research and coding without separate runtimes;
+- attached and detached semantics are explicit;
+- completion is event-driven, not model polling;
+- deliberation children are read-mostly and return compact derived state rather than raw reasoning.
 
 ### OpenClaw durable Tasks
 
@@ -699,9 +701,13 @@ Training-free related work:
 - MM-ContextFold (2026): persistent compact main context + ephemeral branch contexts, then discard branch trace/raw media after textual fold.
 
 SuprAI response:
-- ADR-0028 proposes DeliberationBranch as a harness-owned, provider-independent mechanism.
-- full-snapshot branches protect canonical context but do not eliminate branch-local peak context;
-- scoped/compacted snapshots must be benchmarked.
+- ADR-0028 rejects a separate DeliberationBranch subsystem;
+- isolated deliberation reuses ADR-0023 subagents as `Task(source=subagent, purpose=deliberation)`;
+- the child Session owns the temporary reasoning context and returns a compact ReturnCapsule;
+- raw child reasoning does not enter parent canonical context by default;
+- child context modes are full/scoped/compacted;
+- full snapshots protect the parent context but do not eliminate child-local peak context;
+- scoped/compacted child snapshots and automatic deliberation policy must be benchmarked.
 
 ### NInfer reasoning-history controls
 
