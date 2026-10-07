@@ -3,7 +3,7 @@
 ```yaml
 milestone: M0
 status: complete_plus_deep_research
-last_verified_commit: 4677f3944b48ca3bea298c2f68eca5845a2bc894
+last_verified_commit: c34547fa6bf4c953da258e297c58a7d6874dabb1
 
 working:
   - repository exists and is writable
@@ -13,9 +13,10 @@ working:
   - proof-driven roadmap exists
   - NativeSuprAIRuntime is the canonical production agent runtime
   - MockRuntime is test-only
-  - Hermes/OpenClaw/Goose/GPT4All/OpenCode/Codex/ACP are research references only
+  - Hermes/OpenClaw/Goose/GPT4All/OpenCode/Codex/ACP/Cline are research references only
   - deep runtime research is recorded under docs/research/
   - advanced execution research is recorded under docs/research/
+  - deep current-Cline code review is recorded under docs/research/2026-10-07-cline-code-review.md
   - AppImage selected as first portable artifact
   - canonical conversation state is SuprAI-owned
   - runtime, UI and persistence have explicit thread ownership
@@ -194,11 +195,20 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
+  - exact AgentEngine vs RuntimeOrchestrator split after Cline review
+  - LargeResultArtifact / oversized tool-result projection design
+  - WorkspaceCheckpointService design and Git/non-Git scope
+  - prepared ChangeSet -> preview -> approval -> exact-apply contract
+  - Proceed While Running / ToolInvocation-to-Task handoff UX and lifecycle
+  - LoopGuard heuristics for local models
+  - tri-state provider capability representation/probing details
+  - lazy empty-session persistence semantics
 
 next_milestone: M1
 next_exact_steps:
   - create modular CMake/Qt source skeleton from ADR-0029
   - establish per-module public/private include boundaries and composition root
+  - keep M1/M2 boundaries compatible with a later AgentEngine vs RuntimeOrchestrator split
   - pin initial development Qt version and minimum CMake/compiler
   - use QApplication because tray integration may require Qt::Widgets while UI remains QML
   - create C++ application bootstrap
