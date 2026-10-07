@@ -16,6 +16,21 @@ struct ProviderRequest {
     QVector<ProviderMessage> messages;
 };
 
+enum class CapabilitySupport {
+    Unknown,
+    Supported,
+    Unsupported
+};
+
+struct ProviderCapabilities {
+    CapabilitySupport chatCompletions = CapabilitySupport::Unknown;
+    CapabilitySupport responses = CapabilitySupport::Unknown;
+    CapabilitySupport toolCalling = CapabilitySupport::Unknown;
+    CapabilitySupport imageInput = CapabilitySupport::Unknown;
+    CapabilitySupport reasoningOutput = CapabilitySupport::Unknown;
+    CapabilitySupport inputTokenCounting = CapabilitySupport::Unknown;
+};
+
 class Provider : public QObject
 {
     Q_OBJECT
@@ -29,6 +44,7 @@ public:
     ~Provider() override = default;
 
     virtual bool isBusy() const = 0;
+    virtual ProviderCapabilities capabilities(const QString &model) const = 0;
 
 public slots:
     virtual void generate(const ProviderRequest &request) = 0;
