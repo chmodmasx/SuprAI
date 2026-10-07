@@ -7,9 +7,6 @@
 
 #include <QMetaObject>
 
-#include <type_traits>
-#include <variant>
-
 namespace suprai::ui {
 
 ChatController::ChatController(suprai::runtime::AgentRuntime *runtime, QObject *parent)
@@ -45,6 +42,31 @@ bool ChatController::reasoning() const
 QString ChatController::lastError() const
 {
     return m_lastError;
+}
+
+QString ChatController::textGenerationCapability() const
+{
+    return suprai::runtime::capabilityStateName(m_capabilities.textGeneration);
+}
+
+QString ChatController::toolCallingCapability() const
+{
+    return suprai::runtime::capabilityStateName(m_capabilities.toolCalling);
+}
+
+QString ChatController::imageInputCapability() const
+{
+    return suprai::runtime::capabilityStateName(m_capabilities.imageInput);
+}
+
+QString ChatController::reasoningOutputCapability() const
+{
+    return suprai::runtime::capabilityStateName(m_capabilities.reasoningOutput);
+}
+
+QString ChatController::exactInputTokenCountingCapability() const
+{
+    return suprai::runtime::capabilityStateName(m_capabilities.exactInputTokenCounting);
 }
 
 void ChatController::sendMessage(const QString &text)
@@ -99,33 +121,71 @@ void ChatController::clearError()
 
 void ChatController::connectRuntime()
 {
-    connect(m_runtime, &suprai::runtime::AgentRuntime::eventEmitted,
-            this, &ChatController::handleApplicationEvent);
+    connect(m_runtime, &suprai::runtime::AgentRuntime::eventOccurred,
+            this, &ChatController::handleRuntimeEvent);
 }
 
-void ChatController::handleApplicationEvent(const suprai::runtime::ApplicationEvent &event)
+void ChatController::handleRuntimeEvent(
+    const suprai::runtime::RuntimeApplicationEvent &event)
 {
-    std::visit(
-        [this](const auto &payload) {
-            using T = std::decay_t<decltype(payload)>;
+    if (const auto *state = suprai::runtime::eventPayload<suprai::runtime::RuntimeStateChanged>(event)) {
+        setRuntimeState(state->state);
+        return;
+    }
 
-            if constexpr (std::is_same_v<T, suprai::runtime::RuntimeStateChangedEvent>) {
-                setRuntimeState(payload.state);
-            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationItemStartedEvent>) {
-                m_transcript->append(payload.item);
-            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationTextDeltaEvent>) {
-                m_transcript->appendDelta(payload.itemId, payload.delta);
-            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationItemCompletedEvent>) {
-                m_transcript->finish(payload.itemId);
-            } else if constexpr (std::is_same_v<T, suprai::runtime::ReasoningActivityChangedEvent>) {
-                setReasoning(payload.active);
-            } else if constexpr (std::is_same_v<T, suprai::runtime::ConversationResetEvent>) {
-                m_transcript->clear();
-            } else if constexpr (std::is_same_v<T, suprai::runtime::RuntimeErrorEvent>) {
-                setLastError(payload.message);
-            }
-        },
-        event.payload);
+    if (const auto *capabilities =
+            suprai::runtime::eventPayload<suprai::runtime::RuntimeCapabilitiesChanged>(event)) {
+        setCapabilities(capabilities->capabilities);
+        return;
+    }
+
+    if (const auto *accepted =
+            suprai::runtime::eventPayload<suprai::runtime::UserMessageAccepted>(event)) {
+        m_transcript->append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::User,
+            accepted->text,
+            suprai::domain::ConversationItemState::Completed,
+            accepted->itemId));
+        return;
+    }
+
+    if (const auto *started =
+            suprai::runtime::eventPayload<suprai::runtime::AssistantMessageStarted>(event)) {
+        m_transcript->append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant,
+            {},
+            suprai::domain::ConversationItemState::Streaming,
+            started->itemId));
+        return;
+    }
+
+    if (const auto *delta =
+            suprai::runtime::eventPayload<suprai::runtime::AssistantTextDelta>(event)) {
+        m_transcript->appendDelta(delta->itemId, delta->delta);
+        return;
+    }
+
+    if (const auto *completed =
+            suprai::runtime::eventPayload<suprai::runtime::AssistantMessageCompleted>(event)) {
+        m_transcript->finish(completed->itemId);
+        return;
+    }
+
+    if (const auto *reasoning =
+            suprai::runtime::eventPayload<suprai::runtime::ReasoningActiveChanged>(event)) {
+        setReasoning(reasoning->active);
+        return;
+    }
+
+    if (suprai::runtime::eventPayload<suprai::runtime::ConversationReset>(event)) {
+        m_transcript->clear();
+        return;
+    }
+
+    if (const auto *error =
+            suprai::runtime::eventPayload<suprai::runtime::RuntimeError>(event)) {
+        setLastError(error->message);
+    }
 }
 
 void ChatController::setRuntimeState(suprai::runtime::RuntimeState state)
@@ -141,6 +201,17 @@ void ChatController::setRuntimeState(suprai::runtime::RuntimeState state)
     if (wasBusy != busy()) {
         emit busyChanged();
     }
+}
+
+void ChatController::setCapabilities(
+    const suprai::runtime::RuntimeCapabilities &capabilities)
+{
+    if (m_capabilities == capabilities) {
+        return;
+    }
+
+    m_capabilities = capabilities;
+    emit capabilitiesChanged();
 }
 
 void ChatController::setReasoning(bool active)
