@@ -1,7 +1,7 @@
 #include "MockRuntime.h"
 
 #include <suprai/domain/ConversationItem.h>
-#include <suprai/runtime/ApplicationEvent.h>
+#include <suprai/runtime/RuntimeApplicationEvent.h>
 
 #include <QTimer>
 
@@ -24,6 +24,18 @@ void MockRuntime::start()
     m_timer->setInterval(35);
     connect(m_timer, &QTimer::timeout, this, &MockRuntime::emitNextChunk);
 
+    emit eventOccurred({
+        .payload = RuntimeCapabilitiesChanged{
+            .capabilities = {
+                .textGeneration = CapabilityState::Supported,
+                .toolCalling = CapabilityState::Unsupported,
+                .imageInput = CapabilityState::Unsupported,
+                .reasoningOutput = CapabilityState::Supported,
+                .exactInputTokenCounting = CapabilityState::Unsupported,
+            },
+        },
+    });
+
     setState(RuntimeState::Ready);
 }
 
@@ -43,11 +55,10 @@ void MockRuntime::submitPrompt(const QString &prompt)
         return;
     }
 
-    emit eventEmitted({
-        .payload = ConversationItemStartedEvent{
-            .item = suprai::domain::makeMessageItem(
-                suprai::domain::ConversationRole::User,
-                text),
+    emit eventOccurred({
+        .payload = UserMessageAccepted{
+            .itemId = suprai::domain::newItemId(),
+            .text = text,
         },
     });
 
@@ -60,20 +71,16 @@ void MockRuntime::submitPrompt(const QString &prompt)
         QStringLiteral("Cambiá SUPRAI_RUNTIME=native para usar un endpoint OpenAI-compatible real."),
     };
 
-    emit eventEmitted({
-        .payload = ConversationItemStartedEvent{
-            .item = suprai::domain::makeMessageItem(
-                suprai::domain::ConversationRole::Assistant,
-                {},
-                suprai::domain::ConversationItemState::Streaming,
-                m_activeId),
+    emit eventOccurred({
+        .payload = AssistantMessageStarted{
+            .itemId = m_activeId,
         },
     });
-
-    emit eventEmitted({
-        .payload = ReasoningActivityChangedEvent{.active = true},
+    emit eventOccurred({
+        .payload = ReasoningActiveChanged{
+            .active = true,
+        },
     });
-
     setState(RuntimeState::Working);
     m_timer->start();
 }
@@ -88,17 +95,17 @@ void MockRuntime::cancelTurn()
     if (m_timer) {
         m_timer->stop();
     }
-
-    emit eventEmitted({
-        .payload = ReasoningActivityChangedEvent{.active = false},
-    });
-
-    emit eventEmitted({
-        .payload = ConversationItemCompletedEvent{
-            .itemId = m_activeId,
+    emit eventOccurred({
+        .payload = ReasoningActiveChanged{
+            .active = false,
         },
     });
-
+    emit eventOccurred({
+        .payload = AssistantMessageCompleted{
+            .itemId = m_activeId,
+            .finalText = m_text,
+        },
+    });
     m_activeId.clear();
     m_text.clear();
     setState(RuntimeState::Ready);
@@ -110,8 +117,8 @@ void MockRuntime::resetSession()
         return;
     }
 
-    emit eventEmitted({
-        .payload = ConversationResetEvent{},
+    emit eventOccurred({
+        .payload = ConversationReset{},
     });
 }
 
@@ -123,16 +130,17 @@ void MockRuntime::emitNextChunk()
     }
 
     if (m_index == 1) {
-        emit eventEmitted({
-            .payload = ReasoningActivityChangedEvent{.active = false},
+        emit eventOccurred({
+            .payload = ReasoningActiveChanged{
+                .active = false,
+            },
         });
     }
 
     const auto chunk = m_chunks.at(m_index++);
     m_text += chunk;
-
-    emit eventEmitted({
-        .payload = ConversationTextDeltaEvent{
+    emit eventOccurred({
+        .payload = AssistantTextDelta{
             .itemId = m_activeId,
             .delta = chunk,
         },
@@ -149,16 +157,17 @@ void MockRuntime::finish()
         m_timer->stop();
     }
 
-    emit eventEmitted({
-        .payload = ReasoningActivityChangedEvent{.active = false},
-    });
-
-    emit eventEmitted({
-        .payload = ConversationItemCompletedEvent{
-            .itemId = m_activeId,
+    emit eventOccurred({
+        .payload = ReasoningActiveChanged{
+            .active = false,
         },
     });
-
+    emit eventOccurred({
+        .payload = AssistantMessageCompleted{
+            .itemId = m_activeId,
+            .finalText = m_text,
+        },
+    });
     m_activeId.clear();
     m_text.clear();
     setState(RuntimeState::Ready);
@@ -171,8 +180,10 @@ void MockRuntime::setState(RuntimeState state)
     }
 
     m_state = state;
-    emit eventEmitted({
-        .payload = RuntimeStateChangedEvent{.state = state},
+    emit eventOccurred({
+        .payload = RuntimeStateChanged{
+            .state = state,
+        },
     });
 }
 
