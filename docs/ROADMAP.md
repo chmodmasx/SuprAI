@@ -116,17 +116,22 @@ Early prototype proof already exists for:
 - cancellation;
 - error display.
 
-M2 is not complete: the durable generalized domain model, tool/approval/clarification UI, runtime capability model and safe Markdown proof remain.
+M2 is not complete: persistence/durable repositories, tool/approval/clarification UI, runtime capability projection and safe Markdown proof remain. The generalized in-memory domain foundation is now implemented.
 
-Implement:
+Implemented foundation:
 - AgentRuntime abstract interface;
-- runtime capabilities;
-- domain/application event contract distinct from future AgentEngine events;
-- Session/Input/Turn/Run/ConversationItem/ToolInvocation/Task domain value types as needed by the UI contract;
-- runtime event bus;
+- Session/Input/Turn/Run identity value types and semantic ID factories;
+- generalized ConversationItem with typed message/reasoning/tool/attachment/runtime content;
+- RuntimeOrchestrator uses Session/Input/Turn/Run and generalized items in memory;
+- TranscriptModel projects message items only and ignores unsupported domain kinds safely;
 - MockRuntime scripted fixture;
-- append-oriented generalized conversation item model;
-- C++ QAbstractListModel transcript projection;
+- C++ QAbstractListModel transcript projection.
+
+Still implement:
+- runtime capability projection;
+- typed domain/application event contract distinct from AgentEngine events;
+- ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
+- durable repository mapping in M3;
 - safe native Markdown rendering proof;
 - composer;
 - streaming delta path;
