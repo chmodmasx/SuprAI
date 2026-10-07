@@ -264,6 +264,14 @@ Core orchestration:
 - task delivery/notification state;
 - background process Tasks;
 - subagent child Sessions;
+- subagent purposes: delegation/deliberation/verification/research/coding;
+- child context modes: full/scoped/compacted;
+- ReasoningWorkspace as ephemeral Run-local scratch state;
+- ReturnCapsule as compact child-to-parent merge boundary;
+- isolated deliberation/context folding through subagents, not a separate branch runtime;
+- direct/isolated/auto deliberation policy prototype;
+- parent/child reasoning-effort/profile selection;
+- read-mostly default policy for deliberation children;
 - attached vs detached child semantics;
 - push-based completion;
 - yield/resume without model polling;
@@ -282,11 +290,15 @@ Advanced candidates:
 - artifacts;
 - voice/STT/TTS;
 - PDF/image/browser previews;
-- nested subagents;
+- bounded nested subagents;
+- multiple deliberators + verifier + parent synthesis;
 - optional systemd transient-process backend after ADR-0027 proof.
 
 Exit:
 - a parent can spawn background work, remain interactive, receive completion without polling, cancel exact work, and recover/reconcile persisted Tasks after restart;
+- a reasoning-heavy Turn can use an attached deliberation child and merge only a compact ReturnCapsule into the parent context;
+- full/scoped/compacted child-context modes are benchmarked against direct reasoning;
+- raw child reasoning does not become parent canonical-history debt;
 - stale child/task completions cannot enter a replaced Session;
 - scheduled occurrences are idempotent and obey current policy.
 
