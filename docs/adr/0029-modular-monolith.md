@@ -78,8 +78,10 @@ Example:
 
 ```text
 suprai_domain
+suprai_provider_api
+suprai_provider_openai
 suprai_runtime
-suprai_providers
+suprai_ui
 suprai_tools
 suprai_context
 suprai_memory
@@ -99,6 +101,16 @@ suprai_containment_bwrap
 ```
 
 The final executable links selected implementations from the composition root.
+
+Current prototype proof:
+- `suprai_provider_api` contains the QObject provider contract;
+- `suprai_provider_openai` contains the concrete Chat Completions adapter;
+- `suprai_runtime` links only the provider contract;
+- concrete `NativeSuprAIRuntime` and `MockRuntime` classes are private runtime implementation headers;
+- the public runtime surface exposes `AgentRuntime` plus narrow creation functions;
+- `suprai_ui` exposes ChatController while TranscriptModel remains private;
+- `ApplicationBootstrap` creates the concrete provider and injects it into the native runtime;
+- CI compiles/tests this layout without a broad global source include directory.
 
 Avoid one giant target containing the entire product.
 
