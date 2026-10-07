@@ -1,3 +1,4 @@
+#include <suprai/runtime/AgentRuntime.h>
 #include <suprai/runtime/RuntimeFactory.h>
 #include <suprai/ui/ChatController.h>
 
