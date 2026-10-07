@@ -5,6 +5,7 @@
 #include <suprai/domain/ConversationItem.h>
 #include <suprai/domain/ExecutionModel.h>
 #include <suprai/providers/Provider.h>
+#include <suprai/runtime/RuntimeApplicationEvent.h>
 #include <suprai/runtime/RuntimeConfig.h>
 #include <suprai/runtime/RuntimeState.h>
 
@@ -44,19 +45,14 @@ public slots:
     void resetSession();
 
 signals:
-    void stateChanged(suprai::runtime::RuntimeState state);
-    void userMessageAccepted(const QString &itemId, const QString &text);
-    void assistantMessageStarted(const QString &itemId);
-    void assistantTextDelta(const QString &itemId, const QString &delta);
-    void assistantMessageCompleted(const QString &itemId, const QString &finalText);
-    void reasoningActiveChanged(bool active);
-    void conversationReset();
-    void errorOccurred(const QString &message);
+    void eventOccurred(const suprai::runtime::RuntimeApplicationEvent &event);
     void stopped();
 
 private:
     void handleRuntimeEvent(const suprai::runtime::internal::RuntimeEvent &event);
     void setState(suprai::runtime::RuntimeState state);
+    void setCapabilities(const suprai::runtime::RuntimeCapabilities &capabilities);
+    void emitApplicationEvent(suprai::runtime::RuntimeApplicationEvent event);
     void finishAssistant(bool persistAnswer);
     suprai::providers::ProviderRequest providerRequest() const;
 
@@ -72,6 +68,7 @@ private:
     std::optional<suprai::domain::Turn> m_activeTurn;
     std::optional<suprai::domain::Run> m_activeRun;
     suprai::runtime::RuntimeState m_state = suprai::runtime::RuntimeState::Stopped;
+    suprai::runtime::RuntimeCapabilities m_capabilities;
     QString m_activeAssistantId;
     QString m_activeAssistantText;
     bool m_reasoningActive = false;
