@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: b2f8e66a7a3e56608dccf233b468eb71a70f2971
-last_verified_code_commit: b2f8e66a7a3e56608dccf233b468eb71a70f2971
+last_verified_commit: 951401751682f19b68e35b17fa4a2eeb49fb4115
+last_verified_code_commit: 951401751682f19b68e35b17fa4a2eeb49fb4115
 
 working:
   - repository exists and is writable
@@ -44,6 +44,8 @@ working:
   - typed AgentEngineEvent -> RuntimeEvent translation is implemented before facade/UI signals
   - blocking interceptors are distinct from non-blocking UI/telemetry/log observers
   - provider/model capabilities use supported/unsupported/unknown semantics
+  - ProviderCapabilities tri-state contract is implemented in the public provider API
+  - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
   - oversized ToolResults use LargeResultArtifact + bounded model projection semantics
@@ -61,6 +63,7 @@ working:
   - NativeSuprAIRuntime runs on a dedicated QThread
   - MockRuntime completes a deterministic streaming turn
   - OpenAI-compatible Chat Completions adapter streams assistant content
+  - provider capability test verifies unknown is preserved rather than collapsed to unsupported
   - provider-separated reasoning_content is ephemeral and excluded from later reconstructed prompts
   - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
   - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
@@ -253,7 +256,7 @@ open_questions:
   - exact ChangeSet diff representation/hash/base-version strategy
   - Continue-while-running UI details and effective process durability backend
   - LoopGuard heuristics for local models
-  - tri-state capability probing/cache invalidation details
+  - provider/model capability probing, provenance and cache invalidation on top of the implemented tri-state contract
   - crash/draft/attachment behavior before an empty transient Session receives its first accepted Input
   - isolated Git-worktree execution mode proof and cleanup semantics
 
