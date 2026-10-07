@@ -3,7 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 9d5f6694deb62bb864de6cd03e55dfb4de866918
+last_verified_commit: 457d556ae4efc2e4b7bbbc429b49deaed6b67d22
+last_verified_code_commit: 9d5f6694deb62bb864de6cd03e55dfb4de866918
 
 working:
   - repository exists and is writable
@@ -37,6 +38,20 @@ working:
   - modular-monolith architecture is accepted
   - architecture-significant subsystems have explicit public/private boundaries and CMake targets
   - ApplicationBootstrap is the concrete composition root
+  - NativeSuprAIRuntime is now canonically an AgentRuntime facade over RuntimeOrchestrator -> AgentEngine
+  - RuntimeOrchestrator owns stateful Session/Run/persistence/approval/task/context orchestration
+  - AgentEngine owns the comparatively stateless provider/tool iteration kernel
+  - engine events are translated to domain/application events before UI projection
+  - blocking interceptors are distinct from non-blocking UI/telemetry/log observers
+  - provider/model capabilities use supported/unsupported/unknown semantics
+  - transparent provider retry is forbidden after observable generation begins
+  - provider actual input-token usage feeds conservative future token-budget calibration
+  - oversized ToolResults use LargeResultArtifact + bounded model projection semantics
+  - approvals are bound to exact execution/action identity
+  - file mutations use prepared ChangeSet -> preview -> approval -> exact-apply semantics
+  - long-running ToolInvocations may explicitly transfer ownership to TaskManager
+  - WorkspaceCheckpointService is planned as an optional project capability with conversation/workspace restore separated
+  - untouched empty chats may remain transient until the first accepted Input
   - functional Qt/QML prototype source exists and builds in CI with Qt 6.12.0
   - current source tree enforces module public/private include boundaries
   - current CMake targets are suprai_domain, suprai_provider_api, suprai_provider_openai, suprai_runtime, suprai_ui, and suprai
@@ -52,10 +67,10 @@ working:
 
 accepted_adrs:
   - ADR-0001 native Qt stack
-  - ADR-0002 native SuprAI runtime
-  - ADR-0003 normalized inference transports; Responses preferred + Chat compatibility
+  - ADR-0002 native SuprAI runtime with RuntimeOrchestrator/AgentEngine split
+  - ADR-0003 normalized inference transports; Responses preferred + Chat compatibility + tri-state capabilities
   - ADR-0004 explicit agent-turn state machine
-  - ADR-0005 PolicyEngine separate from OS containment
+  - ADR-0005 PolicyEngine separate from OS containment + identity-bound approvals/ChangeSet mutation contract
   - ADR-0006 MCP 2026-07-28-first native client
   - ADR-0007 Agent Skills standard
   - ADR-0008 SQLite/FTS5 + bounded curated memory v1
@@ -64,17 +79,17 @@ accepted_adrs:
   - ADR-0013 freedesktop-first Linux desktop integration
   - ADR-0015 explicit Qt thread ownership
   - ADR-0017 append-oriented generalized conversation items
-  - ADR-0018 provider-aware token budgeting
-  - ADR-0019 auditable derived context compaction
+  - ADR-0018 provider-aware token budgeting with actual-usage calibration
+  - ADR-0019 auditable derived context compaction + LargeResultArtifact projections
   - ADR-0020 prompt/KV caches are optimization only
   - ADR-0021 distinct Session/Input/Turn/Run/Attempt/Task identities
   - ADR-0022 queued input + steering semantics
   - ADR-0023 subagents as Task-owned child Sessions
-  - ADR-0024 unified durable Task registry
+  - ADR-0024 unified durable Task registry + ToolInvocation-to-Task ownership handoff
   - ADR-0025 owner-generation-aware restart recovery
   - ADR-0026 schedules separate from Task execution
   - ADR-0028 isolated deliberation reuses subagent infrastructure
-  - ADR-0029 modular monolith with explicit ports and composition root
+  - ADR-0029 modular monolith with explicit ports, runtime layering, event projection and observer/interceptor boundaries
 
 proposed_adrs:
   - ADR-0009 jsoncons as isolated JSON Schema 2020-12 validator
@@ -91,7 +106,8 @@ decisions:
   - C++20 application core and agent runtime
   - CMake/Ninja
   - no Electron or Node runtime in shipped core app
-  - NativeSuprAIRuntime is built from the start
+  - NativeSuprAIRuntime is built from the start as the production AgentRuntime facade
+  - NativeSuprAIRuntime internally separates RuntimeOrchestrator from AgentEngine
   - no planned Hermes/OpenClaw runtime dependency or adapter
   - provider wire protocols terminate at provider transports
   - canonical internal inference types are SuprAI-owned
@@ -99,7 +115,12 @@ decisions:
   - Chat Completions remains compatibility transport
   - provider-side conversation/response state is never canonical
   - every model request must remain reconstructible from SuprAI-owned state
-  - AgentLoop is an explicit state machine
+  - provider/model capabilities are tri-state: supported, unsupported or unknown
+  - missing capability metadata is never treated as authoritative unsupported
+  - provider retries are transparent only before observable text/reasoning/media/tool-call output
+  - engine events are not UI contracts; RuntimeEventAdapter maps them to domain/application events
+  - UI/telemetry/log observers never synchronously gate provider streaming
+  - AgentEngine/TurnStateMachine uses explicit state transitions/effects
   - conversation history is append-oriented generalized items with stable SuprAI IDs
   - Session/Input/Turn/Run/ProviderAttempt/ToolInvocation/Task identities are distinct
   - input acceptance is separate from foreground-turn completion
@@ -126,6 +147,8 @@ decisions:
   - attached and detached child work have explicit lifecycle semantics
   - subagent/task completion is push/event driven; model polling loops are forbidden
   - TaskManager unifies subagent/process/MCP/scheduled background work
+  - a foreground ToolInvocation may explicitly transfer process ownership to TaskManager to continue while running
+  - losing a UI observer is not process ownership transfer
   - Task execution state and result-delivery state are separate
   - cancel_requested is not the same as confirmed cancelled
   - task tool side effects are journaled before execution
@@ -138,6 +161,10 @@ decisions:
   - scheduled execution revalidates current policy
   - canonical tool schemas use JSON Schema 2020-12
   - tool authorization is allow/ask/deny with scoped rules
+  - approvals are bound to exact Session/Turn/Run/Task/ToolInvocation/UserAction identity
+  - file mutation approval binds to an exact prepared ChangeSet and expected base/version
+  - stale approved mutations are invalidated rather than applied
+  - tool/process output has independent memory/UI/model/artifact bounds
   - approval is not sandboxing
   - containment is feature-probed Landlock/bubblewrap/none
   - MCP targets current final 2026-07-28 semantics
@@ -148,8 +175,11 @@ decisions:
   - SQLite FTS5 exists before semantic/vector memory
   - memory records carry provenance/trust outside recalled prose
   - token budgeting uses effective runtime context, final-request accounting and output reserve
+  - provider-reported actual usage may conservatively calibrate future estimated counts
   - provider automatic truncation is not normal context management
   - compaction produces derived auditable artifacts and never rewrites canonical history
+  - provider-confirmed overflow has a bounded deterministic emergency-recovery path
+  - oversized ToolResults are stored/referenced as LargeResultArtifacts instead of injected wholesale into model context
   - prompt/KV caches are performance-only
   - UI thread, runtime thread and persistence thread have explicit ownership
   - Wayland first, X11 compatibility where practical
@@ -165,6 +195,7 @@ decisions:
   - current production wiring uses provider factory -> Provider port -> NativeSuprAIRuntime
   - current native vertical slice uses Chat Completions only; Responses remains planned
   - current prototype conversation history is in-memory and is not durable
+  - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
   - open-ended providers/tools/skills use registries instead of central switch statements
@@ -214,14 +245,15 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - exact AgentEngine vs RuntimeOrchestrator split after Cline review
-  - LargeResultArtifact / oversized tool-result projection design
-  - WorkspaceCheckpointService design and Git/non-Git scope
-  - prepared ChangeSet -> preview -> approval -> exact-apply contract
-  - Proceed While Running / ToolInvocation-to-Task handoff UX and lifecycle
+  - exact C++ AgentEngine/RuntimeOrchestrator port/class API while migrating the current vertical slice
+  - LargeResultArtifact storage/retention/read-range implementation details
+  - WorkspaceCheckpointService backend, Git/non-Git scope and cleanup policy
+  - exact ChangeSet diff representation/hash/base-version strategy
+  - Continue-while-running UI details and effective process durability backend
   - LoopGuard heuristics for local models
-  - tri-state provider capability representation/probing details
-  - lazy empty-session persistence semantics
+  - tri-state capability probing/cache invalidation details
+  - crash/draft/attachment behavior before an empty transient Session receives its first accepted Input
+  - isolated Git-worktree execution mode proof and cleanup semantics
 
 next_milestone: M1
 next_exact_steps:
@@ -234,6 +266,7 @@ next_exact_steps:
   - verify KDE Wayland and X11 locally; add GNOME Wayland proof when available
   - prove Qt/QML staged deployment directory
   - keep public/private module boundaries enforced as new subsystems arrive
+  - do not fake the RuntimeOrchestrator/AgentEngine split in M1; preserve boundaries so M3 can implement it cleanly
   - then complete M2 domain/runtime UI contract before expanding M3 durability/tool semantics
 
 verification_commands:
