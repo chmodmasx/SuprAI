@@ -2,10 +2,9 @@
 
 #include "runtime/RuntimeState.h"
 
+#include <QAbstractItemModel>
 #include <QObject>
 #include <QString>
-
-class QAbstractItemModel;
 
 namespace suprai::runtime {
 class AgentRuntime;
