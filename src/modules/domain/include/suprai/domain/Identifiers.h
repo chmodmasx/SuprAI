@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringView>
 #include <QUuid>
 
 namespace suprai::domain {
