@@ -4,6 +4,7 @@
 #include <QSet>
 #include <QSignalSpy>
 #include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTest>
