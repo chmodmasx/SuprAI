@@ -8,6 +8,7 @@
 
 namespace suprai::providers {
 class Provider;
+struct ProviderMessage;
 }
 
 namespace suprai::runtime {
