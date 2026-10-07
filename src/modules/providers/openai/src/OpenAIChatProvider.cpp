@@ -35,6 +35,20 @@ bool OpenAIChatProvider::isBusy() const
     return !m_reply.isNull();
 }
 
+ProviderCapabilities OpenAIChatProvider::capabilities(const QString &model) const
+{
+    Q_UNUSED(model);
+
+    return {
+        .chatCompletions = CapabilitySupport::Supported,
+        .responses = CapabilitySupport::Unsupported,
+        .toolCalling = CapabilitySupport::Unsupported,
+        .imageInput = CapabilitySupport::Unsupported,
+        .reasoningOutput = CapabilitySupport::Unknown,
+        .inputTokenCounting = CapabilitySupport::Unsupported,
+    };
+}
+
 QString OpenAIChatProvider::endpoint() const
 {
     QString base = m_config.baseUrl.trimmed();
