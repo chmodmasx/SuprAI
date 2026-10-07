@@ -5,6 +5,8 @@
 #include <QTest>
 #include <QVector>
 
+#include <algorithm>
+
 class MockRuntimeTest final : public QObject
 {
     Q_OBJECT
