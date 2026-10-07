@@ -43,7 +43,7 @@ private:
     QPointer<QNetworkReply> m_reply;
     SseDecoder m_decoder;
     QByteArray m_errorPreview;
-    bool m_terminalEmitted = false;
+    QString m_pendingError;
     bool m_cancelRequested = false;
 };
 
