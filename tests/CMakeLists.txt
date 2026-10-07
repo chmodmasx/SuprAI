@@ -31,10 +31,23 @@ target_link_libraries(tst_mock_runtime
 )
 add_test(NAME mock_runtime COMMAND tst_mock_runtime)
 
+add_executable(tst_native_runtime
+    tst_native_runtime.cpp
+)
+target_link_libraries(tst_native_runtime
+    PRIVATE
+        Qt6::Core
+        Qt6::Network
+        Qt6::Test
+        suprai_runtime
+)
+add_test(NAME native_runtime COMMAND tst_native_runtime)
+
 set_tests_properties(
     sse_decoder
     transcript_model
     mock_runtime
+    native_runtime
     PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )
