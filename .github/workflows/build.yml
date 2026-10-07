@@ -47,6 +47,8 @@ jobs:
           cmake --install build --prefix "$PWD/stage"
           test -x stage/bin/suprai
           test -f stage/bin/qt.conf
+          test -f stage/plugins/platforms/libqxcb.so
+          test -f stage/plugins/platforms/libqwayland.so
 
       - name: Staged install smoke test
         run: |
