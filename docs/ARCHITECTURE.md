@@ -915,31 +915,30 @@ Do not compress every failure into "offline".
 
 ## 19. Logging
 
-Categories:
-- app.lifecycle
-- runtime
-- provider
-- agent.loop
-- tools
-- mcp
-- context
-- memory
-- session
-- platform
-- persistence
-- packaging
+The current implemented Qt logging categories are:
+- `suprai.app`;
+- `suprai.runtime`;
+- `suprai.provider`;
+- `suprai.persistence`;
+- `suprai.platform`.
+
+Add narrower categories only when a subsystem exists and the split improves filtering; do not maintain speculative unused categories.
+
+The default message pattern contains timestamp, severity, category and message. `QT_MESSAGE_PATTERN` remains an explicit user/developer override.
 
 Secrets and sensitive tool arguments/results must be redacted according to policy.
 
-Use XDG state locations.
-
 ## 20. XDG paths
 
-Suggested:
-- config: `$XDG_CONFIG_HOME/suprai/`
-- data: `$XDG_DATA_HOME/suprai/`
-- cache: `$XDG_CACHE_HOME/suprai/`
-- state/logs: `$XDG_STATE_HOME/suprai/`
+`AppPaths` uses Qt `QStandardPaths`:
+- `AppConfigLocation`;
+- `AppDataLocation`;
+- `CacheLocation`;
+- `StateLocation`.
+
+Startup creates the resolved directories explicitly and fails early if required application paths cannot be created.
+
+Do not hard-code `~/.config`, `~/.local/share`, `~/.cache` or `~/.local/state`; the effective locations follow the user's XDG/Qt environment.
 
 ## 21. AppImage
 
