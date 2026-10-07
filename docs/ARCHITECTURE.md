@@ -849,21 +849,98 @@ Track steering custody separately:
 
 An accepted steer is not proof that the model consumed it.
 
-## 27. Subagents
+## 27. Subagents and isolated deliberation
 
-Subagents follow ADR-0023.
+Subagents follow ADR-0023. Isolated reasoning/context folding follows ADR-0028 and reuses the same subagent infrastructure.
 
 A subagent is a `Task(source=subagent)` that owns a child Session and executes through NativeSuprAIRuntime.
 
-Default child context is isolated and explicit through a TaskBrief. Full parent history is not cloned implicitly.
+Subagent purpose may include:
+
+```text
+delegation
+deliberation
+verification
+research
+coding
+```
+
+Purpose is policy/profile metadata, not a separate runtime type.
+
+### Child context
+
+Default child context is isolated and explicit through a TaskBrief.
+
+Context modes:
+
+```text
+full
+scoped
+compacted
+```
+
+- `full`: complete parent snapshot when small enough;
+- `scoped`: only selected relevant parent/project/evidence state;
+- `compacted`: derived compacted snapshot governed by ADR-0019.
+
+Do not implicitly clone the entire parent conversation by default.
+
+### Deliberation subagent
+
+Reasoning-heavy work uses:
+
+```text
+Parent Session
+  -> Parent Turn
+      -> Task(source=subagent, purpose=deliberation)
+          -> Child Session
+              -> Child Turn/Run
+                  -> ReasoningWorkspace
+                  -> optional read/search tools
+                  -> ReturnCapsule
+      -> compact result merged into parent
+```
+
+Do not create a standalone `DeliberationBranchManager`.
+
+`ReasoningWorkspace` is ephemeral Run-local scratch state. It may contain provider-separated reasoning, temporary plans, hypotheses and provisional conclusions. It is not canonical conversation history and does not itself create context isolation.
+
+`ReturnCapsule` is the compact parent merge boundary. It should distinguish facts, hypotheses, decisions, unresolved work and evidence references rather than returning raw chain-of-thought.
+
+Raw child reasoning is excluded from parent canonical context by default.
+
+A deliberation child is read-mostly by default and must not gain broader side-effect authority merely because it is reasoning deeply.
+
+### Child authority
 
 Child authority is the intersection of parent/requester authority, child profile restrictions, task-specific restrictions and current policy. A child can never widen privileges.
+
+### Model and scheduling
+
+A child may use:
+- the same provider/model as the parent;
+- the same model with different reasoning effort;
+- a different configured model/profile later.
+
+Logical child concurrency does not imply simultaneous GPU generation. ExecutionScheduler chooses physical scheduling according to provider/model/hardware capability.
+
+### Lifecycle
 
 Subagent work may be:
 - attached: parent Turn depends on completion;
 - detached: child may outlive the spawning Run/Turn.
 
+A deliberation child used to answer the current Turn is normally attached.
+
 Completion is push/event driven. Parent models do not poll child state. A runtime control equivalent to `yieldUntil(tasks)` may suspend a Turn without consuming model tokens and resume it through a new Run generation when required Tasks settle.
+
+### Critical context limitation
+
+Isolation prevents raw reasoning from becoming parent/future-context debt, but it does not make the child's own context window infinite.
+
+For child starting context `P` and child reasoning/tool trace `R`, child peak remains approximately `P + R`.
+
+Therefore full/scoped/compacted context selection and output/reasoning headroom remain required.
 
 ## 28. TaskManager and background work
 
