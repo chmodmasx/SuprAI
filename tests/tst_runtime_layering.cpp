@@ -3,7 +3,6 @@
 
 #include <suprai/providers/Provider.h>
 
-#include <QSignalSpy>
 #include <QTest>
 #include <QVector>
 
@@ -135,21 +134,31 @@ private slots:
             },
             &engine);
 
-        QSignalSpy completed(&orchestrator, &RuntimeOrchestrator::assistantMessageCompleted);
-        QSignalSpy reasoning(&orchestrator, &RuntimeOrchestrator::reasoningActiveChanged);
+        int completed = 0;
+        QVector<bool> reasoning;
+
+        connect(&orchestrator, &RuntimeOrchestrator::eventOccurred,
+                this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
+            if (suprai::runtime::eventPayload<suprai::runtime::AssistantMessageCompleted>(event)) {
+                ++completed;
+            } else if (const auto *active =
+                           suprai::runtime::eventPayload<suprai::runtime::ReasoningActiveChanged>(event)) {
+                reasoning.push_back(active->active);
+            }
+        });
 
         orchestrator.start();
         orchestrator.submitPrompt(QStringLiteral("primero"));
 
-        QCOMPARE(completed.size(), 1);
+        QCOMPARE(completed, 1);
         QCOMPARE(provider->requests().size(), 1);
         QCOMPARE(reasoning.size(), 2);
-        QCOMPARE(reasoning.at(0).at(0).toBool(), true);
-        QCOMPARE(reasoning.at(1).at(0).toBool(), false);
+        QCOMPARE(reasoning.at(0), true);
+        QCOMPARE(reasoning.at(1), false);
 
         orchestrator.submitPrompt(QStringLiteral("segundo"));
 
-        QCOMPARE(completed.size(), 2);
+        QCOMPARE(completed, 2);
         QCOMPARE(provider->requests().size(), 2);
 
         const auto &secondRequest = provider->requests().at(1);
