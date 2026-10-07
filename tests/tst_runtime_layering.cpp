@@ -64,6 +64,64 @@ class RuntimeLayeringTest final : public QObject
     Q_OBJECT
 
 private slots:
+    void executionIdentitiesTrackConversationLineage()
+    {
+        using namespace suprai::runtime::internal;
+
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        RuntimeOrchestrator orchestrator(
+            {
+                .model = QStringLiteral("test-model"),
+                .systemPrompt = QStringLiteral("system"),
+            },
+            &engine);
+
+        const QString initialSessionId = orchestrator.session().id;
+        QVERIFY(initialSessionId.startsWith(QStringLiteral("session_")));
+
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("primero"));
+
+        QCOMPARE(orchestrator.inputs().size(), 1);
+        QCOMPARE(orchestrator.turns().size(), 1);
+        QCOMPARE(orchestrator.runs().size(), 1);
+        QCOMPARE(orchestrator.history().size(), 2);
+
+        const auto firstInput = orchestrator.inputs().at(0);
+        const auto firstTurn = orchestrator.turns().at(0);
+        const auto firstRun = orchestrator.runs().at(0);
+
+        QCOMPARE(firstInput.sessionId, initialSessionId);
+        QCOMPARE(firstTurn.sessionId, initialSessionId);
+        QCOMPARE(firstTurn.inputId, firstInput.id);
+        QVERIFY(firstTurn.parentTurnId.isEmpty());
+        QCOMPARE(firstRun.turnId, firstTurn.id);
+        QCOMPARE(firstRun.generation, 1);
+        QCOMPARE(orchestrator.history().at(0).turnId, firstTurn.id);
+        QCOMPARE(orchestrator.history().at(1).turnId, firstTurn.id);
+
+        orchestrator.submitPrompt(QStringLiteral("segundo"));
+
+        QCOMPARE(orchestrator.inputs().size(), 2);
+        QCOMPARE(orchestrator.turns().size(), 2);
+        QCOMPARE(orchestrator.runs().size(), 2);
+        QCOMPARE(orchestrator.history().size(), 4);
+
+        const auto secondTurn = orchestrator.turns().at(1);
+        QCOMPARE(secondTurn.parentTurnId, firstTurn.id);
+        QCOMPARE(orchestrator.history().at(2).turnId, secondTurn.id);
+        QCOMPARE(orchestrator.history().at(3).turnId, secondTurn.id);
+
+        orchestrator.resetSession();
+
+        QVERIFY(orchestrator.session().id != initialSessionId);
+        QCOMPARE(orchestrator.inputs().size(), 0);
+        QCOMPARE(orchestrator.turns().size(), 0);
+        QCOMPARE(orchestrator.runs().size(), 0);
+        QCOMPARE(orchestrator.history().size(), 0);
+    }
+
     void orchestratorOwnsHistoryWhileEngineOwnsExecution()
     {
         using namespace suprai::runtime::internal;
