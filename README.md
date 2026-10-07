@@ -32,7 +32,11 @@ Implemented:
 - typed AgentEngineEvent -> RuntimeEvent adapter boundary;
 - raw provider `reasoning_content` treated as ephemeral and excluded from later reconstructed prompts;
 - explicit public/private module include boundaries enforced by CMake targets;
-- CI build, unit/integration tests and QML startup smoke test.
+- CI build, 7/7 unit/integration tests and QML startup smoke test;
+- CMake-owned portable staging of Qt libraries, QML imports and plugins;
+- independent staged smoke tests through XCB/Xvfb and Wayland/Weston with Qt development environment variables removed;
+- bundled X11 and Wayland QPA plugins verified in the stage;
+- clean worker shutdown enforced by CI.
 
 Not implemented yet:
 - durable SQLite sessions/Turns/Runs;
@@ -91,7 +95,8 @@ Requirements:
 - CMake 3.24+;
 - Ninja;
 - C++20 compiler;
-- Qt 6.8+.
+- Qt 6.8+ with the WaylandClient component when building the Linux desktop target;
+- Wayland client development headers/libraries on the build host.
 
 CI currently verifies with Qt 6.12.0.
 
