@@ -24,6 +24,7 @@ public:
         QObject *parent = nullptr);
 
     bool isBusy() const override;
+    suprai::providers::ProviderCapabilities capabilities(const QString &model) const override;
 
 public slots:
     void generate(const suprai::providers::ProviderRequest &request) override;
