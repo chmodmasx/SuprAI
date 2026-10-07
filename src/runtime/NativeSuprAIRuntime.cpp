@@ -2,7 +2,6 @@
 
 #include "domain/ConversationItem.h"
 
-#include <Q_ASSERT>
 #include <utility>
 
 namespace suprai::runtime {
