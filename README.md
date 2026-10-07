@@ -2,43 +2,123 @@
 
 Linux-first native desktop AI agent and workspace.
 
-SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface, its own C++ application core, and its own agent runtime. Hermes Agent, OpenClaw and similar projects are research references only.
+SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface, C++ application core, and native agent runtime. Hermes Agent, OpenClaw, Cline and similar projects are research references only.
 
-Status: architecture/planning.
+**Status: functional modular prototype / M1 in progress.**
 
-## Initial target
+The current vertical slice compiles and is CI-verified with Qt 6.12. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+
+## Current prototype
+
+Implemented:
+- native C++20 + Qt Quick/QML application;
+- three-pane desktop shell;
+- composer, streaming transcript, stop/cancel, new conversation and error state;
+- dedicated runtime QThread so provider work does not run on the UI thread;
+- AgentRuntime public contract;
+- deterministic MockRuntime;
+- provider port separated from concrete adapters;
+- OpenAI-compatible Chat Completions streaming adapter;
+- application composition root that injects the selected provider/runtime;
+- raw provider `reasoning_content` treated as ephemeral and excluded from later reconstructed prompts;
+- explicit public/private module include boundaries enforced by CMake targets;
+- CI build, unit/integration tests and QML startup smoke test.
+
+Not implemented yet:
+- durable SQLite sessions/Turns/Runs;
+- Responses transport;
+- tool calling and approvals;
+- MCP;
+- memory;
+- subagents/deliberation;
+- projects/files;
+- safe Markdown renderer;
+- settings UI for editing provider configuration;
+- AppImage release artifact;
+- physical KDE/GNOME Wayland and X11 smoke tests.
+
+## Module shape
+
+SuprAI is a modular monolith.
+
+```text
+QML
+ |
+ v
+ChatController
+ |
+ v
+AgentRuntime
+ |----------------------|
+ |                      |
+MockRuntime      NativeSuprAIRuntime
+                       |
+                       v
+                  Provider port
+                       ^
+                       |
+             OpenAI-compatible adapter
+
+ApplicationBootstrap
+  wires concrete implementations
+```
+
+Current source modules expose only their public `include/suprai/...` surface. Concrete runtime/provider implementations live in private source directories and are not visible to unrelated consumers.
+
+This is deliberate: adding or replacing a provider should not require changes to QML or agent orchestration, and replacing UI/runtime implementations should not require exposing implementation details across modules.
+
+## Build
+
+Requirements:
+- CMake 3.24+;
+- Ninja;
+- C++20 compiler;
+- Qt 6.8+.
+
+CI currently verifies with Qt 6.12.0.
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSUPRAI_BUILD_TESTS=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+Run the deterministic prototype:
+
+```bash
+SUPRAI_RUNTIME=mock ./build/src/suprai
+```
+
+Run against an OpenAI-compatible local endpoint:
+
+```bash
+SUPRAI_RUNTIME=native \
+SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
+SUPRAI_MODEL=bonsai2-27b \
+SUPRAI_API_KEY=no-key \
+./build/src/suprai
+```
+
+Current configuration environment variables:
+- `SUPRAI_RUNTIME`;
+- `SUPRAI_BASE_URL`;
+- `SUPRAI_MODEL`;
+- `SUPRAI_API_KEY`;
+- `SUPRAI_SYSTEM_PROMPT`.
+
+Prototype rule: API keys are not persisted in QSettings. Secure persistent credentials wait for SecretStore.
+
+## Target
 
 - Linux only.
 - Qt 6 + QML UI.
 - C++20 core and agent runtime.
 - CMake + Ninja.
 - AppImage as the first portable artifact.
-- Local-first operation with optional remote model/API endpoints.
-- OpenAI-compatible model providers, including local servers.
-- Streaming chat, tool calling, approvals, sessions, projects/workspaces, files, settings, tray and notifications.
-- MCP support.
-- Wayland first; X11 compatibility retained where practical.
+- Local-first with optional remote model/API endpoints.
+- OpenAI-compatible providers first.
+- Wayland first; X11 compatibility where practical.
 - No Node/Electron dependency in the shipped core application.
-
-## Architectural direction
-
-The UI and the agent runtime are separate modules, but both are SuprAI.
-
-```text
-QML UI
-  |
-Application/Core layer
-  |
-AgentRuntime interface
-  |-----------------------------|
-NativeSuprAIRuntime         MockRuntime
-  |
-providers + agent loop + tools + MCP + memory + sessions
-```
-
-There is no Hermes runtime dependency in the planned product.
-
-Hermes Agent, Hermes Desktop, OpenClaw and other agent systems may be inspected to learn from solved problems such as lifecycle, tool execution, approvals, memory, session semantics, remote execution and desktop integration. Their protocols and implementations are not SuprAI's architecture.
 
 ## Documentation
 
@@ -51,6 +131,4 @@ AI agents should read in this order:
 5. `docs/PROJECT_STATE.md`
 6. `docs/REFERENCES.md`
 
-The documentation is intentionally optimized for machine continuation rather than tutorial-style prose.
-
-Documentation is living and canonical: when research or implementation proves an older decision inferior or wrong, the repository documentation is updated/replaced in place. Git history preserves old versions; current files should not retain stale competing truths.
+Documentation is living and canonical. When research or implementation proves an older decision inferior or wrong, current documentation is replaced or corrected. Git history is the archive.
