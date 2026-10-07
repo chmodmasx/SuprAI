@@ -145,136 +145,93 @@ Each architecture-significant subsystem is an independently testable CMake targe
 - explicit dependencies;
 - boundary tests.
 
-Proposed structure:
+Current implemented structure:
 
 ```text
 /
-  AGENTS.md
   CMakeLists.txt
-  cmake/
 
   src/
+    CMakeLists.txt
+
     app/
       main.cpp
-      bootstrap/
-        ApplicationBootstrap.*
-      controllers/
+      AppConfig.h
+      AppSettings.*
+      ApplicationBootstrap.*
 
     modules/
       domain/
-        CMakeLists.txt
         include/suprai/domain/
-        src/
-
-      runtime/
-        CMakeLists.txt
-        include/suprai/runtime/
-        src/
-          native/
-          mock/
+          ConversationItem.h
 
       providers/
-        CMakeLists.txt
-        include/suprai/providers/
-        src/
-          openai/
+        api/
+          include/suprai/providers/
+            Provider.h
+          src/
+            Provider.cpp
 
-      tools/
-        CMakeLists.txt
-        include/suprai/tools/
-        src/
-          builtin/
+        openai/
+          include/suprai/providers/
+            OpenAIProviderFactory.h
+          src/
+            OpenAIChatProvider.*
+            SseDecoder.*
 
-      context/
-        CMakeLists.txt
-        include/suprai/context/
+      runtime/
+        include/suprai/runtime/
+          AgentRuntime.h
+          RuntimeConfig.h
+          RuntimeFactory.h
+          RuntimeState.h
         src/
+          NativeSuprAIRuntime.*
+          MockRuntime.*
+          RuntimeFactory.cpp
 
-      memory/
-        CMakeLists.txt
-        include/suprai/memory/
+      ui/
+        include/suprai/ui/
+          ChatController.h
         src/
-
-      mcp/
-        CMakeLists.txt
-        include/suprai/mcp/
-        src/
-          transports/
-
-      persistence/
-        CMakeLists.txt
-        include/suprai/persistence/
-        src/
-          sqlite/
-          migrations/
-
-      skills/
-        CMakeLists.txt
-        include/suprai/skills/
-        src/
-
-      platform_linux/
-        CMakeLists.txt
-        include/suprai/platform/
-        src/
-
-      services/
-        CMakeLists.txt
-        include/suprai/services/
-        src/
+          ChatController.cpp
+          TranscriptModel.*
 
     qml/
       Main.qml
-      shell/
-      chat/
-      sessions/
-      projects/
-      files/
-      settings/
-      components/
-      theme/
 
   tests/
-    unit/
-    contract/
-    integration/
-
-  packaging/
-    appimage/
-    desktop/
-
-  docs/
-    ARCHITECTURE.md
-    DOCUMENTATION_POLICY.md
-    ROADMAP.md
-    PROJECT_STATE.md
-    REFERENCES.md
-    research/
-    adr/
+    tst_sse_decoder.cpp
+    tst_transcript_model.cpp
+    tst_mock_runtime.cpp
+    tst_native_runtime.cpp
 ```
 
-Exact filenames can evolve; the module boundaries may not.
+Future modules (tools/context/memory/MCP/persistence/skills/platform/services) are added under the same public-contract/private-implementation rule when their milestone begins.
+
+
 
 ### 5.1 CMake targets
 
-Expected coarse targets:
+Current targets:
 
 ```text
 suprai_domain
+suprai_provider_api
+suprai_provider_openai
 suprai_runtime
-suprai_providers
-suprai_tools
-suprai_context
-suprai_memory
-suprai_mcp
-suprai_persistence
-suprai_skills
-suprai_services
-suprai_platform_linux
-suprai_app
+suprai_ui
+suprai
 ```
 
-Concrete optional adapters may be narrower targets.
+Important dependency enforcement:
+- `suprai_runtime` links `suprai_provider_api`, not `suprai_provider_openai`;
+- the concrete OpenAI adapter exposes only its factory include directory publicly;
+- concrete runtime classes and TranscriptModel remain private implementation headers;
+- tests that intentionally inspect an internal helper receive that private include path explicitly and locally;
+- `ApplicationBootstrap` is the only current production composition point that chooses Mock vs native and constructs the concrete provider.
+
+Future subsystem and adapter targets are added when implemented.
 
 Do not create one giant library containing all application logic.
 
@@ -486,6 +443,11 @@ Providers supply model inference only.
 Initial provider family:
 - OpenAI-compatible HTTP.
 
+Current prototype transport:
+- streaming Chat Completions at `/v1/chat/completions`.
+
+The current Chat transport is a vertical-slice adapter, not the final provider architecture. Responses remains the preferred planned transport where semantic compatibility is verified.
+
 Internal runtime semantics are NOT Chat Completions or Responses wire objects.
 
 SuprAI owns normalized `InferenceRequest` / `InferenceEvent` types (ADR-0003).
@@ -508,6 +470,13 @@ Provider interface normalizes:
 - finish/incomplete/failure semantics.
 
 Do not encode agent policy inside provider classes and do not leak provider wire types above `providers/`.
+
+Prototype reasoning behavior:
+- if a compatible endpoint emits `reasoning_content`, the adapter exposes it separately;
+- NativeSuprAIRuntime currently treats that raw reasoning as ephemeral status only;
+- raw reasoning is not appended to the in-memory canonical chat history and is therefore not replayed into the next request;
+- this invariant is covered by a fake-server integration test;
+- providers that do not expose separated reasoning simply provide no reasoning stream; correctness must not depend on the extension.
 
 ## 9. Tool system
 
