@@ -33,3 +33,10 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: ctest --test-dir build --output-on-failure
+
+      - name: QML startup smoke test
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          SUPRAI_RUNTIME: mock
+        run: ./build/src/suprai --smoke-test
