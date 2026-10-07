@@ -239,7 +239,7 @@ Do not build new behavior around deprecated MCP roots, sampling or protocol logg
 Research upstream agents only to compare ergonomics and failure modes.
 
 Exit:
-- configured MCP tools participate in the same NativeSuprAIRuntime AgentLoop as built-in tools;
+- configured MCP tools participate in the same NativeSuprAIRuntime -> RuntimeOrchestrator -> AgentEngine tool path as built-in tools;
 - standard SKILL.md skills are progressively discoverable/loadable.
 
 ## M6 — Context management + memory
@@ -391,7 +391,7 @@ These extend NativeSuprAIRuntime; they do not introduce Hermes/OpenClaw as runti
 ## Priority rule
 
 If forced to choose:
-1. correctness of AgentLoop/tool/session lifecycle;
+1. correctness of AgentEngine/tool/RuntimeOrchestrator/session lifecycle;
 2. recoverability and security;
 3. native Linux behavior;
 4. interaction quality;
