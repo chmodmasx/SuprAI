@@ -65,6 +65,7 @@ jobs:
           test -f stage/plugins/platforms/libqxcb.so
           test -f stage/plugins/platforms/libqwayland.so
           test -f stage/plugins/sqldrivers/libqsqlite.so
+          test -f stage/plugins/sqldrivers/libqsqlite.so
 
       - name: Staged install smoke test
         run: |
