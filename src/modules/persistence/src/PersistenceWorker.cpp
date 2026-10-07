@@ -1,12 +1,11 @@
 #include <suprai/persistence/PersistenceWorker.h>
 
 #include <QDir>
-#include <QFileInfo>
 #include <QSqlError>
 #include <QSqlQuery>
-#include <QStringList>
 #include <QThread>
 #include <QUuid>
+#include <QVariant>
 
 #include <utility>
 
@@ -15,7 +14,6 @@ namespace suprai::persistence {
 namespace {
 
 constexpr int CurrentSchemaVersion = 1;
-constexpr int BusyTimeoutMs = 5000;
 
 bool execSql(
     QSqlDatabase &database,
@@ -28,7 +26,7 @@ bool execSql(
     }
 
     if (errorMessage) {
-        *errorMessage = QStringLiteral("SQLite error: %1 | SQL: %2")
+        *errorMessage = QStringLiteral("%1 | SQL: %2")
                             .arg(query.lastError().text(), sql);
     }
     return false;
@@ -39,7 +37,13 @@ bool execSql(
 PersistenceWorker::PersistenceWorker(QString stateDirectory, QObject *parent)
     : QObject(parent)
     , m_stateDirectory(std::move(stateDirectory))
-    , m_databasePath(QDir(m_stateDirectory).filePath(QStringLiteral("suprai.sqlite3")))
+    , m_databasePath(
+          m_stateDirectory.isEmpty()
+              ? QString{}
+              : QDir(m_stateDirectory).filePath(QStringLiteral("suprai.sqlite3")))
+    , m_connectionName(
+          QStringLiteral("suprai-writer-%1")
+              .arg(QUuid::createUuid().toString(QUuid::WithoutBraces)))
 {
 }
 
@@ -67,8 +71,8 @@ void PersistenceWorker::initialize()
 
     if (!openDatabase(&errorMessage)
         || !configureDatabase(&errorMessage)
-        || !migrate(&errorMessage)
         || !verifyFts5(&errorMessage)
+        || !migrate(&errorMessage)
         || !verifyDatabase(&errorMessage)) {
         closeDatabase();
         emit errorOccurred(errorMessage);
@@ -83,22 +87,29 @@ void PersistenceWorker::shutdown()
 {
     Q_ASSERT(thread() == QThread::currentThread());
 
+    if (m_ready || m_database.isValid()) {
+        closeDatabase();
+    }
+
     m_ready = false;
-    closeDatabase();
     emit stopped();
 }
 
 bool PersistenceWorker::openDatabase(QString *errorMessage)
 {
-    if (m_database.isValid() && m_database.isOpen()) {
-        return true;
+    Q_ASSERT(thread() == QThread::currentThread());
+
+    if (!QSqlDatabase::isDriverAvailable(QStringLiteral("QSQLITE"))) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral(
+                "El driver SQLite de Qt (QSQLITE) no está disponible.");
+        }
+        return false;
     }
 
-    m_connectionName =
-        QStringLiteral("suprai-writer-%1")
-            .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-
-    m_database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connectionName);
+    m_database = QSqlDatabase::addDatabase(
+        QStringLiteral("QSQLITE"),
+        m_connectionName);
     m_database.setDatabaseName(m_databasePath);
 
     if (m_database.open()) {
@@ -114,47 +125,41 @@ bool PersistenceWorker::openDatabase(QString *errorMessage)
 
 bool PersistenceWorker::configureDatabase(QString *errorMessage)
 {
-    QSqlQuery walQuery(m_database);
-    if (!walQuery.exec(QStringLiteral("PRAGMA journal_mode=WAL"))
-        || !walQuery.next()
-        || walQuery.value(0).toString().compare(
+    Q_ASSERT(thread() == QThread::currentThread());
+
+    if (!execSql(m_database, QStringLiteral("PRAGMA foreign_keys = ON"), errorMessage)
+        || !execSql(m_database, QStringLiteral("PRAGMA busy_timeout = 5000"), errorMessage)) {
+        return false;
+    }
+
+    QSqlQuery journalQuery(m_database);
+    if (!journalQuery.exec(QStringLiteral("PRAGMA journal_mode = WAL"))
+        || !journalQuery.next()
+        || journalQuery.value(0).toString().compare(
                QStringLiteral("wal"),
                Qt::CaseInsensitive) != 0) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("SQLite no pudo activar WAL: %1")
-                                .arg(walQuery.lastError().text());
+                                .arg(journalQuery.lastError().text());
         }
         return false;
     }
 
-    if (!execSql(m_database, QStringLiteral("PRAGMA foreign_keys=ON"), errorMessage)
-        || !execSql(
-            m_database,
-            QStringLiteral("PRAGMA busy_timeout=%1").arg(BusyTimeoutMs),
-            errorMessage)) {
-        return false;
-    }
-
-    QSqlQuery foreignKeys(m_database);
-    if (!foreignKeys.exec(QStringLiteral("PRAGMA foreign_keys"))
-        || !foreignKeys.next()
-        || foreignKeys.value(0).toInt() != 1) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("SQLite foreign_keys no quedó habilitado.");
-        }
-        return false;
-    }
-
-    return true;
+    return execSql(
+        m_database,
+        QStringLiteral("PRAGMA synchronous = NORMAL"),
+        errorMessage);
 }
 
 bool PersistenceWorker::migrate(QString *errorMessage)
 {
+    Q_ASSERT(thread() == QThread::currentThread());
+
     QSqlQuery versionQuery(m_database);
     if (!versionQuery.exec(QStringLiteral("PRAGMA user_version"))
         || !versionQuery.next()) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("No se pudo leer SQLite user_version: %1")
+            *errorMessage = QStringLiteral("No se pudo leer PRAGMA user_version: %1")
                                 .arg(versionQuery.lastError().text());
         }
         return false;
@@ -164,16 +169,28 @@ bool PersistenceWorker::migrate(QString *errorMessage)
 
     if (version > CurrentSchemaVersion) {
         if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("La base usa schema %1 pero esta versión de SuprAI soporta hasta %2.")
-                    .arg(version)
-                    .arg(CurrentSchemaVersion);
+            *errorMessage = QStringLiteral(
+                "La base de datos usa schema v%1, más nuevo que el soportado v%2.")
+                                .arg(version)
+                                .arg(CurrentSchemaVersion);
         }
         return false;
     }
 
-    if (version == 0) {
-        return migrateToV1(errorMessage);
+    if (version == 0 && !migrateToV1(errorMessage)) {
+        return false;
+    }
+
+    QSqlQuery finalVersionQuery(m_database);
+    if (!finalVersionQuery.exec(QStringLiteral("PRAGMA user_version"))
+        || !finalVersionQuery.next()
+        || finalVersionQuery.value(0).toInt() != CurrentSchemaVersion) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral(
+                "La migración SQLite no dejó el schema en la versión esperada v%1.")
+                                .arg(CurrentSchemaVersion);
+        }
+        return false;
     }
 
     return true;
@@ -181,74 +198,99 @@ bool PersistenceWorker::migrate(QString *errorMessage)
 
 bool PersistenceWorker::migrateToV1(QString *errorMessage)
 {
+    Q_ASSERT(thread() == QThread::currentThread());
+
     if (!m_database.transaction()) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("No se pudo iniciar migración SQLite: %1")
+            *errorMessage = QStringLiteral("No se pudo iniciar la migración SQLite v1: %1")
                                 .arg(m_database.lastError().text());
         }
         return false;
     }
 
-    const QStringList statements{
+    const QStringList statements = {
+        QStringLiteral(
+            "CREATE TABLE schema_migrations ("
+            "version INTEGER PRIMARY KEY,"
+            "applied_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
+            ")"),
         QStringLiteral(
             "CREATE TABLE sessions ("
             "id TEXT PRIMARY KEY,"
-            "parent_session_id TEXT REFERENCES sessions(id),"
-            "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-            "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            "parent_session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,"
+            "created_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now')),"
+            "updated_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
             ")"),
         QStringLiteral(
             "CREATE TABLE inputs ("
             "id TEXT PRIMARY KEY,"
             "session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,"
+            "sequence INTEGER NOT NULL,"
             "text TEXT NOT NULL,"
-            "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            "created_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now')),"
+            "UNIQUE(session_id, sequence)"
             ")"),
         QStringLiteral(
             "CREATE TABLE turns ("
             "id TEXT PRIMARY KEY,"
             "session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,"
-            "input_id TEXT NOT NULL REFERENCES inputs(id),"
-            "parent_turn_id TEXT REFERENCES turns(id),"
-            "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            "input_id TEXT NOT NULL REFERENCES inputs(id) ON DELETE RESTRICT,"
+            "parent_turn_id TEXT REFERENCES turns(id) ON DELETE SET NULL,"
+            "sequence INTEGER NOT NULL,"
+            "created_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now')),"
+            "UNIQUE(session_id, sequence)"
             ")"),
         QStringLiteral(
             "CREATE TABLE runs ("
             "id TEXT PRIMARY KEY,"
             "turn_id TEXT NOT NULL REFERENCES turns(id) ON DELETE CASCADE,"
-            "generation INTEGER NOT NULL CHECK(generation > 0),"
-            "state TEXT NOT NULL DEFAULT 'created',"
-            "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-            "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "generation INTEGER NOT NULL CHECK(generation >= 1),"
+            "status TEXT NOT NULL,"
+            "created_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now')),"
+            "updated_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now')),"
             "UNIQUE(turn_id, generation)"
             ")"),
         QStringLiteral(
             "CREATE TABLE conversation_items ("
             "id TEXT PRIMARY KEY,"
-            "session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,"
             "turn_id TEXT NOT NULL REFERENCES turns(id) ON DELETE CASCADE,"
-            "ordinal INTEGER NOT NULL CHECK(ordinal >= 0),"
+            "sequence INTEGER NOT NULL,"
             "kind TEXT NOT NULL,"
             "state TEXT NOT NULL,"
             "payload_json TEXT NOT NULL,"
-            "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-            "UNIQUE(session_id, ordinal)"
+            "created_at TEXT NOT NULL DEFAULT "
+            "(strftime('%Y-%m-%dT%H:%M:%fZ','now')),"
+            "UNIQUE(turn_id, sequence)"
             ")"),
         QStringLiteral(
-            "CREATE INDEX idx_inputs_session ON inputs(session_id, created_at)"),
+            "CREATE INDEX idx_inputs_session "
+            "ON inputs(session_id, sequence)"),
         QStringLiteral(
-            "CREATE INDEX idx_turns_session ON turns(session_id, created_at)"),
+            "CREATE INDEX idx_turns_session "
+            "ON turns(session_id, sequence)"),
         QStringLiteral(
-            "CREATE INDEX idx_runs_turn ON runs(turn_id, generation)"),
+            "CREATE INDEX idx_runs_turn "
+            "ON runs(turn_id, generation)"),
         QStringLiteral(
-            "CREATE INDEX idx_items_turn ON conversation_items(turn_id, ordinal)"),
+            "CREATE INDEX idx_items_turn "
+            "ON conversation_items(turn_id, sequence)"),
         QStringLiteral(
-            "CREATE VIRTUAL TABLE conversation_fts USING fts5("
+            "CREATE VIRTUAL TABLE conversation_items_fts USING fts5("
             "item_id UNINDEXED,"
             "session_id UNINDEXED,"
-            "text"
+            "text,"
+            "tokenize='unicode61'"
             ")"),
-        QStringLiteral("PRAGMA user_version=1"),
+        QStringLiteral(
+            "INSERT INTO schema_migrations(version) VALUES(1)"),
+        QStringLiteral("PRAGMA user_version = 1"),
     };
 
     for (const auto &statement : statements) {
@@ -258,53 +300,96 @@ bool PersistenceWorker::migrateToV1(QString *errorMessage)
         }
     }
 
-    if (!m_database.commit()) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("No se pudo confirmar migración SQLite: %1")
-                                .arg(m_database.lastError().text());
-        }
-        m_database.rollback();
-        return false;
+    if (m_database.commit()) {
+        return true;
     }
 
-    return true;
+    if (errorMessage) {
+        *errorMessage = QStringLiteral("No se pudo confirmar la migración SQLite v1: %1")
+                            .arg(m_database.lastError().text());
+    }
+    m_database.rollback();
+    return false;
 }
 
 bool PersistenceWorker::verifyFts5(QString *errorMessage)
 {
-    QSqlQuery query(m_database);
-    if (!query.exec(QStringLiteral("SELECT count(*) FROM conversation_fts"))
-        || !query.next()) {
-        if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("FTS5 no está disponible en la SQLite empaquetada: %1")
-                    .arg(query.lastError().text());
+    Q_ASSERT(thread() == QThread::currentThread());
+
+    const QString probeName = QStringLiteral("__suprai_fts5_probe");
+
+    if (!execSql(
+            m_database,
+            QStringLiteral(
+                "CREATE VIRTUAL TABLE temp.%1 USING fts5(content)")
+                .arg(probeName),
+            errorMessage)) {
+        if (errorMessage && !errorMessage->isEmpty()) {
+            *errorMessage = QStringLiteral("SQLite FTS5 no está disponible: %1")
+                                .arg(*errorMessage);
         }
         return false;
     }
 
-    return true;
+    const bool dropped = execSql(
+        m_database,
+        QStringLiteral("DROP TABLE temp.%1").arg(probeName),
+        errorMessage);
+
+    return dropped;
 }
 
 bool PersistenceWorker::verifyDatabase(QString *errorMessage)
 {
-    QSqlQuery versionQuery(m_database);
-    if (!versionQuery.exec(QStringLiteral("PRAGMA user_version"))
-        || !versionQuery.next()
-        || versionQuery.value(0).toInt() != CurrentSchemaVersion) {
+    Q_ASSERT(thread() == QThread::currentThread());
+
+    QSqlQuery foreignKeysQuery(m_database);
+    if (!foreignKeysQuery.exec(QStringLiteral("PRAGMA foreign_keys"))
+        || !foreignKeysQuery.next()
+        || foreignKeysQuery.value(0).toInt() != 1) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("SQLite schema version inválido.");
+            *errorMessage = QStringLiteral("SQLite foreign_keys no está activo.");
         }
         return false;
     }
 
-    QSqlQuery checkQuery(m_database);
-    if (!checkQuery.exec(QStringLiteral("PRAGMA quick_check"))
-        || !checkQuery.next()
-        || checkQuery.value(0).toString() != QStringLiteral("ok")) {
+    QSqlQuery journalQuery(m_database);
+    if (!journalQuery.exec(QStringLiteral("PRAGMA journal_mode"))
+        || !journalQuery.next()
+        || journalQuery.value(0).toString().compare(
+               QStringLiteral("wal"),
+               Qt::CaseInsensitive) != 0) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("SQLite no está operando en WAL.");
+        }
+        return false;
+    }
+
+    QSqlQuery quickCheck(m_database);
+    if (!quickCheck.exec(QStringLiteral("PRAGMA quick_check"))
+        || !quickCheck.next()
+        || quickCheck.value(0).toString() != QStringLiteral("ok")) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("SQLite quick_check falló: %1")
-                                .arg(checkQuery.lastError().text());
+                                .arg(quickCheck.lastError().text());
+        }
+        return false;
+    }
+
+    QSqlQuery foreignKeyCheck(m_database);
+    if (!foreignKeyCheck.exec(QStringLiteral("PRAGMA foreign_key_check"))) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("SQLite foreign_key_check falló: %1")
+                                .arg(foreignKeyCheck.lastError().text());
+        }
+        return false;
+    }
+
+    if (foreignKeyCheck.next()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral(
+                "SQLite detectó una violación de clave foránea en %1.")
+                                .arg(foreignKeyCheck.value(0).toString());
         }
         return false;
     }
@@ -314,21 +399,15 @@ bool PersistenceWorker::verifyDatabase(QString *errorMessage)
 
 void PersistenceWorker::closeDatabase()
 {
-    if (!m_database.isValid()) {
-        return;
-    }
+    Q_ASSERT(thread() == QThread::currentThread());
 
-    const QString connectionName = m_connectionName;
-
-    if (m_database.isOpen()) {
+    if (m_database.isValid()) {
         m_database.close();
+        m_database = QSqlDatabase{};
     }
 
-    m_database = QSqlDatabase{};
-    m_connectionName.clear();
-
-    if (!connectionName.isEmpty()) {
-        QSqlDatabase::removeDatabase(connectionName);
+    if (QSqlDatabase::contains(m_connectionName)) {
+        QSqlDatabase::removeDatabase(m_connectionName);
     }
 }
 
