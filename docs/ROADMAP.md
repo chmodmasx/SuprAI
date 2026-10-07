@@ -135,6 +135,8 @@ An intentionally small M3 vertical slice was prototyped early:
 - typed AgentEngineEvent -> RuntimeEvent translation exists;
 - OpenAI-compatible Chat Completions streaming, SSE parsing and cancellation path exist;
 - provider implementation is injected through a narrow public port;
+- ProviderCapabilities already models Unknown / Supported / Unsupported;
+- the current Chat adapter reports effective adapter capabilities explicitly;
 - provider transport configuration stays in the application composition layer;
 - separated `reasoning_content` is ephemeral and is not replayed into the next prompt;
 - these boundaries are covered by deterministic fake-provider/fake-server tests.
@@ -155,8 +157,8 @@ Implement:
 - OpenAI Responses-compatible transport;
 - Chat Completions compatibility transport;
 - SSE/stream parsers;
-- provider capability resolution with supported/unsupported/unknown semantics;
-- capability provenance/probing without treating missing metadata as denial;
+- expand the implemented supported/unsupported/unknown capability contract into provider/model resolution;
+- capability provenance/probing/cache invalidation without treating missing metadata as denial;
 - provider effective context-window discovery;
 - TokenBudgetService capability ladder;
 - model configuration;
