@@ -176,6 +176,14 @@ install(TARGETS suprai
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+# Qt's Linux deployment closure currently misses Qt6Widgets for this QML
+# executable even though QApplication creates a direct runtime dependency.
+# Keep the dependency explicit and let the deploy scanner close its transitive
+# dependencies and plugins.
+install(IMPORTED_RUNTIME_ARTIFACTS Qt6::Widgets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
 set(SUPRAI_DEPLOY_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_suprai.cmake")
 file(GENERATE
     OUTPUT "${SUPRAI_DEPLOY_SCRIPT}"
