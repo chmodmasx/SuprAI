@@ -2,6 +2,40 @@
 
 namespace suprai::runtime::internal {
 
+namespace {
+
+suprai::runtime::CapabilityState projectCapability(
+    suprai::providers::CapabilitySupport support)
+{
+    switch (support) {
+    case suprai::providers::CapabilitySupport::Supported:
+        return suprai::runtime::CapabilityState::Supported;
+    case suprai::providers::CapabilitySupport::Unsupported:
+        return suprai::runtime::CapabilityState::Unsupported;
+    case suprai::providers::CapabilitySupport::Unknown:
+        return suprai::runtime::CapabilityState::Unknown;
+    }
+    return suprai::runtime::CapabilityState::Unknown;
+}
+
+suprai::runtime::CapabilityState textGenerationCapability(
+    const suprai::providers::ProviderCapabilities &capabilities)
+{
+    if (capabilities.chatCompletions == suprai::providers::CapabilitySupport::Supported
+        || capabilities.responses == suprai::providers::CapabilitySupport::Supported) {
+        return suprai::runtime::CapabilityState::Supported;
+    }
+
+    if (capabilities.chatCompletions == suprai::providers::CapabilitySupport::Unsupported
+        && capabilities.responses == suprai::providers::CapabilitySupport::Unsupported) {
+        return suprai::runtime::CapabilityState::Unsupported;
+    }
+
+    return suprai::runtime::CapabilityState::Unknown;
+}
+
+} // namespace
+
 AgentEngine::AgentEngine(
     suprai::providers::Provider *provider,
     QObject *parent)
@@ -18,6 +52,23 @@ AgentEngine::AgentEngine(
 bool AgentEngine::isBusy() const
 {
     return m_provider && m_provider->isBusy();
+}
+
+suprai::runtime::RuntimeCapabilities AgentEngine::capabilities(const QString &model) const
+{
+    if (!m_provider) {
+        return {};
+    }
+
+    const auto providerCapabilities = m_provider->capabilities(model);
+
+    return {
+        .textGeneration = textGenerationCapability(providerCapabilities),
+        .toolCalling = projectCapability(providerCapabilities.toolCalling),
+        .imageInput = projectCapability(providerCapabilities.imageInput),
+        .reasoningOutput = projectCapability(providerCapabilities.reasoningOutput),
+        .exactInputTokenCounting = projectCapability(providerCapabilities.inputTokenCounting),
+    };
 }
 
 void AgentEngine::generate(const suprai::providers::ProviderRequest &request)
