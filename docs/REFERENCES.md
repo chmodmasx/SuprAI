@@ -2,7 +2,7 @@
 
 Purpose: preserve architecture lessons and current external contracts without coupling SuprAI to another agent implementation.
 
-Last major research pass: 2026-10-06.
+Last major research pass: 2026-10-07.
 
 ## Research policy
 
@@ -15,6 +15,59 @@ Reference projects are used to:
 They are not production runtime dependencies unless a future ADR explicitly approves one.
 
 Never copy source merely because a pattern is useful. Check the source license and reimplement/adapt deliberately.
+
+## Cline
+
+Upstream:
+- https://github.com/cline/cline
+
+Pinned deep-review commit:
+- e6a3b1cf0a730f396b34727e2da3ab73871b9553
+
+Detailed review:
+- docs/research/2026-10-07-cline-code-review.md
+
+Current architecture lesson:
+Cline has evolved from the historical VS Code-centric Task/controller design toward a layered SDK:
+
+- shared contracts;
+- provider/model layer;
+- comparatively stateless agent execution layer;
+- stateful core/session orchestration;
+- host-specific UI/terminal/diff adapters.
+
+High-value lessons for SuprAI:
+- separate execution kernel from stateful orchestration;
+- project low-level engine events into domain/UI events;
+- do not let observers/telemetry block streaming;
+- never transparently retry after observable model/tool output;
+- feed actual provider token counts back into context budgeting;
+- virtualize oversized tool results into bounded model previews + recoverable artifacts;
+- support explicit process-to-background-Task handoff ("Proceed While Running");
+- separate workspace checkpoints from conversation lineage;
+- bind approvals/user actions to exact child/run/tool identities;
+- represent unknown provider capabilities as unknown rather than unsupported;
+- isolate MCP failures and never auto-start repo-controlled executable integrations merely by opening a project.
+
+Useful product patterns:
+- native diff preview around generic mutation tools;
+- independent restore of conversation/workspace/both;
+- root-only default session history with durable child sessions;
+- loop/mistake detection;
+- optional Git-worktree-isolated coding tasks;
+- Plan/Act-like behavior as profiles/policies rather than a hard-coded runtime boolean.
+
+Do not copy:
+- VS Code/WebView/React stack;
+- browser/Puppeteer as a baseline dependency;
+- permissive default auto-approval;
+- a simple parallel/sequential flag as the complete concurrency policy;
+- historical giant Task/controller architecture;
+- mutable-history compaction semantics.
+
+License observed:
+- Apache-2.0.
+Reimplement architectural ideas by default. Any substantial direct source reuse requires deliberate license/NOTICE/provenance handling.
 
 ## Hermes Agent / Hermes Desktop
 
