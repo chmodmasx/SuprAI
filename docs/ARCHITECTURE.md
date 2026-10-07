@@ -135,88 +135,94 @@ C++20 initially.
 
 Raise only when a concrete feature justifies a newer compiler/toolchain floor.
 
-## 5. Repository structure
+## 5. Repository structure and modularity
 
-Proposed:
+SuprAI is a modular monolith (ADR-0029).
+
+Each architecture-significant subsystem is an independently testable CMake target with:
+- public contract;
+- private implementation;
+- explicit dependencies;
+- boundary tests.
+
+Proposed structure:
 
 ```text
 /
   AGENTS.md
   CMakeLists.txt
   cmake/
+
   src/
     app/
       main.cpp
-      Application.*
-    domain/
-      Session.*
-      Input.*
-      Turn.*
-      Run.*
-      ConversationItem.*
-      ToolInvocation.*
-      Task.*
-      AgentEvent.*
-      RuntimeCapabilities.*
-    runtime/
-      AgentRuntime.*
-      native/
-        NativeSuprAIRuntime.*
-        TurnStateMachine.*
-        InputCoordinator.*
-        ExecutionScheduler.*
-        TaskManager.*
-        RuntimeEventBus.*
-      mock/
-        MockRuntime.*
-    providers/
-      Provider.*
-      ProviderRegistry.*
-      openai/
-        OpenAICompatibleProvider.*
-        SSEParser.*
-    tools/
-      Tool.*
-      ToolRegistry.*
-      ToolExecutor.*
-      ApprovalManager.*
-      builtin/
-    mcp/
-      MCPClientManager.*
-      transports/
-    context/
-      ContextManager.*
-      TokenBudgetService.*
-      CompactionPolicy.*
-      CompactionArtifact.*
-    memory/
-      MemoryService.*
-    skills/
-      SkillRegistry.*
-    services/
-      SessionService.*
-      ProjectService.*
-      SettingsService.*
-      SecretService.*
-    persistence/
-      AppDatabase.*
-      PersistenceWorker.*
-      SessionStore.*
-      InputStore.*
-      TurnStore.*
-      RunStore.*
-      ItemStore.*
-      ToolInvocationStore.*
-      TaskStore.*
-      ScheduleStore.*
-      migrations/
-    platform/
-      linux/
-        LinuxDesktopIntegration.*
-        LinuxNotifications.*
-        LinuxTray.*
-        LinuxPortal.*
-        LinuxSecretStore.*
+      bootstrap/
+        ApplicationBootstrap.*
+      controllers/
+
+    modules/
+      domain/
+        CMakeLists.txt
+        include/suprai/domain/
+        src/
+
+      runtime/
+        CMakeLists.txt
+        include/suprai/runtime/
+        src/
+          native/
+          mock/
+
+      providers/
+        CMakeLists.txt
+        include/suprai/providers/
+        src/
+          openai/
+
+      tools/
+        CMakeLists.txt
+        include/suprai/tools/
+        src/
+          builtin/
+
+      context/
+        CMakeLists.txt
+        include/suprai/context/
+        src/
+
+      memory/
+        CMakeLists.txt
+        include/suprai/memory/
+        src/
+
+      mcp/
+        CMakeLists.txt
+        include/suprai/mcp/
+        src/
+          transports/
+
+      persistence/
+        CMakeLists.txt
+        include/suprai/persistence/
+        src/
+          sqlite/
+          migrations/
+
+      skills/
+        CMakeLists.txt
+        include/suprai/skills/
+        src/
+
+      platform_linux/
+        CMakeLists.txt
+        include/suprai/platform/
+        src/
+
+      services/
+        CMakeLists.txt
+        include/suprai/services/
+        src/
+
     qml/
       Main.qml
       shell/
@@ -227,23 +233,164 @@ Proposed:
       settings/
       components/
       theme/
+
   tests/
     unit/
-    runtime/
-    provider/
-    tools/
-    mcp/
+    contract/
     integration/
+
   packaging/
     appimage/
     desktop/
+
   docs/
     ARCHITECTURE.md
+    DOCUMENTATION_POLICY.md
     ROADMAP.md
     PROJECT_STATE.md
     REFERENCES.md
+    research/
     adr/
 ```
+
+Exact filenames can evolve; the module boundaries may not.
+
+### 5.1 CMake targets
+
+Expected coarse targets:
+
+```text
+suprai_domain
+suprai_runtime
+suprai_providers
+suprai_tools
+suprai_context
+suprai_memory
+suprai_mcp
+suprai_persistence
+suprai_skills
+suprai_services
+suprai_platform_linux
+suprai_app
+```
+
+Concrete optional adapters may be narrower targets.
+
+Do not create one giant library containing all application logic.
+
+Use:
+- target-scoped include paths;
+- PUBLIC/PRIVATE link visibility;
+- no global include directories;
+- no cross-module inclusion of implementation headers.
+
+### 5.2 Dependency rule
+
+High-level direction:
+
+```text
+QML/UI
+   |
+   v
+Application/controllers
+   |
+   v
+Domain + public service/runtime contracts
+   ^
+   |
+Runtime/orchestration
+   |
+   +--> provider ports
+   +--> tool ports
+   +--> context ports
+   +--> memory ports
+   +--> persistence/repository ports
+   +--> MCP ports
+   +--> platform-service ports
+```
+
+Concrete infrastructure depends on public contracts. Core/domain logic does not depend on infrastructure implementations.
+
+Examples:
+- TurnStateMachine does not include OpenAI/NInfer/vLLM implementation headers;
+- QML does not call SQL/provider/MCP objects;
+- MemoryService does not read conversation tables directly;
+- provider modules do not reach into ToolExecutor internals;
+- platform-neutral modules do not include Linux implementation headers.
+
+### 5.3 Composition root
+
+Concrete wiring happens only in the application bootstrap:
+
+```text
+ApplicationBootstrap
+  -> create persistence adapters
+  -> create platform services
+  -> configure ProviderRegistry
+  -> configure ToolRegistry
+  -> create ContextManager
+  -> create MemoryService
+  -> create TaskManager
+  -> create NativeSuprAIRuntime
+  -> expose application-facing controllers/models
+```
+
+Modules do not construct arbitrary concrete implementations from sibling modules.
+
+Avoid a global service locator. Dependencies are explicit constructor/factory inputs or narrow references.
+
+### 5.4 Extension families
+
+Open-ended families use registries:
+
+```text
+ProviderRegistry
+ToolRegistry
+SkillRegistry
+```
+
+Adding a provider/tool/skill should not require editing central switch statements throughout the codebase.
+
+Provider wire formats, MCP schemas and platform implementation details terminate at their adapter boundary.
+
+### 5.5 Optional modules
+
+Optional capability examples:
+- MCP;
+- tray;
+- global shortcuts;
+- secure persistent secrets;
+- containment backends;
+- PDF;
+- voice;
+- WebEngine preview.
+
+Absence must be a valid state.
+
+Compile-time feature switches remain at CMake/composition/adapter boundaries. Do not scatter `#ifdef` throughout domain/runtime code.
+
+### 5.6 Data ownership
+
+Each authoritative state family has one owner.
+
+No module reads another module's SQLite tables directly.
+
+Cross-module data access occurs through an explicit repository/query/service interface.
+
+Examples:
+- TaskManager owns Task lifecycle;
+- MemoryService owns memory semantics;
+- SecretStore owns secrets;
+- canonical conversation persistence goes through repository ports;
+- provider state never becomes canonical session authority.
+
+### 5.7 Public plugin ABI
+
+There is intentionally no public binary plugin ABI yet.
+
+Initial modularity is source-level/interface/configuration modularity.
+
+A future stable dynamic plugin ABI requires its own ADR after real external consumers prove the requirement.
 
 ## 6. AgentRuntime boundary
 
