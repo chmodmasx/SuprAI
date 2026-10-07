@@ -53,8 +53,8 @@ Unknown capability may trigger a conservative probe, explicit configuration, or 
 
 ## Consequences
 
-- AgentLoop consumes only normalized events.
+- AgentEngine consumes only normalized inference events.
 - Transport tests must include malformed SSE, partial tool arguments, terminal events and cancellation.
 - A provider attempt may be transparently retried only before any observable text, reasoning, media or tool call has been emitted; after observable generation, failure/incomplete state is explicit rather than silently replayed.
 - Provider feature support is capability metadata, not inferred from product name.
-- New provider transports can be added without changing AgentLoop semantics.
+- New provider transports can be added without changing AgentEngine semantics.
