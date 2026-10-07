@@ -28,7 +28,7 @@ Goal: prove the Qt foundation before agent complexity.
 
 Status: **IN PROGRESS**.
 
-Verified vertical slice at commit `9d5f6694deb62bb864de6cd03e55dfb4de866918`:
+Verified vertical slice at commit `b2f8e66a7a3e56608dccf233b468eb71a70f2971`:
 - CMake/C++20/Qt 6 application builds in CI with Qt 6.12.0;
 - module PUBLIC/PRIVATE include boundaries are enforced by target-scoped CMake paths;
 - `ApplicationBootstrap` is the concrete composition root;
@@ -36,9 +36,13 @@ Verified vertical slice at commit `9d5f6694deb62bb864de6cd03e55dfb4de866918`:
 - runtime runs on a dedicated QThread;
 - MockRuntime streams a deterministic turn;
 - a concrete OpenAI-compatible provider is injected through the provider port;
+- NativeSuprAIRuntime is a thin facade over RuntimeOrchestrator -> AgentEngine;
+- AgentEngine emits typed internal events translated by RuntimeEventAdapter;
+- RuntimeOrchestrator owns in-memory history/current assistant state in the current prototype;
 - a fake OpenAI-compatible integration test completes two streamed turns;
+- a dedicated runtime-layering test verifies that raw reasoning stays outside orchestrator history;
 - raw `reasoning_content` from the first turn is verified absent from the second request;
-- 4/4 CTest tests pass;
+- 5/5 CTest tests pass;
 - ordinary chat rendering remains plain text in this prototype.
 
 Still required before M1 can be COMPLETE:
@@ -125,20 +129,22 @@ Exit:
 Goal: execute real model turns using SuprAI code only.
 
 An intentionally small M3 vertical slice was prototyped early:
-- NativeSuprAIRuntime can execute streamed OpenAI-compatible Chat Completions;
-- SSE parsing and cancellation path exist;
+- NativeSuprAIRuntime is already a production facade over RuntimeOrchestrator -> AgentEngine;
+- AgentEngine already owns minimal provider execution;
+- RuntimeOrchestrator already owns the prototype's stateful conversation coordination;
+- typed AgentEngineEvent -> RuntimeEvent translation exists;
+- OpenAI-compatible Chat Completions streaming, SSE parsing and cancellation path exist;
 - provider implementation is injected through a narrow public port;
 - provider transport configuration stays in the application composition layer;
 - separated `reasoning_content` is ephemeral and is not replayed into the next prompt;
-- this behavior is covered by a deterministic fake-server integration test.
+- these boundaries are covered by deterministic fake-provider/fake-server tests.
 
 This is not the final M3 runtime. Durable Session/Input/Turn/Run state, Responses, capability probing, persistence, token budgeting and explicit turn-state-machine semantics remain.
 
 Implement:
-- NativeSuprAIRuntime production facade;
-- RuntimeOrchestrator / AgentEngine split from ADR-0002;
-- typed AgentEngineEvent -> domain/application event adapter;
-- blocking interceptor vs non-blocking observer boundary;
+- retain/expand the implemented NativeSuprAIRuntime -> RuntimeOrchestrator -> AgentEngine split;
+- evolve the current internal RuntimeEvent adapter into the full domain/application event mapping;
+- preserve the blocking interceptor vs non-blocking observer boundary;
 - durable Session/Input/Turn/Run identities;
 - explicit turn state machine;
 - foreground session state separate from background activity;
