@@ -3,6 +3,7 @@
 #include "AgentEngineEvent.h"
 
 #include <suprai/providers/Provider.h>
+#include <suprai/runtime/RuntimeCapabilities.h>
 
 #include <QObject>
 
@@ -18,6 +19,7 @@ public:
         QObject *parent = nullptr);
 
     bool isBusy() const;
+    suprai::runtime::RuntimeCapabilities capabilities(const QString &model) const;
 
 public slots:
     void generate(const suprai::providers::ProviderRequest &request);
