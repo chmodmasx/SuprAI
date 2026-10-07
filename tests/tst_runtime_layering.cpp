@@ -139,7 +139,7 @@ private slots:
 
         connect(&orchestrator, &RuntimeOrchestrator::eventOccurred,
                 this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
-            if (suprai::runtime::eventPayload<suprai::runtime::AssistantMessageCompleted>(event)) {
+            if (suprai::runtime::eventPayload<suprai::runtime::ConversationItemCompleted>(event)) {
                 ++completed;
             } else if (const auto *active =
                            suprai::runtime::eventPayload<suprai::runtime::ReasoningActiveChanged>(event)) {
