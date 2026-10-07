@@ -47,9 +47,13 @@ target_link_libraries(suprai_provider_openai
 # Platform ---------------------------------------------------------------------
 add_library(suprai_platform STATIC
     modules/platform/include/suprai/platform/AppPaths.h
+    modules/platform/include/suprai/platform/ApplicationIdentity.h
     modules/platform/include/suprai/platform/Logging.h
+    modules/platform/include/suprai/platform/SingleInstanceService.h
     modules/platform/src/AppPaths.cpp
+    modules/platform/src/ApplicationIdentity.cpp
     modules/platform/src/Logging.cpp
+    modules/platform/src/SingleInstanceService.cpp
 )
 target_include_directories(suprai_platform
     PUBLIC
@@ -58,6 +62,7 @@ target_include_directories(suprai_platform
 target_link_libraries(suprai_platform
     PUBLIC
         Qt6::Core
+        Qt6::DBus
 )
 
 # Persistence ------------------------------------------------------------------
