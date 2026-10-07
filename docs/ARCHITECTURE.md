@@ -51,18 +51,27 @@ Hermes Agent, Hermes Desktop, OpenClaw and similar projects are research referen
           v                       v
 +----------------------+  +----------------------+
 | NativeSuprAIRuntime  |  | MockRuntime          |
-| production           |  | deterministic tests  |
+| production facade    |  | deterministic tests  |
 +----------+-----------+  +----------------------+
            |
-           +--> AgentLoop
-           +--> ProviderRegistry
-           +--> ContextManager
-           +--> ToolRegistry / ToolExecutor
-           +--> ApprovalManager
-           +--> MCPClientManager
-           +--> SkillRegistry
-           +--> MemoryService
-           +--> SessionStore / ItemStore
+           v
++------------------------------------------------------+
+| RuntimeOrchestrator                                  |
+| sessions/runs | persistence | approvals | tasks     |
+| steering | recovery | context policy | event map    |
++---------------------------+--------------------------+
+                            |
+                            v
++------------------------------------------------------+
+| AgentEngine                                           |
+| provider/tool iteration | engine state | cancellation|
++-------------+----------------------+-----------------+
+              |                      |
+              v                      v
+      ProviderRegistry         ToolRegistry/Executor
+              |
+              +--> Context/RequestProjection
+              +--> MCP/Skills/Memory through orchestrator ports
 ```
 
 The interface exists to preserve clean boundaries and testability, not to make third-party agent runtimes the product.
@@ -80,8 +89,9 @@ Main/UI thread
           | queued commands/events
           v
 Runtime thread
-  NativeSuprAIRuntime
-  TurnStateMachine
+  NativeSuprAIRuntime facade
+  RuntimeOrchestrator
+  AgentEngine / TurnStateMachine
   Provider network objects
   QProcess/QTimer runtime objects
           |
@@ -288,7 +298,9 @@ ApplicationBootstrap
   -> create ContextManager
   -> create MemoryService
   -> create TaskManager
-  -> create NativeSuprAIRuntime
+  -> create AgentEngine
+  -> create RuntimeOrchestrator
+  -> create NativeSuprAIRuntime facade
   -> expose application-facing controllers/models
 ```
 
@@ -385,20 +397,47 @@ Provider-specific request/response types must stop at the provider boundary.
 
 NativeSuprAIRuntime is part of the initial product, not a future replacement.
 
-Responsibilities:
-- own active runtime state;
-- execute the agent loop;
-- build context;
-- call providers;
-- normalize streaming;
-- parse/dispatch tool calls;
-- request approvals;
-- execute tools;
-- call MCP servers;
-- persist sessions/inputs/turns/runs/items through repository ports;
-- publish domain events;
-- manage cancellation;
-- coordinate memory/skills.
+It is the production implementation of the public AgentRuntime boundary, but it is not one monolithic object.
+
+### RuntimeOrchestrator
+
+RuntimeOrchestrator owns stateful execution semantics around the engine:
+- Session/Input/Turn/Run identity and lineage;
+- persistence boundaries;
+- queued input and steering;
+- approvals and user-action lifecycle;
+- TaskManager/subagent coordination;
+- recovery and owner-generation fencing;
+- ContextManager policy;
+- memory/project integration;
+- mapping engine events to domain/application events.
+
+### AgentEngine
+
+AgentEngine is the comparatively stateless execution kernel for an active Run:
+- execute provider/tool iteration;
+- consume normalized inference events;
+- emit typed AgentEngineEvent values;
+- manage low-level cancellation and iteration/completion limits;
+- accept prepared request/context input;
+- consume already-authorized/scheduled tool results.
+
+AgentEngine does not own SQLite/session persistence, Task registry, long-lived memory, Linux desktop integration or provider wire objects.
+
+### Event projection
+
+```text
+provider wire events
+  -> normalized InferenceEvent
+  -> AgentEngineEvent
+  -> RuntimeEventAdapter
+  -> domain/application event
+  -> QAbstractListModel / QML
+```
+
+Engine events are not UI contracts. Stable identities and terminal semantics survive translation.
+
+Execution-critical interceptors are distinct from non-blocking observers. UI, telemetry and logging never synchronously gate the provider token stream.
 
 ### Agent turn state machine
 
@@ -469,6 +508,10 @@ Provider interface normalizes:
 - multimodal inputs;
 - finish/incomplete/failure semantics.
 
+Provider/model capabilities are tri-state: `supported`, `unsupported`, or `unknown`. Missing metadata is never silently converted to unsupported. Capability provenance may come from explicit declarations, verified probes, cached observations or user/config overrides.
+
+Transparent retry is allowed only before observable text, reasoning, media or tool-call output. Once observable generation exists, failure/incomplete state is explicit rather than replayed.
+
 Do not encode agent policy inside provider classes and do not leak provider wire types above `providers/`.
 
 Prototype reasoning behavior:
@@ -510,6 +553,24 @@ Containment is feature-probed:
 Built-in tools must be narrow. Avoid one generic unrestricted shell bridge as the foundation.
 
 Process execution can exist under explicit policy, resource scopes, timeouts, output limits and descendant-cleanup behavior.
+
+Every approval is identity-bound to the exact Session/Turn/Run/Task/ToolInvocation/UserAction that owns it. There is no generic "approve current operation" authority.
+
+File/workspace mutation uses a prepared ChangeSet contract:
+
+```text
+prepare ChangeSet
+ -> validate expected base/version
+ -> preview
+ -> policy/approval
+ -> revalidate base/version
+ -> apply exact approved ChangeSet
+ -> persist actual result/checkpoint
+```
+
+If the base changed after approval, the approved change is stale and must be reprepared/reapproved.
+
+Tool/process output is independently bounded for memory, UI streaming, model projection and persisted log/artifact retention. A parallel-safe declaration is only scheduling input; policy/resource conflicts and scheduler capacity decide actual concurrency.
 
 ## 10. MCP
 
@@ -592,6 +653,8 @@ effective_context
 
 Provider-side automatic truncation is not normal SuprAI context management.
 
+Provider-reported actual input usage feeds back into budgeting as conservative calibration evidence when an earlier request required estimation. It may tighten uncertain estimates but never expand beyond a verified effective context limit.
+
 ### Compaction
 
 Compaction follows ADR-0019.
@@ -609,6 +672,19 @@ Compaction:
 - commits only if the result is valid and meaningfully smaller.
 
 Failed or larger compactions are discarded.
+
+A provider-confirmed overflow triggers one bounded deterministic emergency-recovery path before requiring user intervention. Emergency recovery prefers deterministic removal/projection of derived or oversized context and does not require another successful summarizer call merely to fit the next request.
+
+Large tool results are virtualized instead of injected wholesale:
+
+```text
+ToolResult
+  +--> full canonical result / LargeResultArtifact
+  +--> bounded model projection
+         preview + structural metadata + artifact reference
+```
+
+Artifact reads are explicit, bounded and scoped to the owning session/project authority. Internal artifact IDs are not ambient filesystem paths.
 
 Optional proactive compaction is budget-relative; there is no universal fixed percentage threshold.
 
@@ -666,6 +742,8 @@ Chat supports:
 - code;
 - streaming;
 - tool cards;
+- long-running process controls including Stop / Continue while running;
+- native file-diff previews for prepared ChangeSets;
 - approvals;
 - clarification prompts;
 - attachments;
@@ -705,6 +783,12 @@ May contain:
 - layout metadata.
 
 A session may exist without a project.
+
+For coding/project workflows, WorkspaceCheckpointService is a planned optional capability with conversation state and workspace filesystem state kept as separate axes. UI may restore conversation only, workspace only, or both.
+
+Checkpoint restore must be transactional/recoverable and must never silently discard newer user Git commits. Untracked files and cleanup/retention are explicit concerns.
+
+A later optional project execution mode may use an isolated Git worktree/branch instead of mutating the user's current working tree. This is not required for non-Git projects.
 
 ## 15. Persistence
 
@@ -761,6 +845,10 @@ Store:
 - schema version.
 
 Provider response IDs/cache/session state are optional metadata, never canonical conversation authority.
+
+A newly opened empty chat may hold a transient Session identity without creating durable history. The first accepted Input makes the conversation durable; unsent drafts/attachments before that point are draft-owned state, not canonical history.
+
+LargeResultArtifact metadata and optional workspace-checkpoint metadata are persisted through their owning services rather than stuffed into conversation text.
 
 Secrets live in secure Linux secret storage when available.
 
@@ -1086,6 +1174,8 @@ Task sources include:
 - scheduled run;
 - future remote worker.
 
+A long-running foreground ToolInvocation may explicitly hand executor/process ownership to TaskManager ("Continue while running"). The foreground tool returns a bounded partial/incomplete result while the Task continues, logs into bounded artifacts and later emits completion. Loss of UI observation alone is not ownership transfer.
+
 The runtime never spends model turns polling Tasks. TaskManager observes/polls external executors as infrastructure and emits meaningful state transitions.
 
 MCP `io.modelcontextprotocol/tasks` maps into TaskManager but does not define SuprAI's internal task identity.
@@ -1154,8 +1244,9 @@ Never claim restart durability unless the actual executor provides it.
 
 - Qt shell boots;
 - MockRuntime completes a scripted streaming/tool/approval turn;
-- NativeSuprAIRuntime sends a real request to an OpenAI-compatible model;
-- streamed response appears through the domain event model;
+- NativeSuprAIRuntime delegates real execution through RuntimeOrchestrator -> AgentEngine;
+- a real OpenAI-compatible request executes without provider wire objects leaking above providers/;
+- streamed response traverses AgentEngineEvent -> domain event -> UI projection without observer backpressure;
 - session persists and resumes;
 - one real tool round-trip succeeds;
 - approval gate succeeds;
