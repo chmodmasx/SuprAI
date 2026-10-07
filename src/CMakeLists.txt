@@ -50,6 +50,14 @@ add_library(suprai_runtime STATIC
     modules/runtime/include/suprai/runtime/RuntimeConfig.h
     modules/runtime/include/suprai/runtime/RuntimeFactory.h
     modules/runtime/include/suprai/runtime/RuntimeState.h
+    modules/runtime/src/AgentEngineEvent.h
+    modules/runtime/src/AgentEngine.h
+    modules/runtime/src/AgentEngine.cpp
+    modules/runtime/src/RuntimeEvent.h
+    modules/runtime/src/RuntimeEventAdapter.h
+    modules/runtime/src/RuntimeEventAdapter.cpp
+    modules/runtime/src/RuntimeOrchestrator.h
+    modules/runtime/src/RuntimeOrchestrator.cpp
     modules/runtime/src/MockRuntime.h
     modules/runtime/src/MockRuntime.cpp
     modules/runtime/src/NativeSuprAIRuntime.h
