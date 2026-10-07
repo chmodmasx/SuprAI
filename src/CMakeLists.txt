@@ -147,6 +147,7 @@ qt_add_qml_module(suprai
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/SettingsPage.qml
 )
 
 target_link_libraries(suprai
