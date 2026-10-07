@@ -1,76 +1,55 @@
 #include <suprai/runtime/AgentRuntime.h>
-#include <suprai/runtime/ApplicationEvent.h>
 #include <suprai/runtime/RuntimeFactory.h>
 
 #include <QTest>
-#include <QVector>
-
-#include <algorithm>
 
 class MockRuntimeTest final : public QObject
 {
     Q_OBJECT
 
 private slots:
-    void completesAStreamingTurnThroughApplicationEvents()
+    void completesAStreamingTurn()
     {
         auto *runtime = suprai::runtime::createMockRuntime();
 
-        QVector<suprai::runtime::ApplicationEvent> events;
-        connect(runtime, &suprai::runtime::AgentRuntime::eventEmitted,
-                this, [&events](const suprai::runtime::ApplicationEvent &event) {
-                    events.push_back(event);
-                });
+        int accepted = 0;
+        int started = 0;
+        int deltas = 0;
+        int completed = 0;
+        bool capabilitiesSeen = false;
+        suprai::runtime::RuntimeCapabilities capabilities;
+
+        connect(runtime, &suprai::runtime::AgentRuntime::eventOccurred,
+                this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
+            if (suprai::runtime::eventPayload<suprai::runtime::UserMessageAccepted>(event)) {
+                ++accepted;
+            } else if (suprai::runtime::eventPayload<suprai::runtime::AssistantMessageStarted>(event)) {
+                ++started;
+            } else if (suprai::runtime::eventPayload<suprai::runtime::AssistantTextDelta>(event)) {
+                ++deltas;
+            } else if (suprai::runtime::eventPayload<suprai::runtime::AssistantMessageCompleted>(event)) {
+                ++completed;
+            } else if (const auto *changed =
+                           suprai::runtime::eventPayload<suprai::runtime::RuntimeCapabilitiesChanged>(event)) {
+                capabilities = changed->capabilities;
+                capabilitiesSeen = true;
+            }
+        });
 
         runtime->start();
         runtime->submitPrompt(QStringLiteral("test"));
 
-        QTRY_VERIFY_WITH_TIMEOUT(
-            std::any_of(
-                events.cbegin(),
-                events.cend(),
-                [](const auto &event) {
-                    return suprai::runtime::applicationEventKind(event)
-                        == suprai::runtime::ApplicationEventKind::ConversationItemCompleted;
-                }),
-            2000);
+        QTRY_COMPARE_WITH_TIMEOUT(completed, 1, 2000);
 
-        int startedItems = 0;
-        int deltas = 0;
-        int completedItems = 0;
-        bool sawWorking = false;
-        bool sawReadyAfterWork = false;
-
-        for (const auto &event : events) {
-            switch (suprai::runtime::applicationEventKind(event)) {
-            case suprai::runtime::ApplicationEventKind::RuntimeStateChanged: {
-                const auto &state =
-                    std::get<suprai::runtime::RuntimeStateChangedEvent>(event.payload).state;
-                sawWorking |= state == suprai::runtime::RuntimeState::Working;
-                if (sawWorking && state == suprai::runtime::RuntimeState::Ready) {
-                    sawReadyAfterWork = true;
-                }
-                break;
-            }
-            case suprai::runtime::ApplicationEventKind::ConversationItemStarted:
-                ++startedItems;
-                break;
-            case suprai::runtime::ApplicationEventKind::ConversationTextDelta:
-                ++deltas;
-                break;
-            case suprai::runtime::ApplicationEventKind::ConversationItemCompleted:
-                ++completedItems;
-                break;
-            default:
-                break;
-            }
-        }
-
-        QCOMPARE(startedItems, 2);
+        QCOMPARE(accepted, 1);
+        QCOMPARE(started, 1);
         QVERIFY(deltas >= 1);
-        QCOMPARE(completedItems, 1);
-        QVERIFY(sawWorking);
-        QVERIFY(sawReadyAfterWork);
+        QVERIFY(capabilitiesSeen);
+        QCOMPARE(capabilities.textGeneration, suprai::runtime::CapabilityState::Supported);
+        QCOMPARE(capabilities.toolCalling, suprai::runtime::CapabilityState::Unsupported);
+        QCOMPARE(capabilities.imageInput, suprai::runtime::CapabilityState::Unsupported);
+        QCOMPARE(capabilities.reasoningOutput, suprai::runtime::CapabilityState::Supported);
+        QCOMPARE(capabilities.exactInputTokenCounting, suprai::runtime::CapabilityState::Unsupported);
 
         runtime->shutdown();
         delete runtime;
