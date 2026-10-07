@@ -29,6 +29,11 @@ Goal: prove the Qt foundation before agent complexity.
 Implement:
 - CMake project;
 - C++20 executable;
+- modular-monolith target layout from ADR-0029;
+- separate CMake targets for domain/runtime/provider/tool/context/persistence/platform boundaries where present in M1;
+- target-scoped PUBLIC/PRIVATE include/link dependencies;
+- application composition root/bootstrap;
+- no global include directories or hidden service locator;
 - Qt Quick/QML application using QApplication/QQmlApplicationEngine;
 - explicit UI-thread ownership;
 - runtime/persistence worker-thread skeletons with clean shutdown;
@@ -46,11 +51,15 @@ Tests:
 - process starts under Wayland;
 - process starts under X11;
 - QML loads cleanly;
-- clean shutdown.
+- clean shutdown;
+- module targets compile with only declared dependencies;
+- at least one fake adapter can replace a concrete boundary through composition without changing its consumer.
 
 Exit:
 - native shell runs without Node/Electron/Python;
-- architecture source structure exists.
+- modular architecture source structure exists;
+- cross-module private-header access is prevented by build layout;
+- application bootstrap is the concrete composition point.
 
 ## M2 — Domain model + MockRuntime
 
@@ -59,7 +68,7 @@ Goal: prove the complete agent-facing UI contract independently from model/netwo
 Implement:
 - AgentRuntime abstract interface;
 - runtime capabilities;
-- session/message/tool/request domain types;
+- Session/Input/Turn/Run/ConversationItem/ToolInvocation/Task domain value types as needed by the UI contract;
 - runtime event bus;
 - MockRuntime scripted fixture;
 - append-oriented generalized conversation item model;
@@ -322,4 +331,5 @@ If forced to choose:
 - custom inference engine;
 - custom browser engine;
 - public plugin ABI before real consumers prove its shape;
-- compatibility adapters for Hermes/OpenClaw.
+- compatibility adapters for Hermes/OpenClaw;
+- public binary plugin ABI before real external consumers prove its shape.
