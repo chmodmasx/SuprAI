@@ -3,6 +3,7 @@
 #include "RuntimeEvent.h"
 
 #include <suprai/domain/ConversationItem.h>
+#include <suprai/domain/ExecutionModel.h>
 #include <suprai/providers/Provider.h>
 #include <suprai/runtime/RuntimeConfig.h>
 #include <suprai/runtime/RuntimeState.h>
@@ -10,6 +11,8 @@
 #include <QObject>
 #include <QString>
 #include <QVector>
+
+#include <optional>
 
 namespace suprai::runtime::internal {
 
@@ -25,6 +28,13 @@ public:
         suprai::runtime::AgentRuntimeConfig config,
         AgentEngine *engine,
         QObject *parent = nullptr);
+
+public:
+    const suprai::domain::Session &session() const;
+    const QVector<suprai::domain::Input> &inputs() const;
+    const QVector<suprai::domain::Turn> &turns() const;
+    const QVector<suprai::domain::Run> &runs() const;
+    const QVector<suprai::domain::ConversationItem> &history() const;
 
 public slots:
     void start();
@@ -53,7 +63,14 @@ private:
     suprai::runtime::AgentRuntimeConfig m_config;
     AgentEngine *m_engine = nullptr;
     RuntimeEventAdapter *m_eventAdapter = nullptr;
+    suprai::domain::Session m_session;
+    QVector<suprai::domain::Input> m_inputs;
+    QVector<suprai::domain::Turn> m_turns;
+    QVector<suprai::domain::Run> m_runs;
     QVector<suprai::domain::ConversationItem> m_history;
+    std::optional<suprai::domain::Input> m_activeInput;
+    std::optional<suprai::domain::Turn> m_activeTurn;
+    std::optional<suprai::domain::Run> m_activeRun;
     suprai::runtime::RuntimeState m_state = suprai::runtime::RuntimeState::Stopped;
     QString m_activeAssistantId;
     QString m_activeAssistantText;
