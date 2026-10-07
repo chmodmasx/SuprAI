@@ -15,7 +15,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev xvfb weston
+          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev libgles2-mesa-dev libwayland-dev libwayland-egl1-mesa libxkbcommon-dev xvfb weston
 
       - name: Install Qt 6.12
         uses: jurplel/install-qt-action@v4
