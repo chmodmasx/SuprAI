@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QThread>
 #include <QUuid>
 #include <QVariant>
