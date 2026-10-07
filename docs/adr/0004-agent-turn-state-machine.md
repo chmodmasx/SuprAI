@@ -1,11 +1,12 @@
 # ADR-0004: Agent turns use an explicit state machine
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
-NativeSuprAIRuntime turn execution is modeled as explicit states, transitions and effects.
+AgentEngine turn execution is modeled as explicit states, transitions and effects. NativeSuprAIRuntime exposes the production facade; RuntimeOrchestrator owns surrounding durable/session lifecycle.
 
 Baseline states:
 
@@ -31,7 +32,7 @@ The exact implementation may refine these names but must preserve explicit trans
 ## Rules
 
 - reducers/state transitions do not perform external I/O;
-- effects perform provider/tool/persistence I/O;
+- effects perform provider/tool I/O through explicit ports; durable persistence checkpoints are coordinated by RuntimeOrchestrator around the engine effects;
 - every turn has a durable ID;
 - every provider attempt has an attempt ID;
 - every tool invocation has a durable invocation ID;
