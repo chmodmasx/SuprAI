@@ -942,17 +942,32 @@ Do not hard-code `~/.config`, `~/.local/share`, `~/.cache` or `~/.local/state`; 
 
 ## 21. AppImage
 
-Proposed build flow is tracked in ADR-0010:
-1. CMake install into AppDir.
-2. use Qt CMake/QML deployment APIs to stage executable, Qt runtime, plugins and QML imports;
-3. verify QPA/Wayland/QML/SQLite/image-plugin closure;
-4. add desktop/icon/AppRun metadata;
-5. finalize AppImage;
-6. smoke-test the actual artifact on the declared ABI floor.
+ADR-0010 remains proposed for the final AppImage/ABI decision, but the CMake-owned staging mechanism is now implemented and CI-proven.
+
+Current staging flow:
+1. `cmake --install` creates the portable install tree.
+2. `qt_deploy_qml_imports()` deploys required QML modules/plugins.
+3. `qt_deploy_runtime_dependencies()` closes runtime dependencies and generates `qt.conf`.
+4. Qt Widgets is staged explicitly because `QApplication` is a deliberate dependency and the Linux deploy scan did not include it automatically in the proof environment.
+5. `Qt6::QWaylandIntegrationPlugin` is an explicit imported runtime artifact; `QWaylandIntegrationPlugin` and `QXcbIntegrationPlugin` are declared on the application target.
+6. CI asserts both `plugins/platforms/libqwayland.so` and `libqxcb.so`.
+7. The staged tree is launched with the Qt development environment removed under XCB/Xvfb and Wayland/Weston.
+
+This proves staging mechanics and QPA closure. It does not yet prove:
+- a final AppImage;
+- the Ubuntu 22.04 ABI floor;
+- cross-distribution compatibility;
+- physical KDE/GNOME compositor behavior.
+
+The eventual flow continues with:
+1. add desktop/icon/AppRun metadata;
+2. finalize AppImage;
+3. inspect GLIBC/GLIBCXX and dependency closure;
+4. smoke-test the actual artifact on the declared ABI floor/distribution matrix.
 
 AppImage does not erase glibc/libstdc++ requirements.
 
-Ubuntu 22.04 x86_64 is a strong candidate build baseline because Qt 6.12 supports it, but this remains proof-gated. Official Qt Linux installer binaries are built on Ubuntu 24.04/glibc 2.39 and therefore cannot simply be assumed suitable for an older runtime floor.
+Ubuntu 22.04 x86_64 remains a strong candidate build baseline because Qt 6.12 supports it, but this remains proof-gated. Official Qt Linux installer binaries used by current CI are not evidence of an Ubuntu-22.04-compatible ABI floor.
 
 Do not blindly bundle host graphics/Wayland driver stacks.
 
