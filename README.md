@@ -15,6 +15,11 @@ Implemented:
 - three-pane desktop shell;
 - composer, streaming transcript, stop/cancel, new conversation and error state;
 - dedicated runtime QThread so provider work does not run on the UI thread;
+- dedicated persistence QThread skeleton with explicit initialize/shutdown lifecycle;
+- XDG config/data/cache/state paths resolved through QStandardPaths and created at startup;
+- structured Qt logging categories with stable suprai.* names;
+- freedesktop single-instance/activation service over QtDBus with headless degradation;
+- explicit Chat / Configuración routes in QML;
 - AgentRuntime public contract;
 - deterministic MockRuntime;
 - provider port separated from concrete adapters;
@@ -38,7 +43,7 @@ Not implemented yet:
 - subagents/deliberation;
 - projects/files;
 - safe Markdown renderer;
-- settings UI for editing provider configuration;
+- editable persisted provider settings and secure SecretStore;
 - AppImage release artifact;
 - physical KDE/GNOME Wayland and X11 smoke tests.
 
