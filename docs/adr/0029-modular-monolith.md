@@ -1,7 +1,8 @@
 # ADR-0029: Modular monolith with explicit ports and composition root
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -147,6 +148,81 @@ Examples:
 - UI knows application/domain projections, not Provider or SQL objects;
 - tool execution knows containment/policy interfaces, not one hardcoded backend;
 - platform-neutral modules do not include Linux implementation headers.
+
+## Runtime internal layering
+
+The runtime module itself is layered.
+
+```text
+Application / AgentRuntime facade
+            |
+            v
+    RuntimeOrchestrator
+            |
+            v
+        AgentEngine
+            |
+      ports / registries
+```
+
+`RuntimeOrchestrator` owns stateful application/runtime semantics around Runs.
+
+`AgentEngine` owns the comparatively stateless provider/tool iteration kernel.
+
+This separation is mandatory even if both initially live in the same CMake target. If implementation pressure justifies separate targets later, the public/private boundary already exists.
+
+The engine must not directly own SQLite session state, Linux desktop services, long-lived memory, Task registry or provider wire objects.
+
+The orchestrator must not duplicate the engine's low-level streaming/tool iteration state machine.
+
+## Event projection
+
+Use typed event layers rather than leaking implementation events upward:
+
+```text
+provider events
+   -> normalized inference events
+   -> AgentEngineEvent
+   -> RuntimeEventAdapter
+   -> domain/application events
+   -> UI projections
+```
+
+Rules:
+- provider wire events terminate at provider adapters;
+- engine events terminate at runtime/orchestration;
+- QML consumes application/domain projections only;
+- stable IDs survive mapping between layers;
+- terminal state is authoritative and monotonic;
+- high-frequency deltas may be coalesced only after semantic ordering is preserved.
+
+## Interceptors vs observers
+
+Cross-cutting behavior is divided into:
+
+### Blocking interceptors
+May alter or stop execution. Examples:
+- request preparation;
+- policy/approval;
+- before-tool validation;
+- tool-result transformation/redaction.
+
+Requirements:
+- explicit ownership;
+- deterministic order;
+- deadline/timeout;
+- cancellation semantics;
+- no hidden persistence side effects unless the interceptor contract says so.
+
+### Non-blocking observers
+Observe facts only. Examples:
+- UI;
+- telemetry;
+- logs;
+- diagnostics;
+- activity feeds.
+
+Observers must not be awaited in the provider token-stream critical path. Slow observers receive queued/coalesced projections and cannot determine correctness.
 
 ## Domain layer
 
