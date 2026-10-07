@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: ed2bcb4275507bb2c32e429681162b73f544f130
-last_verified_code_commit: 9d5f6694deb62bb864de6cd03e55dfb4de866918
+last_verified_commit: b2f8e66a7a3e56608dccf233b468eb71a70f2971
+last_verified_code_commit: b2f8e66a7a3e56608dccf233b468eb71a70f2971
 
 working:
   - repository exists and is writable
@@ -38,10 +38,10 @@ working:
   - modular-monolith architecture is accepted
   - architecture-significant subsystems have explicit public/private boundaries and CMake targets
   - ApplicationBootstrap is the concrete composition root
-  - NativeSuprAIRuntime is now canonically an AgentRuntime facade over RuntimeOrchestrator -> AgentEngine
-  - RuntimeOrchestrator owns stateful Session/Run/persistence/approval/task/context orchestration
-  - AgentEngine owns the comparatively stateless provider/tool iteration kernel
-  - engine events are translated to domain/application events before UI projection
+  - NativeSuprAIRuntime is implemented as a thin AgentRuntime facade over RuntimeOrchestrator -> AgentEngine
+  - RuntimeOrchestrator currently owns prototype history/current assistant/runtime state and is the expansion point for durable Session/Run/persistence/approval/task/context orchestration
+  - AgentEngine currently owns provider execution and is the expansion point for provider/tool iteration
+  - typed AgentEngineEvent -> RuntimeEvent translation is implemented before facade/UI signals
   - blocking interceptors are distinct from non-blocking UI/telemetry/log observers
   - provider/model capabilities use supported/unsupported/unknown semantics
   - transparent provider retry is forbidden after observable generation begins
@@ -63,7 +63,9 @@ working:
   - OpenAI-compatible Chat Completions adapter streams assistant content
   - provider-separated reasoning_content is ephemeral and excluded from later reconstructed prompts
   - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
-  - CTest suite passes 4/4 on verified prototype commit
+  - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
+  - GitHub Actions build/test/QML smoke run passes at verified code commit
+  - CTest suite passes 5/5 on verified prototype commit
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -192,7 +194,7 @@ decisions:
   - initial process model is one modular native application
   - modularity is enforced through CMake targets, public/private headers and directed dependencies
   - concrete implementations are wired only at the application composition root
-  - current prototype wiring uses provider factory -> Provider port -> NativeSuprAIRuntime; M3 will insert the accepted RuntimeOrchestrator/AgentEngine layering
+  - current prototype wiring uses provider factory -> Provider port -> AgentEngine inside RuntimeOrchestrator inside NativeSuprAIRuntime
   - current native vertical slice uses Chat Completions only; Responses remains planned
   - current prototype conversation history is in-memory and is not durable
   - target persistence may keep untouched empty chats transient until the first accepted Input
@@ -245,7 +247,7 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - exact C++ AgentEngine/RuntimeOrchestrator port/class API while migrating the current vertical slice
+  - exact durable Session/Turn/Run ports that RuntimeOrchestrator will consume as the prototype moves beyond in-memory history
   - LargeResultArtifact storage/retention/read-range implementation details
   - WorkspaceCheckpointService backend, Git/non-Git scope and cleanup policy
   - exact ChangeSet diff representation/hash/base-version strategy
@@ -266,7 +268,7 @@ next_exact_steps:
   - verify KDE Wayland and X11 locally; add GNOME Wayland proof when available
   - prove Qt/QML staged deployment directory
   - keep public/private module boundaries enforced as new subsystems arrive
-  - do not fake the RuntimeOrchestrator/AgentEngine split in M1; preserve boundaries so M3 can implement it cleanly
+  - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
   - then complete M2 domain/runtime UI contract before expanding M3 durability/tool semantics
 
 verification_commands:
