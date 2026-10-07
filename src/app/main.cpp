@@ -107,12 +107,6 @@ int main(int argc, char *argv[])
         });
 
     QObject::connect(
-        persistence,
-        &suprai::persistence::PersistenceWorker::stopped,
-        &persistenceThread,
-        &QThread::quit);
-
-    QObject::connect(
         &persistenceThread,
         &QThread::finished,
         persistence,
@@ -131,14 +125,8 @@ int main(int argc, char *argv[])
         &suprai::runtime::AgentRuntime::start);
 
     QObject::connect(
-        runtime,
-        &suprai::runtime::AgentRuntime::stopped,
         &runtimeThread,
-        &QThread::quit);
-
-    QObject::connect(
-        runtime,
-        &suprai::runtime::AgentRuntime::stopped,
+        &QThread::finished,
         runtime,
         &QObject::deleteLater);
 
@@ -195,8 +183,9 @@ int main(int argc, char *argv[])
             [runtime] {
                 runtime->shutdown();
             },
-            Qt::QueuedConnection);
+            Qt::BlockingQueuedConnection);
 
+        runtimeThread.quit();
         if (!runtimeThread.wait(3000)) {
             qCWarning(suprai::platform::logRuntime).noquote()
                 << "event=runtime_shutdown_timeout";
@@ -212,8 +201,9 @@ int main(int argc, char *argv[])
             [persistence] {
                 persistence->shutdown();
             },
-            Qt::QueuedConnection);
+            Qt::BlockingQueuedConnection);
 
+        persistenceThread.quit();
         if (!persistenceThread.wait(3000)) {
             qCWarning(suprai::platform::logPersistence).noquote()
                 << "event=persistence_shutdown_timeout";
