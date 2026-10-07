@@ -93,6 +93,18 @@ target_link_libraries(tst_persistence_worker
 )
 add_test(NAME persistence_worker COMMAND tst_persistence_worker)
 
+
+add_executable(tst_domain_model
+    tst_domain_model.cpp
+)
+target_link_libraries(tst_domain_model
+    PRIVATE
+        Qt6::Core
+        Qt6::Test
+        suprai_domain
+)
+add_test(NAME domain_model COMMAND tst_domain_model)
+
 set_tests_properties(
     sse_decoder
     transcript_model
@@ -101,6 +113,7 @@ set_tests_properties(
     runtime_layering
     platform
     persistence_worker
+    domain_model
     PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )
