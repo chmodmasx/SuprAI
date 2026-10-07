@@ -2,6 +2,7 @@
 
 #include "RuntimeEvent.h"
 
+#include <suprai/domain/ConversationItem.h>
 #include <suprai/providers/Provider.h>
 #include <suprai/runtime/RuntimeConfig.h>
 #include <suprai/runtime/RuntimeState.h>
@@ -14,11 +15,6 @@ namespace suprai::runtime::internal {
 
 class AgentEngine;
 class RuntimeEventAdapter;
-
-struct RuntimeMessage {
-    QString role;
-    QString content;
-};
 
 class RuntimeOrchestrator final : public QObject
 {
@@ -57,7 +53,7 @@ private:
     suprai::runtime::AgentRuntimeConfig m_config;
     AgentEngine *m_engine = nullptr;
     RuntimeEventAdapter *m_eventAdapter = nullptr;
-    QVector<RuntimeMessage> m_history;
+    QVector<suprai::domain::ConversationItem> m_history;
     suprai::runtime::RuntimeState m_state = suprai::runtime::RuntimeState::Stopped;
     QString m_activeAssistantId;
     QString m_activeAssistantText;
