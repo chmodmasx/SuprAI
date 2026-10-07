@@ -96,7 +96,7 @@ decisions:
   - subagents execute through NativeSuprAIRuntime in child Sessions
   - subagent purpose is metadata/policy, not a separate runtime type
   - baseline subagent purposes include delegation, deliberation, verification, research and coding
-  - reasoning isolation/context folding reuses subagents; there is no standalone DeliberationBranch runtime
+  - reasoning isolation/context folding reuses subagents; there is no standalone standalone deliberation-branch runtime
   - subagent context is isolated/explicit by default
   - child context modes are full/scoped/compacted
   - ReasoningWorkspace is ephemeral Run-local scratch state, not canonical history
