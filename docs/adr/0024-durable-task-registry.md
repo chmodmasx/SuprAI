@@ -1,7 +1,8 @@
 # ADR-0024: Unified durable Task registry
 
 Status: accepted
-Date: 2026-10-06
+Date: 2026-10-06  
+Updated: 2026-10-07
 
 ## Decision
 
@@ -130,3 +131,46 @@ MCP task IDs are never SuprAI task IDs.
 ## Why
 
 OpenClaw's current background-task registry explicitly separates task state, session context and delivery. Goose is independently moving toward the same shared substrate because siloed async mechanisms lead to polling and lost completions.
+
+
+## ToolInvocation -> Task ownership handoff
+
+A long-running process/tool may begin as foreground work owned by a ToolInvocation and later be explicitly detached so the foreground Run can continue.
+
+Conceptual transition:
+
+```text
+ToolInvocation owns executor/process
+        |
+        | proceed while running
+        v
+TaskManager owns executor/process
+        |
+        +--> foreground tool receives bounded partial result
+        +--> Task continues independently
+        +--> output continues into bounded log/artifact
+        +--> Task completion is delivered later
+```
+
+This is an ownership transfer, not abandonment.
+
+Requirements:
+- transfer has a durable Task ID before the foreground invocation is considered released;
+- partial output returned to the model is explicitly marked incomplete;
+- continuing output is bounded and inspectable through Task/artifact state;
+- cancellation ownership transfers with the executor;
+- a detach request that races process startup is still applied deterministically once the executor becomes available;
+- executor/process identity is retained for reconciliation;
+- application exit semantics depend on the Task durability class rather than assumptions about QProcess survival.
+
+A process that merely lost its UI observer is not automatically a detached Task.
+
+## UI semantics
+
+Long-running process cards may expose:
+- Stop;
+- Continue while running;
+- Open terminal/log;
+- background Task status.
+
+The model never polls the process through repeated tool calls just to learn whether it finished. TaskManager reports meaningful state changes.
