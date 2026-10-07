@@ -149,6 +149,12 @@ target_include_directories(suprai
         ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
 
+qt_import_plugins(suprai
+    INCLUDE
+        Qt6::QWaylandIntegrationPlugin
+        Qt6::QXcbIntegrationPlugin
+)
+
 qt_add_qml_module(suprai
     URI SuprAI
     VERSION 1.0
