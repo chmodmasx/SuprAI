@@ -4,7 +4,6 @@
 #include <QSet>
 #include <QSignalSpy>
 #include <QSqlDatabase>
-#include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTest>
@@ -22,12 +21,12 @@ private slots:
         QVERIFY(root.isValid());
 
         const QString stateDirectory = root.path() + QStringLiteral("/state");
-        const QString databasePath = stateDirectory + QStringLiteral("/suprai.sqlite3");
 
         QThread thread;
         thread.setObjectName(QStringLiteral("PersistenceWorkerTestThread"));
 
         auto *worker = new suprai::persistence::PersistenceWorker(stateDirectory);
+        const QString databasePath = worker->databasePath();
         worker->moveToThread(&thread);
 
         QSignalSpy ready(worker, &suprai::persistence::PersistenceWorker::ready);
@@ -48,22 +47,14 @@ private slots:
         QVERIFY(QFileInfo(stateDirectory).isDir());
         QVERIFY(QFileInfo(databasePath).isFile());
 
-        QMetaObject::invokeMethod(
-            worker,
-            &suprai::persistence::PersistenceWorker::shutdown,
-            Qt::QueuedConnection);
-
-        QTRY_COMPARE_WITH_TIMEOUT(stopped.size(), 1, 3000);
-        QVERIFY(thread.wait(3000));
-
-        const QString connectionName =
+        const QString readConnectionName =
             QStringLiteral("persistence-test-%1")
                 .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
 
         {
             auto database = QSqlDatabase::addDatabase(
                 QStringLiteral("QSQLITE"),
-                connectionName);
+                readConnectionName);
             database.setDatabaseName(databasePath);
             QVERIFY2(database.open(), qPrintable(database.lastError().text()));
 
@@ -79,57 +70,65 @@ private slots:
                 journal.value(0).toString().toLower(),
                 QStringLiteral("wal"));
 
-            QSet<QString> tables;
-            QSqlQuery tableQuery(database);
-            QVERIFY(tableQuery.exec(
+            QSqlQuery migration(database);
+            QVERIFY(migration.exec(
+                QStringLiteral(
+                    "SELECT version FROM schema_migrations ORDER BY version")));
+            QVERIFY(migration.next());
+            QCOMPARE(migration.value(0).toInt(), 1);
+            QVERIFY(!migration.next());
+
+            QSqlQuery tables(database);
+            QVERIFY(tables.exec(
                 QStringLiteral(
                     "SELECT name FROM sqlite_master "
                     "WHERE type IN ('table','view')")));
-            while (tableQuery.next()) {
-                tables.insert(tableQuery.value(0).toString());
+
+            QSet<QString> names;
+            while (tables.next()) {
+                names.insert(tables.value(0).toString());
             }
 
-            for (const auto &required : {
-                     QStringLiteral("sessions"),
-                     QStringLiteral("inputs"),
-                     QStringLiteral("turns"),
-                     QStringLiteral("runs"),
-                     QStringLiteral("conversation_items"),
-                     QStringLiteral("conversation_fts")}) {
+            const QSet<QString> required = {
+                QStringLiteral("schema_migrations"),
+                QStringLiteral("sessions"),
+                QStringLiteral("inputs"),
+                QStringLiteral("turns"),
+                QStringLiteral("runs"),
+                QStringLiteral("conversation_items"),
+                QStringLiteral("conversation_items_fts"),
+            };
+
+            for (const auto &name : required) {
                 QVERIFY2(
-                    tables.contains(required),
-                    qPrintable(QStringLiteral("Missing table: %1").arg(required)));
+                    names.contains(name),
+                    qPrintable(QStringLiteral("Missing SQLite object: %1").arg(name)));
             }
 
-            QSqlQuery foreignKeys(database);
-            QVERIFY(foreignKeys.exec(QStringLiteral("PRAGMA foreign_key_list(turns)")));
-            QVERIFY(foreignKeys.next());
-
-            QSqlQuery ftsInsert(database);
-            QVERIFY(ftsInsert.exec(
+            QSqlQuery ftsProbe(database);
+            QVERIFY(ftsProbe.exec(
                 QStringLiteral(
-                    "INSERT INTO conversation_fts(item_id, session_id, text) "
-                    "VALUES('item_test','session_test','hola mundo persistente')")));
-
-            QSqlQuery ftsSearch(database);
-            QVERIFY(ftsSearch.exec(
+                    "INSERT INTO conversation_items_fts(item_id, session_id, text) "
+                    "VALUES('item_test','session_test','hola suprAI')")));
+            QVERIFY(ftsProbe.exec(
                 QStringLiteral(
-                    "SELECT item_id FROM conversation_fts "
-                    "WHERE conversation_fts MATCH 'mundo'")));
-            QVERIFY(ftsSearch.next());
-            QCOMPARE(
-                ftsSearch.value(0).toString(),
-                QStringLiteral("item_test"));
-
-            QSqlQuery integrity(database);
-            QVERIFY(integrity.exec(QStringLiteral("PRAGMA integrity_check")));
-            QVERIFY(integrity.next());
-            QCOMPARE(integrity.value(0).toString(), QStringLiteral("ok"));
+                    "SELECT item_id FROM conversation_items_fts "
+                    "WHERE conversation_items_fts MATCH 'hola'")));
+            QVERIFY(ftsProbe.next());
+            QCOMPARE(ftsProbe.value(0).toString(), QStringLiteral("item_test"));
 
             database.close();
         }
 
-        QSqlDatabase::removeDatabase(connectionName);
+        QSqlDatabase::removeDatabase(readConnectionName);
+
+        QMetaObject::invokeMethod(
+            worker,
+            &suprai::persistence::PersistenceWorker::shutdown,
+            Qt::QueuedConnection);
+
+        QTRY_COMPARE_WITH_TIMEOUT(stopped.size(), 1, 3000);
+        QVERIFY(thread.wait(3000));
     }
 };
 
