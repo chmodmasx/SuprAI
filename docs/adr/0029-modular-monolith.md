@@ -27,7 +27,7 @@ A change to one subsystem should normally require changes only to:
 4. contract/integration tests at the affected boundary.
 
 Examples:
-- add a provider without editing AgentLoop internals;
+- add a provider without editing AgentEngine internals;
 - replace SQLite repository implementation without changing QML;
 - remove MCP without changing provider code;
 - add a tool without changing ToolExecutor;
@@ -306,7 +306,9 @@ ApplicationBootstrap
   create ContextManager
   create MemoryService
   create TaskManager
-  create NativeSuprAIRuntime
+  create AgentEngine
+  create RuntimeOrchestrator
+  create NativeSuprAIRuntime facade
   connect UI facade
 ```
 
@@ -354,7 +356,7 @@ ProviderPort
           +-- ChatCompletionsTransport
 ```
 
-Adding a future native provider should not change AgentLoop/TurnStateMachine semantics.
+Adding a future native provider should not change AgentEngine/TurnStateMachine semantics.
 
 ### Persistence
 
@@ -375,7 +377,7 @@ ToolRegistry
   + skill-provided tool
 ```
 
-AgentLoop consumes normalized ToolDefinition/Invocation/Result only.
+AgentEngine consumes normalized ToolDefinition/Invocation/Result only.
 
 ### Deliberation
 
