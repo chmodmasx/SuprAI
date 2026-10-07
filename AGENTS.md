@@ -209,7 +209,7 @@ Subagents:
 
 Subagent purposes include delegation, deliberation, verification, research and coding. Purpose is policy/profile metadata, not a separate runtime implementation.
 
-Reasoning isolation/context folding reuses the subagent system. Do not create a parallel DeliberationBranch runtime.
+Reasoning isolation/context folding reuses the subagent system. Do not create a parallel standalone deliberation-branch runtime.
 
 A deliberation child:
 - is normally attached to the parent Turn;
