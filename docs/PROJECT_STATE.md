@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 98fb72265f38d375145206dbaa039e93d0b8a103
-last_verified_code_commit: 98fb72265f38d375145206dbaa039e93d0b8a103
+last_verified_commit: cd762f66f63322ced333658ae9ed30c39b1ec732
+last_verified_code_commit: cd762f66f63322ced333658ae9ed30c39b1ec732
 
 working:
   - repository exists and is writable
@@ -81,7 +81,7 @@ working:
   - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
   - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
   - GitHub Actions build/test/QML smoke run passes at verified code commit
-  - CTest suite passes 7/7 on verified prototype commit
+  - CTest suite passes 8/8 on verified prototype commit
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -140,6 +140,12 @@ decisions:
   - UI/telemetry/log observers never synchronously gate provider streaming
   - AgentEngine/TurnStateMachine uses explicit state transitions/effects
   - conversation history is append-oriented generalized items with stable SuprAI IDs
+  - generalized ConversationItem typed content is implemented for message/reasoning/tool/result/attachment/runtime annotation
+  - ConversationItem carries owning turnId
+  - TranscriptModel deliberately projects only message items
+  - RuntimeOrchestrator stores generalized ConversationItems instead of a parallel RuntimeMessage structure
+  - semantic ID factories are implemented for Session/Input/Turn/Run/Item/ToolInvocation/Attachment
+  - RuntimeOrchestrator creates in-memory Session/Input/Turn/Run lineage per accepted prompt
   - Session/Input/Turn/Run/ProviderAttempt/ToolInvocation/Task identities are distinct
   - input acceptance is separate from foreground-turn completion
   - foreground Session state is separate from background Task activity
@@ -263,7 +269,7 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - exact durable Session/Turn/Run ports that RuntimeOrchestrator will consume as the prototype moves beyond in-memory history
+  - exact durable Session/Input/Turn/Run repository ports and database constraints as the in-memory model moves to SQLite
   - LargeResultArtifact storage/retention/read-range implementation details
   - WorkspaceCheckpointService backend, Git/non-Git scope and cleanup policy
   - exact ChangeSet diff representation/hash/base-version strategy
