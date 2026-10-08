@@ -32,6 +32,8 @@ RuntimeOrchestrator::RuntimeOrchestrator(
     if (m_persistence) {
         connect(m_persistence, &suprai::persistence::PersistencePort::turnStartPersisted,
                 this, &RuntimeOrchestrator::handleTurnStartPersisted);
+        connect(m_persistence, &suprai::persistence::PersistencePort::turnTerminalPersisted,
+                this, &RuntimeOrchestrator::handleTurnTerminalPersisted);
         connect(m_persistence, &suprai::persistence::PersistencePort::writeFailed,
                 this, &RuntimeOrchestrator::handlePersistenceFailure);
     }
@@ -119,7 +121,7 @@ suprai::providers::ProviderRequest RuntimeOrchestrator::providerRequest() const
 
     for (const auto &item : m_history) {
         const auto *message = suprai::domain::messageContent(item);
-        if (!message) {
+        if (!message || item.state != suprai::domain::ConversationItemState::Completed) {
             continue;
         }
 
@@ -204,6 +206,10 @@ void RuntimeOrchestrator::cancelTurn()
         return;
     }
 
+    if (m_pendingTerminal) {
+        return;
+    }
+
     if (!m_pendingPersistenceRequestId.isEmpty()) {
         m_cancelBeforeInference = true;
         setState(RuntimeState::Cancelling);
@@ -249,22 +255,41 @@ void RuntimeOrchestrator::handleTurnStartPersisted(const QString &requestId)
     admitPendingTurnAndStartInference();
 }
 
+void RuntimeOrchestrator::handleTurnTerminalPersisted(const QString &requestId)
+{
+    if (!m_pendingTerminal || requestId != m_pendingTerminal->requestId) {
+        return;
+    }
+    finishDurableTerminal();
+}
+
 void RuntimeOrchestrator::handlePersistenceFailure(
     const QString &requestId,
     const QString &message)
 {
-    if (requestId != m_pendingPersistenceRequestId) {
-        return;
+    if (requestId == m_pendingPersistenceRequestId) {
+        clearActiveTurn();
+        setState(RuntimeState::Failed);
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = QStringLiteral("No se pudo persistir el turno antes de inferir: %1")
+                               .arg(message),
+            },
+        });
+    } else if (m_pendingTerminal && requestId == m_pendingTerminal->requestId) {
+        const QString itemId = m_activeAssistantId;
+        clearActiveTurn();
+        if (!itemId.isEmpty()) {
+            emitApplicationEvent({.payload = ConversationItemCompleted{.itemId = itemId}});
+        }
+        setState(RuntimeState::Failed);
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = QStringLiteral("No se pudo persistir el resultado terminal del turno: %1")
+                               .arg(message),
+            },
+        });
     }
-
-    clearActiveTurn();
-    setState(RuntimeState::Failed);
-    emitApplicationEvent({
-        .payload = RuntimeError{
-            .message = QStringLiteral("No se pudo persistir el turno antes de inferir: %1")
-                           .arg(message),
-        },
-    });
 }
 
 void RuntimeOrchestrator::admitPendingTurnAndStartInference()
@@ -301,8 +326,7 @@ void RuntimeOrchestrator::admitPendingTurnAndStartInference()
     });
 
     if (m_cancelBeforeInference) {
-        clearActiveTurn();
-        setState(RuntimeState::Ready);
+        beginTerminalWrite(QStringLiteral("cancelled"));
         return;
     }
 
@@ -325,6 +349,9 @@ void RuntimeOrchestrator::admitPendingTurnAndStartInference()
 
 void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
 {
+    if (!m_activeRun || m_pendingTerminal || !m_pendingPersistenceRequestId.isEmpty()) {
+        return;
+    }
     switch (event.type) {
     case RuntimeEventType::AssistantTextDelta:
         if (!m_activeAssistantId.isEmpty()) {
@@ -350,59 +377,81 @@ void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
         break;
 
     case RuntimeEventType::ProviderCompleted:
-        finishAssistant(true);
-        setState(RuntimeState::Ready);
+        beginTerminalWrite(QStringLiteral("completed"));
         break;
 
     case RuntimeEventType::ProviderCancelled:
-        finishAssistant(false);
-        setState(RuntimeState::Ready);
+        beginTerminalWrite(QStringLiteral("cancelled"));
         break;
 
     case RuntimeEventType::ProviderFailed:
-        finishAssistant(false);
-        setState(RuntimeState::Ready);
-        emitApplicationEvent({
-            .payload = RuntimeError{
-                .message = event.payload,
-            },
-        });
+        beginTerminalWrite(QStringLiteral("failed"), event.payload);
         break;
     }
 }
 
-void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
+void RuntimeOrchestrator::beginTerminalWrite(
+    const QString &status,
+    const QString &providerError)
 {
-    if (m_reasoningActive) {
-        m_reasoningActive = false;
-        emitApplicationEvent({
-            .payload = ReasoningActiveChanged{
-                .active = false,
-            },
-        });
-    }
-
-    if (m_activeAssistantId.isEmpty()) {
+    if (!m_activeRun || !m_activeTurn || m_pendingTerminal) {
         return;
     }
 
-    if (persistAnswer) {
-        m_history.push_back(suprai::domain::makeMessageItem(
-            suprai::domain::ConversationRole::Assistant,
-            m_activeAssistantText,
-            suprai::domain::ConversationItemState::Completed,
-            m_activeAssistantId,
-            m_activeTurn ? m_activeTurn->id : QString{},
-            2));
+    if (m_reasoningActive) {
+        m_reasoningActive = false;
+        emitApplicationEvent({.payload = ReasoningActiveChanged{.active = false}});
     }
 
-    emitApplicationEvent({
-        .payload = ConversationItemCompleted{
-            .itemId = m_activeAssistantId,
-        },
-    });
+    suprai::persistence::TurnTerminalWrite terminal{
+        .requestId = m_activeRun->id,
+        .runId = m_activeRun->id,
+        .turnId = m_activeTurn->id,
+        .sessionId = m_session.id,
+        .status = status,
+    };
 
+    if (!m_activeAssistantId.isEmpty()
+        && (status == QStringLiteral("completed") || !m_activeAssistantText.isEmpty())) {
+        const auto state = status == QStringLiteral("completed")
+            ? suprai::domain::ConversationItemState::Completed
+            : status == QStringLiteral("cancelled")
+                ? suprai::domain::ConversationItemState::Cancelled
+                : suprai::domain::ConversationItemState::Failed;
+        terminal.assistantItem = suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant,
+            m_activeAssistantText, state, m_activeAssistantId, m_activeTurn->id, 2);
+    }
+
+    m_pendingProviderError = providerError;
+    m_pendingTerminal = std::move(terminal);
+    if (m_persistence) {
+        m_persistence->persistTurnTerminal(*m_pendingTerminal);
+    } else {
+        finishDurableTerminal();
+    }
+}
+
+void RuntimeOrchestrator::finishDurableTerminal()
+{
+    if (!m_pendingTerminal) {
+        return;
+    }
+
+    if (m_pendingTerminal->assistantItem) {
+        m_history.push_back(*m_pendingTerminal->assistantItem);
+    }
+
+    const QString itemId = m_activeAssistantId;
+    const QString providerError = m_pendingProviderError;
     clearActiveTurn();
+    if (!itemId.isEmpty()) {
+        emitApplicationEvent({.payload = ConversationItemCompleted{.itemId = itemId}});
+    }
+    setState(RuntimeState::Ready);
+    if (!providerError.isEmpty()) {
+        emitApplicationEvent({.payload = RuntimeError{.message = providerError}});
+    }
 }
 
 void RuntimeOrchestrator::clearActiveTurn()
@@ -414,6 +463,8 @@ void RuntimeOrchestrator::clearActiveTurn()
     m_activeRun.reset();
     m_pendingUserItem.reset();
     m_pendingPersistenceRequestId.clear();
+    m_pendingTerminal.reset();
+    m_pendingProviderError.clear();
     m_cancelBeforeInference = false;
 }
 

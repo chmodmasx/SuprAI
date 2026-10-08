@@ -34,6 +34,11 @@ public:
         m_requests.push_back(request);
 
         emit reasoningDelta(QStringLiteral("PRIVATE_REASONING"));
+        if (failNext) {
+            m_busy = false;
+            emit failed(QStringLiteral("provider-error"));
+            return;
+        }
 
         const QString answer = m_requests.size() == 1
             ? QStringLiteral("respuesta uno")
@@ -54,6 +59,9 @@ public:
         emit cancelled();
     }
 
+public:
+    bool failNext = false;
+
 private:
     bool m_busy = false;
     QVector<suprai::providers::ProviderRequest> m_requests;
@@ -70,12 +78,30 @@ public:
         lastWrite = std::move(request);
     }
 
+    void persistTurnTerminal(suprai::persistence::TurnTerminalWrite request) override
+    {
+        ++terminalWriteCount;
+        lastTerminal = std::move(request);
+    }
+
     void succeed()
     {
         emit turnStartPersisted(lastWrite.requestId);
     }
 
+    void terminalSucceeded()
+    {
+        emit turnTerminalPersisted(lastTerminal.requestId);
+    }
+
+    void terminalFailed()
+    {
+        emit writeFailed(lastTerminal.requestId, QStringLiteral("disk-full"));
+    }
+
     int writeCount = 0;
+    int terminalWriteCount = 0;
+    suprai::persistence::TurnTerminalWrite lastTerminal;
     suprai::persistence::TurnStartWrite lastWrite;
 };
 
@@ -119,10 +145,79 @@ private slots:
         persistence.succeed();
 
         QCOMPARE(provider->requests().size(), 1);
+        QCOMPARE(persistence.terminalWriteCount, 1);
+        QCOMPARE(orchestrator.history().size(), 1);
+        QCOMPARE(persistence.lastTerminal.status, QStringLiteral("completed"));
+        QVERIFY(persistence.lastTerminal.assistantItem.has_value());
+
+        persistence.terminalSucceeded();
         QCOMPARE(orchestrator.history().size(), 2);
         QCOMPARE(orchestrator.inputs().size(), 1);
         QCOMPARE(orchestrator.turns().size(), 1);
         QCOMPARE(orchestrator.runs().size(), 1);
+    }
+
+    void terminalWriteFailureDoesNotPublishCanonicalAnswer()
+    {
+        using namespace suprai::runtime::internal;
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        int completed = 0;
+        connect(&orchestrator, &RuntimeOrchestrator::eventOccurred,
+                this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
+            if (suprai::runtime::eventPayload<suprai::runtime::ConversationItemCompleted>(event)) {
+                ++completed;
+            }
+        });
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("hola"));
+        persistence.succeed();
+        QCOMPARE(orchestrator.history().size(), 1);
+        QCOMPARE(completed, 0);
+        persistence.terminalFailed();
+        QCOMPARE(orchestrator.history().size(), 1);
+        QCOMPARE(completed, 1); // End UI streaming, do not commit canonical answer.
+        QCOMPARE(provider->requests().size(), 1);
+    }
+
+    void cancellationBeforeInferenceDurablyClosesRun()
+    {
+        using namespace suprai::runtime::internal;
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("cancelar"));
+        orchestrator.cancelTurn();
+        QCOMPARE(provider->requests().size(), 0);
+        persistence.succeed();
+        QCOMPARE(persistence.terminalWriteCount, 1);
+        QCOMPARE(persistence.lastTerminal.status, QStringLiteral("cancelled"));
+        QVERIFY(!persistence.lastTerminal.assistantItem.has_value());
+        QCOMPARE(provider->requests().size(), 0);
+        persistence.terminalSucceeded();
+        QCOMPARE(orchestrator.history().size(), 1);
+    }
+
+    void providerFailureRequiresDurableTerminalAck()
+    {
+        using namespace suprai::runtime::internal;
+        auto *provider = new FakeProvider;
+        provider->failNext = true;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("fallar"));
+        persistence.succeed();
+        QCOMPARE(persistence.terminalWriteCount, 1);
+        QCOMPARE(persistence.lastTerminal.status, QStringLiteral("failed"));
+        QCOMPARE(orchestrator.history().size(), 1);
+        persistence.terminalSucceeded();
+        QCOMPARE(orchestrator.history().size(), 1);
     }
 
     void executionIdentitiesTrackConversationLineage()

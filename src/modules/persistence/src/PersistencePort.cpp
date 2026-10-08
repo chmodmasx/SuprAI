@@ -14,4 +14,9 @@ void PersistencePort::persistTurnStart(TurnStartWrite request)
     emit persistTurnStartRequested(std::move(request));
 }
 
+void PersistencePort::persistTurnTerminal(TurnTerminalWrite request)
+{
+    emit persistTurnTerminalRequested(std::move(request));
+}
+
 } // namespace suprai::persistence

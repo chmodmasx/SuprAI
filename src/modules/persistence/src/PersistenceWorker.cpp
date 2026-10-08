@@ -397,6 +397,112 @@ void PersistenceWorker::persistTurnStart(TurnStartWrite request)
     emit turnStartPersisted(request.requestId);
 }
 
+void PersistenceWorker::persistTurnTerminal(TurnTerminalWrite request)
+{
+    Q_ASSERT(thread() == QThread::currentThread());
+
+    const auto fail = [this, &request](const QString &message) {
+        emit writeFailed(request.requestId, message);
+    };
+    if (!m_ready || !m_database.isOpen()) {
+        fail(QStringLiteral("SQLite no está listo para finalizar el turno."));
+        return;
+    }
+
+    const bool validStatus = request.status == QStringLiteral("completed")
+        || request.status == QStringLiteral("failed")
+        || request.status == QStringLiteral("cancelled");
+    const auto expectedItemState = request.status == QStringLiteral("completed")
+        ? suprai::domain::ConversationItemState::Completed
+        : request.status == QStringLiteral("failed")
+            ? suprai::domain::ConversationItemState::Failed
+            : suprai::domain::ConversationItemState::Cancelled;
+    if (request.requestId.isEmpty() || request.runId.isEmpty()
+        || request.turnId.isEmpty() || request.sessionId.isEmpty() || !validStatus
+        || (request.assistantItem && (
+            request.assistantItem->id.isEmpty()
+            || request.assistantItem->turnId != request.turnId
+            || request.assistantItem->sequence < 2
+            || request.assistantItem->state != expectedItemState
+            || suprai::domain::itemKind(*request.assistantItem)
+                != suprai::domain::ConversationItemKind::Message
+            || suprai::domain::messageContent(*request.assistantItem)->role
+                != suprai::domain::ConversationRole::Assistant))) {
+        fail(QStringLiteral("El lote durable terminal del turno es inválido."));
+        return;
+    }
+
+    if (!m_database.transaction()) {
+        fail(QStringLiteral("No se pudo iniciar la transacción terminal: %1")
+                 .arg(m_database.lastError().text()));
+        return;
+    }
+    QString errorMessage;
+    if (!execPrepared(
+            m_database,
+            QStringLiteral(
+                "UPDATE runs SET status=?, "
+                "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') "
+                "WHERE id=? AND turn_id=? AND status='prepared' "
+                "AND EXISTS (SELECT 1 FROM turns "
+                "WHERE turns.id=runs.turn_id AND turns.session_id=?)"),
+            {request.status, request.runId, request.turnId, request.sessionId},
+            &errorMessage)) {
+        m_database.rollback();
+        fail(errorMessage);
+        return;
+    }
+    QSqlQuery changes(m_database);
+    if (!changes.exec(QStringLiteral("SELECT changes()"))
+        || !changes.next() || changes.value(0).toInt() != 1) {
+        m_database.rollback();
+        fail(QStringLiteral("El Run no existe, no está preparado o ya fue finalizado."));
+        return;
+    }
+
+    if (request.assistantItem) {
+        const auto &item = *request.assistantItem;
+        const QString payloadJson = QString::fromUtf8(
+            QJsonDocument(itemPayload(item)).toJson(QJsonDocument::Compact));
+        if (!execPrepared(
+                m_database,
+                QStringLiteral(
+                    "INSERT INTO conversation_items("
+                    "id,turn_id,sequence,kind,state,payload_json"
+                    ") VALUES(?,?,?,?,?,?)"),
+                {item.id, item.turnId, item.sequence,
+                 itemKindName(suprai::domain::itemKind(item)),
+                 itemStateName(item.state), payloadJson},
+                &errorMessage)) {
+            m_database.rollback();
+            fail(errorMessage);
+            return;
+        }
+
+        const QString searchableText = indexText(item);
+        if (!searchableText.isEmpty()
+            && !execPrepared(
+                m_database,
+                QStringLiteral(
+                    "INSERT INTO conversation_items_fts(item_id,session_id,text) "
+                    "VALUES(?,?,?)"),
+                {item.id, request.sessionId, searchableText},
+                &errorMessage)) {
+            m_database.rollback();
+            fail(errorMessage);
+            return;
+        }
+    }
+    if (!m_database.commit()) {
+        errorMessage = QStringLiteral("No se pudo confirmar el cierre durable del turno: %1")
+                           .arg(m_database.lastError().text());
+        m_database.rollback();
+        fail(errorMessage);
+        return;
+    }
+    emit turnTerminalPersisted(request.requestId);
+}
+
 void PersistenceWorker::shutdown()
 {
     Q_ASSERT(thread() == QThread::currentThread());
