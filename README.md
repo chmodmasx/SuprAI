@@ -15,7 +15,7 @@ Implemented:
 - three-pane desktop shell;
 - composer, streaming transcript, stop/cancel, new conversation and error state;
 - dedicated runtime QThread so provider work does not run on the UI thread;
-- dedicated persistence QThread skeleton with explicit initialize/shutdown lifecycle;
+- dedicated persistence QThread with a thread-affine primary SQLite writer connection;
 - XDG config/data/cache/state paths resolved through QStandardPaths and created at startup;
 - structured Qt logging categories with stable suprai.* names;
 - freedesktop single-instance/activation service over QtDBus with headless degradation;
@@ -32,14 +32,17 @@ Implemented:
 - typed AgentEngineEvent -> RuntimeEvent adapter boundary;
 - raw provider `reasoning_content` treated as ephemeral and excluded from later reconstructed prompts;
 - explicit public/private module include boundaries enforced by CMake targets;
-- CI build, 7/7 unit/integration tests and QML startup smoke test;
+- CI build, 8/8 unit/integration tests and QML startup smoke test;
 - CMake-owned portable staging of Qt libraries, QML imports and plugins;
 - independent staged smoke tests through XCB/Xvfb and Wayland/Weston with Qt development environment variables removed;
 - bundled X11 and Wayland QPA plugins verified in the stage;
+- SQLite bootstrap with WAL, foreign keys, busy timeout, schema migrations, quick/integrity checks and FTS5 capability proof;
+- schema v1 for sessions, inputs, turns, runs and generalized conversation items;
+- SQLite QSQLITE runtime/plugin included in the portable stage;
 - clean worker shutdown enforced by CI.
 
 Not implemented yet:
-- durable SQLite sessions/Turns/Runs;
+- runtime-to-repository durable write/read mapping for sessions/Inputs/Turns/Runs/items;
 - Responses transport;
 - tool calling and approvals;
 - MCP;
