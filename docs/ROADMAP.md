@@ -70,7 +70,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - native turn admission persists Session/Input/Turn/Run(status=prepared)/user item in one transaction;
 - provider inference is blocked until the persistence ACK arrives;
 - terminal Run status and assistant item are committed atomically and terminal events await the durable ACK (CI verified);
-- latest-session snapshot read and interrupted-Run reconciliation implemented on review branch (verification pending);
+- latest-session snapshot reading and interrupted-Run reconciliation are CI verified, including worker shutdown/reopen;
 - runtime-layering tests prove provider request count remains zero before ACK;
 - persistence tests verify the durable batch and FTS entry;
 - ordinary chat rendering remains plain text in this prototype.
@@ -127,7 +127,7 @@ Early prototype proof already exists for:
 - cancellation;
 - error display.
 
-M2 is not complete: typed session restoration is on a review branch; session navigation, tool/approval/clarification UI and safe Markdown proof remain. Terminal writes are implemented and CI-verified. The generalized domain foundation and runtime capability projection are implemented.
+M2 is not complete: the latest local session is automatically restored, but session navigation, tool/approval/clarification UI and safe Markdown proof remain. Terminal writes and restart reconstruction are CI-verified. The generalized domain foundation and runtime capability projection are implemented.
 
 Implemented foundation:
 - AgentRuntime abstract interface;
@@ -144,7 +144,7 @@ Implemented foundation:
 
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
-- retain verified terminal assistant/Run persistence and CI-verify latest-session read/reconstruction in M3;
+- retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
 - safe native Markdown rendering proof;
 - tool cards;
 - approval/clarification component.
@@ -169,7 +169,7 @@ An intentionally small M3 vertical slice was prototyped early:
 - separated `reasoning_content` is ephemeral and is not replayed into the next prompt;
 - these boundaries are covered by deterministic fake-provider/fake-server tests.
 
-This is not the final M3 runtime. Initial Session/Input/Turn/Run/user-item admission is durable and ACK-gated before inference. Terminal assistant/Run writes are implemented and CI-verified; read/resume/recovery, Responses, capability probing, token budgeting and full turn-state-machine semantics remain.
+This is not the final M3 runtime. Initial Session/Input/Turn/Run/user-item admission is durable and ACK-gated before inference. Terminal assistant/Run writes and newest-session read/reconstruction are CI-verified; selectable-session resume, deeper recovery, Responses, capability probing, token budgeting and full turn-state-machine semantics remain.
 
 Implement:
 - retain/expand the implemented NativeSuprAIRuntime -> RuntimeOrchestrator -> AgentEngine split;
@@ -192,9 +192,9 @@ Implement:
 - model configuration;
 - local endpoint support;
 - retain the implemented asynchronous PersistencePort command/ACK boundary;
-- persist assistant/final items and terminal Run outcomes;
-- durable Session/Turn/item read/resume mapping and startup reconstruction;
-- reconcile prepared/interrupted Runs on restart;
+- retain implemented assistant/final item and terminal Run persistence;
+- retain implemented latest Session/Turn/item read/reconstruction at startup;
+- extend recovery past implemented prepared-to-interrupted reconciliation;
 - retain the implemented dedicated PersistenceWorker, WAL/foreign-keys/busy-timeout/migrations and FTS5 proof;
 - provider-state-independent session reconstruction;
 - cancellation request/confirmation semantics;

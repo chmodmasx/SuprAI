@@ -3,9 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 37011be1b1c5fb4c8a32adc7cd3e9f643f798e00
-last_verified_code_commit: 37011be1b1c5fb4c8a32adc7cd3e9f643f798e00
-in_review_branch: feature/session-restoration-clean
+last_verified_commit: e8fe66a767713eeea276b5eaa3a1a9575f7e22e5
+last_verified_code_commit: e8fe66a767713eeea276b5eaa3a1a9575f7e22e5
 
 working:
   - repository exists and is writable
@@ -232,7 +231,10 @@ decisions:
   - concrete implementations are wired only at the application composition root
   - current prototype wiring uses provider factory -> Provider port -> AgentEngine inside RuntimeOrchestrator inside NativeSuprAIRuntime
   - current native vertical slice uses Chat Completions only; Responses remains planned
-  - user-side turn admission and terminal Run status/assistant output are durable and verified; automatic latest-session read/reconstruction is implemented on review branch (unverified)
+  - user-side turn admission, terminal Run status and assistant output are durable and CI verified
+  - latest local Session/Input/Turn/Run/ConversationItem snapshot restores through PersistencePort on startup
+  - a prepared Run remaining after a previous process is conservatively marked interrupted, never replayed
+  - SQLite writer reopening and restoration across worker restart are CI tested
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -282,7 +284,7 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - verify typed latest-session snapshot read/resume mapping over schema v1; session browser and arbitrary-session selection remain future work
+  - session browser and arbitrary-session selection remain future work (only latest session is restored automatically)
   - restart reconciliation semantics for prepared Runs before ProviderAttempt persistence exists
   - LargeResultArtifact storage/retention/read-range implementation details
   - WorkspaceCheckpointService backend, Git/non-Git scope and cleanup policy
@@ -300,7 +302,8 @@ next_exact_steps:
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
-  - verify latest-session reconstruction, Run interruption reconciliation, and provider-independent context rebuild in CI
+  - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
+  - design user-selectable session navigation without replaying interrupted Runs
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

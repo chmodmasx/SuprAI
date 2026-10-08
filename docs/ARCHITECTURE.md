@@ -860,11 +860,37 @@ RuntimeOrchestrator
 
 The initial transaction writes Session, Input, Turn, Run(status=prepared) and the user ConversationItem atomically. Provider inference does not begin until the commit ACK returns. RuntimeOrchestrator has no SQL dependency.
 
+Implemented terminal durability:
+```text
+AgentEngine completes/fails/cancels
+  -> RuntimeOrchestrator
+  -> typed TurnTerminalWrite
+  -> PersistenceWorker atomic transaction:
+       Run status + optional assistant item + FTS
+  -> COMMIT -> terminal ACK
+  -> admit canonical assistant item and finish UI projection
+```
+
+Terminal writes reject double-finalization and mismatched Run/Turn/Session identity. If the write fails, the result is not admitted as durable canonical history.
+
+Implemented startup session recovery:
+```text
+Native runtime Starting
+  -> PersistencePort.loadLatestSession()
+  -> worker reconciles prepared Runs as interrupted
+  -> typed SessionSnapshot (newest Session + ordered Input/Turn/Run/items)
+  -> RuntimeOrchestrator history + transcript reconstruction
+  -> Ready
+```
+
+The runtime does not automatically replay interrupted inference and does not require provider-managed session state. Recovery was tested after a SQLite writer shutdown/reopen in CI.
+
 Still missing:
-- assistant/final ConversationItem and terminal Run-state persistence;
-- durable read/resume and session reconstruction from SQLite;
-- crash reconciliation for active/prepared Runs;
-- durable ToolInvocation side-effect journal.
+- user-facing list/selection of older Sessions;
+- persisted ProviderAttempts and advanced interrupted-Run reconciliation;
+- durable ToolInvocation side-effect journal and Task recovery;
+- full power-loss durability proof (current WAL synchronous=NORMAL does not promise it);
+- physical KDE/NInfer restart test.
 
 ### Side-effect journal
 

@@ -163,10 +163,18 @@ Terminal Run writes are deliberately not replayed blindly: the update requires t
 
 This implementation is merged and passed the GitHub Actions build, tests and staged XCB/Wayland checks.
 
-Not yet implemented:
-- automatic latest-session read/resume and conservative prepared-to-interrupted recovery (implemented on review branch, CI proof pending);
-- restart reconciliation of prepared/interrupted Runs;
-- ProviderAttempt persistence;
-- side-effect journal tables/logic for ToolInvocation lifecycle.
+## Implemented startup recovery
 
-The review branch loads typed Session/Input/Turn/Run/items through the persistence worker, restoring transcript/context without provider cache. Prepared Runs are marked interrupted rather than replayed. Full session navigation, ProviderAttempt journaling and more sophisticated recovery remain future work. Review-branch functionality is not verified until CI passes.
+On native runtime startup, a typed `SessionSnapshot` is loaded through the same PersistencePort/worker boundary before the runtime becomes Ready. The worker loads the newest persisted Session, its ordered Inputs/Turns/Runs, and all serialized ConversationItems. This reconstructs the transcript and the next provider request entirely from SuprAI-owned SQLite state; model/provider conversation IDs and KV caches are not required.
+
+Any Run left `prepared` by the previous process is transitioned to `interrupted` in SQLite before the snapshot is loaded. These Runs are not automatically re-inferred or replayed. Completed, failed and cancelled Run outcomes remain unchanged.
+
+CI covers the typed runtime hydration and a database writer shutdown/reopen with a still-prepared Run. The previous user's input remains visible while the unfinished Run is marked interrupted.
+
+Current limits:
+- automatic restoration of the newest session only; no list/select/branch UI yet;
+- no persisted ProviderAttempt records or replay reconciliation beyond prepared-to-interrupted;
+- no persisted ToolInvocation side-effect journal;
+- in-progress streamed assistant tokens are not incrementally checkpointed before the terminal transaction;
+- WAL with `synchronous=NORMAL` covers process-level restart safety but does not guarantee the latest ACKed transaction survives a sudden machine power loss. Full power-loss durability needs a separate `synchronous=FULL` decision and proof;
+- desktop-level KDE/NInfer restart validation remains outstanding.
