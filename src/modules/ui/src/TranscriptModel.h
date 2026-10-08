@@ -17,7 +17,8 @@ public:
         IdRole = Qt::UserRole + 1,
         SpeakerRole,
         TextRole,
-        StreamingRole
+        StreamingRole,
+        StateRole
     };
 
     explicit TranscriptModel(QObject *parent = nullptr);
@@ -29,6 +30,7 @@ public:
     void append(const suprai::domain::ConversationItem &item);
     void appendDelta(const QString &itemId, const QString &delta);
     void finish(const QString &itemId);
+    void stop(const QString &itemId, suprai::domain::ConversationItemState terminalState);
     void clear();
 
 private:

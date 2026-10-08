@@ -179,10 +179,16 @@ private slots:
         FakePersistencePort persistence;
         RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
         int completed = 0;
+        int stopped = 0;
         connect(&orchestrator, &RuntimeOrchestrator::eventOccurred,
                 this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
             if (suprai::runtime::eventPayload<suprai::runtime::ConversationItemCompleted>(event)) {
                 ++completed;
+            }
+            if (const auto *value = suprai::runtime::eventPayload<
+                    suprai::runtime::ConversationItemStopped>(event)) {
+                QCOMPARE(value->state, suprai::domain::ConversationItemState::Failed);
+                ++stopped;
             }
         });
         orchestrator.start();
@@ -192,7 +198,8 @@ private slots:
         QCOMPARE(completed, 0);
         persistence.terminalFailed();
         QCOMPARE(orchestrator.history().size(), 1);
-        QCOMPARE(completed, 1); // End UI streaming, do not commit canonical answer.
+        QCOMPARE(completed, 0); // Failure cannot look like a successful completion.
+        QCOMPARE(stopped, 1);
         QCOMPARE(provider->requests().size(), 1);
     }
 

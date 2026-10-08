@@ -158,6 +158,12 @@ void ChatController::handleRuntimeEvent(
         return;
     }
 
+    if (const auto *stopped =
+            suprai::runtime::eventPayload<suprai::runtime::ConversationItemStopped>(event)) {
+        m_transcript->stop(stopped->itemId, stopped->state);
+        return;
+    }
+
     if (const auto *reasoning =
             suprai::runtime::eventPayload<suprai::runtime::ReasoningActiveChanged>(event)) {
         setReasoning(reasoning->active);
