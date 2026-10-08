@@ -156,6 +156,7 @@ qt_import_plugins(suprai
     INCLUDE
         Qt6::QWaylandIntegrationPlugin
         Qt6::QXcbIntegrationPlugin
+        Qt6::QSQLiteDriverPlugin
 )
 
 qt_add_qml_module(suprai
@@ -189,8 +190,14 @@ install(TARGETS suprai
 # executable even though QApplication creates a direct runtime dependency.
 # Keep the dependency explicit and let the deploy scanner close its transitive
 # dependencies and plugins.
-install(IMPORTED_RUNTIME_ARTIFACTS Qt6::Widgets
+install(IMPORTED_RUNTIME_ARTIFACTS
+    Qt6::Widgets
+    Qt6::Sql
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(IMPORTED_RUNTIME_ARTIFACTS Qt6::QSQLiteDriverPlugin
+    LIBRARY DESTINATION plugins/sqldrivers
 )
 
 install(IMPORTED_RUNTIME_ARTIFACTS Qt6::QWaylandIntegrationPlugin
