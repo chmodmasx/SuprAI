@@ -92,7 +92,7 @@ ApplicationBootstrap
 
 Current source modules expose only their public `include/suprai/...` surface. Concrete runtime/provider implementations live in private source directories and are not visible to unrelated consumers.
 
-The runtime split required by ADR-0002 is already implemented in the current vertical slice. Turn admission is now partially durable: the Session/Input/Turn/Run plus user item commit before inference. Assistant completion, terminal Run state and read/resume remain M3 work. Tool iteration and the rest of M3 build on these boundaries rather than replacing them.
+The runtime split required by ADR-0002 is implemented in the current vertical slice. SQLite commits the Session/Input/Turn/Run and the user item before inference, then atomically commits the terminal Run outcome and assistant item before the terminal UI ACK. On startup the native runtime restores the newest local session from SQLite and marks previously prepared Runs as interrupted without replaying them. Selectable older sessions, ProviderAttempt journaling, tool iteration and the remainder of M3 build on these boundaries rather than replacing them.
 
 This is deliberate: adding or replacing a provider should not require changes to QML or stateful orchestration, and session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
 
