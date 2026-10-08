@@ -149,9 +149,9 @@ RuntimeOrchestrator does not include Qt SQL or issue SQL. `suprai_persistence_ap
 
 The `prepared` Run status is intentionally conservative: this first durability gate proves admission before inference, but ProviderAttempt/start journaling is not implemented yet.
 
-## Terminal Run persistence (implementation under CI review)
+## Implemented terminal Run persistence
 
-`feature/durable-turn-terminal` introduces a typed `TurnTerminalWrite` through the same persistence port and worker thread. When a provider finishes, fails, or confirms cancellation, the writer transaction:
+The CI-verified native runtime uses a typed `TurnTerminalWrite` through the same persistence port and worker thread. When a provider finishes, fails, or confirms cancellation, the writer transaction:
 - changes exactly one matching Run from `prepared` to `completed`, `failed` or `cancelled`;
 - inserts the assistant item (including partial failed/cancelled output when present);
 - indexes assistant text in FTS5;
@@ -161,7 +161,7 @@ The runtime only admits that assistant item to canonical history after the ACK. 
 
 Terminal Run writes are deliberately not replayed blindly: the update requires the matching prepared Run and rejects a second finalization. A crash between SQLite COMMIT and ACK therefore requires reconciliation by reading persisted state, not a guessed retry.
 
-This implementation is in PR review; until CI and merge succeed it is not a verified deliverable.
+This implementation is merged and passed the GitHub Actions build, tests and staged XCB/Wayland checks.
 
 Not yet implemented:
 - durable read/resume/session reconstruction;
