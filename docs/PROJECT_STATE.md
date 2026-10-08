@@ -3,9 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: e8fe66a767713eeea276b5eaa3a1a9575f7e22e5
-last_verified_code_commit: e8fe66a767713eeea276b5eaa3a1a9575f7e22e5
-in_review_branch: fix/terminal-item-state
+last_verified_commit: 53d7338f089ca0ad5940e1f922b3f86ccf26f94c
+last_verified_code_commit: 53d7338f089ca0ad5940e1f922b3f86ccf26f94c
 
 working:
   - repository exists and is writable
@@ -236,7 +235,8 @@ decisions:
   - latest local Session/Input/Turn/Run/ConversationItem snapshot restores through PersistencePort on startup
   - a prepared Run remaining after a previous process is conservatively marked interrupted, never replayed
   - SQLite writer reopening and restoration across worker restart are CI tested
-  - review branch introduces distinct UI stopped vs completed events for failed/cancelled/persistence-failed streams; CI not yet verified
+  - distinct ConversationItemCompleted/ConversationItemStopped events preserve completed/failed/cancelled stream semantics, including terminal-write failures (CI verified)
+  - transcript projection exposes explicit messageState and preserves failure/cancellation across streaming completion
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
