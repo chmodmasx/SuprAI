@@ -2,6 +2,7 @@
 
 Status: accepted
 Date: 2026-10-06
+Updated: 2026-10-08
 
 ## Decision
 
@@ -91,3 +92,40 @@ More importantly, an application crash can occur after a side effect happened bu
 - DB access is more disciplined;
 - ambiguous outcomes are surfaced instead of guessed;
 - future background execution can reuse the same journal.
+
+
+## Implemented foundation
+
+The SQLite writer foundation is now implemented and CI-verified.
+
+Current writer behavior:
+- one QSqlDatabase writer connection owned by PersistenceWorker on the persistence thread;
+- QSQLITE availability checked before open;
+- database path under the resolved XDG state directory;
+- PRAGMA foreign_keys = ON;
+- PRAGMA busy_timeout = 5000;
+- PRAGMA journal_mode = WAL verified after setting;
+- PRAGMA synchronous = NORMAL;
+- PRAGMA quick_check and foreign_key_check startup/test verification;
+- PRAGMA user_version-backed schema migration;
+- explicit FTS5 probe against the SQLite build actually shipped.
+
+Schema v1 currently creates:
+- schema_migrations;
+- sessions;
+- inputs;
+- turns;
+- runs;
+- conversation_items;
+- conversation_items_fts;
+- supporting lineage/order indexes.
+
+Portable staging explicitly includes Qt6Sql and the QSQLiteDriverPlugin, and staged XCB/Wayland smoke tests exercise PersistenceWorker initialization. CI treats persistence_worker_error as a smoke-test failure.
+
+Not yet implemented:
+- repository/command ports between RuntimeOrchestrator and PersistenceWorker;
+- durable runtime writes/reads for the v1 entities;
+- crash reconciliation of persisted active Runs;
+- side-effect journal tables/logic for ToolInvocation lifecycle.
+
+Those remain required before durable session recovery can be claimed.
