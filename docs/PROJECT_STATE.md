@@ -5,6 +5,8 @@ milestone: M1
 status: in_progress_vertical_slice_verified
 last_verified_commit: d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8
 last_verified_code_commit: d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8
+in_review_branch: feature/durable-turn-terminal
+in_review_commit: cd3e3eae79be0c2e1eec0ba1aed7f486c37dba70
 
 working:
   - repository exists and is writable
@@ -231,7 +233,7 @@ decisions:
   - concrete implementations are wired only at the application composition root
   - current prototype wiring uses provider factory -> Provider port -> AgentEngine inside RuntimeOrchestrator inside NativeSuprAIRuntime
   - current native vertical slice uses Chat Completions only; Responses remains planned
-  - user-side turn admission is now durable; assistant completion, terminal Run state and read/resume remain in-memory/not yet wired
+  - user-side turn admission is durable; the terminal assistant + Run write path is implemented on feature/durable-turn-terminal, pending CI verification; read/resume is not wired
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -281,7 +283,6 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - exact terminal-write protocol for assistant item and Run outcome
   - durable Session/Turn/ConversationItem read/resume mapping over schema v1
   - restart reconciliation semantics for prepared Runs before ProviderAttempt persistence exists
   - LargeResultArtifact storage/retention/read-range implementation details
@@ -299,7 +300,7 @@ next_exact_steps:
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
-  - extend the durable path to persist assistant completion/failure/cancellation and terminal Run state
+  - verify and merge the terminal-write branch (atomic assistant output + Run status, ACK-gated completion)
   - add durable Session/Turn/item reads and resume/reconstruction without provider-side conversation state
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics

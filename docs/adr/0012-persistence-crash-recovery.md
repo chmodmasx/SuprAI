@@ -147,11 +147,23 @@ The provider is not called before the commit ACK. A runtime-layering test explic
 
 RuntimeOrchestrator does not include Qt SQL or issue SQL. `suprai_persistence_api` contains the typed port; the SQLite worker implementation remains a separate target/thread.
 
-The `prepared` Run status is intentionally conservative: this first durability gate proves admission before inference, but ProviderAttempt/start/terminal-state journaling is not implemented yet.
+The `prepared` Run status is intentionally conservative: this first durability gate proves admission before inference, but ProviderAttempt/start journaling is not implemented yet.
+
+## Terminal Run persistence (implementation under CI review)
+
+`feature/durable-turn-terminal` introduces a typed `TurnTerminalWrite` through the same persistence port and worker thread. When a provider finishes, fails, or confirms cancellation, the writer transaction:
+- changes exactly one matching Run from `prepared` to `completed`, `failed` or `cancelled`;
+- inserts the assistant item (including partial failed/cancelled output when present);
+- indexes assistant text in FTS5;
+- commits before emitting `turnTerminalPersisted`.
+
+The runtime only admits that assistant item to canonical history after the ACK. If the terminal transaction fails, the runtime enters Failed rather than treating the answer as durably accepted. Incomplete assistant items are excluded from subsequent provider prompts. Cancellation after durable admission but before inference also closes the prepared Run durably.
+
+Terminal Run writes are deliberately not replayed blindly: the update requires the matching prepared Run and rejects a second finalization. A crash between SQLite COMMIT and ACK therefore requires reconciliation by reading persisted state, not a guessed retry.
+
+This implementation is in PR review; until CI and merge succeed it is not a verified deliverable.
 
 Not yet implemented:
-- persistence of assistant/final ConversationItems;
-- terminal Run state updates for success/failure/cancellation;
 - durable read/resume/session reconstruction;
 - restart reconciliation of prepared/interrupted Runs;
 - ProviderAttempt persistence;
