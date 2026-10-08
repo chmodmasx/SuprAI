@@ -28,13 +28,13 @@ Goal: prove the Qt foundation before agent complexity.
 
 Status: **IN PROGRESS**.
 
-Verified vertical slice at commit `98fb72265f38d375145206dbaa039e93d0b8a103`:
+Verified vertical slice at commit `95e1ad31880d54cbb38e35f6d0ce8072d7c74411`:
 - CMake/C++20/Qt 6 application builds in CI with Qt 6.12.0;
 - module PUBLIC/PRIVATE include boundaries are enforced by target-scoped CMake paths;
 - `ApplicationBootstrap` is the concrete composition root;
 - QML three-pane shell starts successfully in the offscreen smoke test;
 - runtime runs on a dedicated QThread;
-- persistence worker skeleton runs on a separate dedicated QThread and shuts down cleanly;
+- persistence worker runs on a separate dedicated QThread and owns the primary SQLite writer connection;
 - XDG config/data/cache/state paths are resolved through QStandardPaths and created explicitly;
 - logging uses stable suprai.app/runtime/provider/persistence/platform Qt categories;
 - QML has explicit Chat and Configuración routes;
@@ -54,7 +54,7 @@ Verified vertical slice at commit `98fb72265f38d375145206dbaa039e93d0b8a103`:
 - a fake OpenAI-compatible integration test completes two streamed turns;
 - a dedicated runtime-layering test verifies that raw reasoning stays outside orchestrator history;
 - raw `reasoning_content` from the first turn is verified absent from the second request;
-- 7/7 CTest tests pass;
+- 8/8 CTest tests pass;
 - worker shutdown completes cleanly and CI fails on any shutdown timeout;
 - CMake install staging deploys Qt runtime, QML imports and qt.conf;
 - Qt6Widgets is staged explicitly because QApplication is a deliberate runtime dependency;
@@ -62,6 +62,10 @@ Verified vertical slice at commit `98fb72265f38d375145206dbaa039e93d0b8a103`:
 - staged install launches with the Qt development environment variables removed;
 - staged XCB smoke passes under Xvfb;
 - staged Wayland smoke passes under Weston headless;
+- SQLite writer bootstrap enables WAL, foreign keys, busy timeout and NORMAL synchronous mode;
+- schema v1 migrations create sessions, inputs, turns, runs, generalized conversation_items and FTS5 history index;
+- startup/tests verify QSQLITE, FTS5, user_version, quick_check and foreign_key_check;
+- Qt6Sql and QSQLiteDriverPlugin are explicitly included in the portable stage;
 - ordinary chat rendering remains plain text in this prototype.
 
 Still required before M1 can be COMPLETE:
@@ -160,7 +164,7 @@ An intentionally small M3 vertical slice was prototyped early:
 - separated `reasoning_content` is ephemeral and is not replayed into the next prompt;
 - these boundaries are covered by deterministic fake-provider/fake-server tests.
 
-This is not the final M3 runtime. Durable Session/Input/Turn/Run state, Responses, capability probing, persistence, token budgeting and explicit turn-state-machine semantics remain.
+This is not the final M3 runtime. SQLite/schema infrastructure exists, but runtime-to-repository durable Session/Input/Turn/Run/item mapping, Responses, capability probing, token budgeting and explicit turn-state-machine semantics remain.
 
 Implement:
 - retain/expand the implemented NativeSuprAIRuntime -> RuntimeOrchestrator -> AgentEngine split;
@@ -182,9 +186,9 @@ Implement:
 - TokenBudgetService capability ladder;
 - model configuration;
 - local endpoint support;
-- canonical SQLite Session/Input/Turn/Run/Item stores;
-- dedicated PersistenceWorker;
-- WAL/foreign-keys/busy-timeout/migrations;
+- connect RuntimeOrchestrator to explicit asynchronous persistence/repository ports;
+- durable Session/Input/Turn/Run/Item write/read mapping;
+- retain the implemented dedicated PersistenceWorker, WAL/foreign-keys/busy-timeout/migrations and FTS5 proof;
 - provider-state-independent session reconstruction;
 - cancellation request/confirmation semantics;
 - retry only before observable generation;
