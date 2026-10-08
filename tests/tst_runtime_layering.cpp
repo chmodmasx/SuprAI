@@ -158,7 +158,7 @@ private slots:
         RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
         int completed = 0;
         connect(&orchestrator, &RuntimeOrchestrator::eventOccurred,
-                this, [&](const auto &event) {
+                this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
             if (suprai::runtime::eventPayload<suprai::runtime::ConversationItemCompleted>(event)) {
                 ++completed;
             }
