@@ -192,13 +192,28 @@ Current implemented structure:
       runtime/
         include/suprai/runtime/
           AgentRuntime.h
+          RuntimeApplicationEvent.h
+          RuntimeCapabilities.h
           RuntimeConfig.h
           RuntimeFactory.h
           RuntimeState.h
         src/
+          AgentEngine.*
+          RuntimeEventAdapter.*
+          RuntimeOrchestrator.*
           NativeSuprAIRuntime.*
           MockRuntime.*
           RuntimeFactory.cpp
+
+      persistence/
+        include/suprai/persistence/
+          PersistenceWorker.h
+        src/
+          PersistenceWorker.cpp
+
+      platform/
+        include/suprai/platform/
+        src/
 
       ui/
         include/suprai/ui/
@@ -229,6 +244,8 @@ Current targets:
 suprai_domain
 suprai_provider_api
 suprai_provider_openai
+suprai_platform
+suprai_persistence
 suprai_runtime
 suprai_ui
 suprai
@@ -241,7 +258,7 @@ Important dependency enforcement:
 - tests that intentionally inspect an internal helper receive that private include path explicitly and locally;
 - `ApplicationBootstrap` is the only current production composition point that chooses Mock vs native and constructs the concrete provider.
 
-Future subsystem and adapter targets are added when implemented.
+Future subsystem and adapter targets are added when implemented. Persistence and platform are already separate targets; tools/context/memory/MCP/skills/services remain future modules.
 
 Do not create one giant library containing all application logic.
 
@@ -812,13 +829,25 @@ Retry, regenerate, edit-and-resend and future branching create lineage; they do 
 
 The primary SQLite writer connection belongs to a dedicated PersistenceWorker/thread.
 
-Baseline:
-- WAL;
+Implemented baseline:
+- QSQLITE driver availability check;
+- database under XDG state path;
+- WAL enabled and verified;
 - foreign keys enabled;
-- busy timeout;
-- versioned migrations;
-- FTS5 verified in the actually shipped SQLite;
+- 5000 ms busy timeout;
+- synchronous=NORMAL;
+- PRAGMA user_version migrations;
+- startup/test quick_check and foreign_key_check;
+- FTS5 capability probe in the actually shipped SQLite;
+- schema v1 with sessions, inputs, turns, runs, generalized conversation_items and an FTS5 history table;
+- Qt6Sql/QSQLiteDriverPlugin included in portable staging;
 - no arbitrary SQL from QML/runtime components.
+
+Still missing:
+- asynchronous repository/command ports between RuntimeOrchestrator and PersistenceWorker;
+- durable runtime writes/reads and resume path;
+- crash reconciliation for active Runs;
+- durable ToolInvocation side-effect journal.
 
 ### Side-effect journal
 
