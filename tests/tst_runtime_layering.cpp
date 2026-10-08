@@ -34,6 +34,11 @@ public:
         m_requests.push_back(request);
 
         emit reasoningDelta(QStringLiteral("PRIVATE_REASONING"));
+        if (failNext) {
+            m_busy = false;
+            emit failed(QStringLiteral("provider-error"));
+            return;
+        }
 
         const QString answer = m_requests.size() == 1
             ? QStringLiteral("respuesta uno")
@@ -53,6 +58,9 @@ public:
         m_busy = false;
         emit cancelled();
     }
+
+public:
+    bool failNext = false;
 
 private:
     bool m_busy = false;
@@ -172,6 +180,44 @@ private slots:
         QCOMPARE(orchestrator.history().size(), 1);
         QCOMPARE(completed, 1); // End UI streaming, do not commit canonical answer.
         QCOMPARE(provider->requests().size(), 1);
+    }
+
+    void cancellationBeforeInferenceDurablyClosesRun()
+    {
+        using namespace suprai::runtime::internal;
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("cancelar"));
+        orchestrator.cancelTurn();
+        QCOMPARE(provider->requests().size(), 0);
+        persistence.succeed();
+        QCOMPARE(persistence.terminalWriteCount, 1);
+        QCOMPARE(persistence.lastTerminal.status, QStringLiteral("cancelled"));
+        QVERIFY(!persistence.lastTerminal.assistantItem.has_value());
+        QCOMPARE(provider->requests().size(), 0);
+        persistence.terminalSucceeded();
+        QCOMPARE(orchestrator.history().size(), 1);
+    }
+
+    void providerFailureRequiresDurableTerminalAck()
+    {
+        using namespace suprai::runtime::internal;
+        auto *provider = new FakeProvider;
+        provider->failNext = true;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("fallar"));
+        persistence.succeed();
+        QCOMPARE(persistence.terminalWriteCount, 1);
+        QCOMPARE(persistence.lastTerminal.status, QStringLiteral("failed"));
+        QCOMPARE(orchestrator.history().size(), 1);
+        persistence.terminalSucceeded();
+        QCOMPARE(orchestrator.history().size(), 1);
     }
 
     void executionIdentitiesTrackConversationLineage()
