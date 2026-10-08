@@ -7,6 +7,10 @@ namespace suprai::providers {
 class Provider;
 }
 
+namespace suprai::persistence {
+class PersistencePort;
+}
+
 namespace suprai::runtime::internal {
 
 class AgentEngine;
@@ -20,6 +24,7 @@ public:
     NativeSuprAIRuntime(
         suprai::runtime::AgentRuntimeConfig config,
         suprai::providers::Provider *provider,
+        suprai::persistence::PersistencePort *persistence = nullptr,
         QObject *parent = nullptr);
 
 public slots:

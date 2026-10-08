@@ -12,11 +12,13 @@ namespace suprai::runtime::internal {
 RuntimeOrchestrator::RuntimeOrchestrator(
     suprai::runtime::AgentRuntimeConfig config,
     AgentEngine *engine,
+    suprai::persistence::PersistencePort *persistence,
     QObject *parent)
     : QObject(parent)
     , m_config(std::move(config))
     , m_engine(engine)
     , m_eventAdapter(new RuntimeEventAdapter(engine, this))
+    , m_persistence(persistence)
     , m_session{
           .id = suprai::domain::newSessionId(),
           .parentSessionId = {},
@@ -26,6 +28,13 @@ RuntimeOrchestrator::RuntimeOrchestrator(
 
     connect(m_eventAdapter, &RuntimeEventAdapter::runtimeEvent,
             this, &RuntimeOrchestrator::handleRuntimeEvent);
+
+    if (m_persistence) {
+        connect(m_persistence, &suprai::persistence::PersistencePort::turnStartPersisted,
+                this, &RuntimeOrchestrator::handleTurnStartPersisted);
+        connect(m_persistence, &suprai::persistence::PersistencePort::writeFailed,
+                this, &RuntimeOrchestrator::handlePersistenceFailure);
+    }
 }
 
 const suprai::domain::Session &RuntimeOrchestrator::session() const
@@ -81,11 +90,7 @@ void RuntimeOrchestrator::shutdown()
         m_engine->cancel();
     }
 
-    m_activeAssistantId.clear();
-    m_activeAssistantText.clear();
-    m_activeInput.reset();
-    m_activeTurn.reset();
-    m_activeRun.reset();
+    clearActiveTurn();
 
     if (m_reasoningActive) {
         m_reasoningActive = false;
@@ -149,6 +154,7 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
     m_activeInput = suprai::domain::Input{
         .id = suprai::domain::newInputId(),
         .sessionId = m_session.id,
+        .sequence = m_inputs.size() + 1,
         .text = text,
     };
 
@@ -157,6 +163,7 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
         .sessionId = m_session.id,
         .inputId = m_activeInput->id,
         .parentTurnId = m_turns.isEmpty() ? QString{} : m_turns.constLast().id,
+        .sequence = m_turns.size() + 1,
     };
 
     m_activeRun = suprai::domain::Run{
@@ -165,44 +172,41 @@ void RuntimeOrchestrator::submitPrompt(const QString &prompt)
         .generation = 1,
     };
 
-    m_inputs.push_back(*m_activeInput);
-    m_turns.push_back(*m_activeTurn);
-    m_runs.push_back(*m_activeRun);
-
-    const auto userItem = suprai::domain::makeMessageItem(
+    m_pendingUserItem = suprai::domain::makeMessageItem(
         suprai::domain::ConversationRole::User,
         text,
         suprai::domain::ConversationItemState::Completed,
         suprai::domain::newItemId(),
-        m_activeTurn->id);
-
-    m_history.push_back(userItem);
-    emitApplicationEvent({
-        .payload = ConversationItemStarted{
-            .item = userItem,
-        },
-    });
-
-    m_activeAssistantId = suprai::domain::newItemId();
-    m_activeAssistantText.clear();
-    emitApplicationEvent({
-        .payload = ConversationItemStarted{
-            .item = suprai::domain::makeMessageItem(
-                suprai::domain::ConversationRole::Assistant,
-                {},
-                suprai::domain::ConversationItemState::Streaming,
-                m_activeAssistantId,
-                m_activeTurn->id),
-        },
-    });
+        m_activeTurn->id,
+        1);
 
     setState(RuntimeState::Working);
-    m_engine->generate(providerRequest());
+
+    if (m_persistence) {
+        m_pendingPersistenceRequestId = m_activeRun->id;
+        m_persistence->persistTurnStart({
+            .requestId = m_pendingPersistenceRequestId,
+            .session = m_session,
+            .input = *m_activeInput,
+            .turn = *m_activeTurn,
+            .run = *m_activeRun,
+            .userItem = *m_pendingUserItem,
+        });
+        return;
+    }
+
+    admitPendingTurnAndStartInference();
 }
 
 void RuntimeOrchestrator::cancelTurn()
 {
     if (m_state != RuntimeState::Working || !m_engine) {
+        return;
+    }
+
+    if (!m_pendingPersistenceRequestId.isEmpty()) {
+        m_cancelBeforeInference = true;
+        setState(RuntimeState::Cancelling);
         return;
     }
 
@@ -230,14 +234,93 @@ void RuntimeOrchestrator::resetSession()
     m_turns.clear();
     m_runs.clear();
     m_history.clear();
-    m_activeInput.reset();
-    m_activeTurn.reset();
-    m_activeRun.reset();
-    m_activeAssistantId.clear();
-    m_activeAssistantText.clear();
+    clearActiveTurn();
     emitApplicationEvent({
         .payload = ConversationReset{},
     });
+}
+
+void RuntimeOrchestrator::handleTurnStartPersisted(const QString &requestId)
+{
+    if (requestId != m_pendingPersistenceRequestId) {
+        return;
+    }
+
+    admitPendingTurnAndStartInference();
+}
+
+void RuntimeOrchestrator::handlePersistenceFailure(
+    const QString &requestId,
+    const QString &message)
+{
+    if (requestId != m_pendingPersistenceRequestId) {
+        return;
+    }
+
+    clearActiveTurn();
+    setState(RuntimeState::Failed);
+    emitApplicationEvent({
+        .payload = RuntimeError{
+            .message = QStringLiteral("No se pudo persistir el turno antes de inferir: %1")
+                           .arg(message),
+        },
+    });
+}
+
+void RuntimeOrchestrator::admitPendingTurnAndStartInference()
+{
+    if (!m_activeInput
+        || !m_activeTurn
+        || !m_activeRun
+        || !m_pendingUserItem) {
+        clearActiveTurn();
+        setState(RuntimeState::Failed);
+        emitApplicationEvent({
+            .payload = RuntimeError{
+                .message = QStringLiteral(
+                    "El runtime perdió el estado pendiente del turno."),
+            },
+        });
+        return;
+    }
+
+    const auto userItem = *m_pendingUserItem;
+
+    m_inputs.push_back(*m_activeInput);
+    m_turns.push_back(*m_activeTurn);
+    m_runs.push_back(*m_activeRun);
+    m_history.push_back(userItem);
+
+    m_pendingPersistenceRequestId.clear();
+    m_pendingUserItem.reset();
+
+    emitApplicationEvent({
+        .payload = ConversationItemStarted{
+            .item = userItem,
+        },
+    });
+
+    if (m_cancelBeforeInference) {
+        clearActiveTurn();
+        setState(RuntimeState::Ready);
+        return;
+    }
+
+    m_activeAssistantId = suprai::domain::newItemId();
+    m_activeAssistantText.clear();
+    emitApplicationEvent({
+        .payload = ConversationItemStarted{
+            .item = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::Assistant,
+                {},
+                suprai::domain::ConversationItemState::Streaming,
+                m_activeAssistantId,
+                m_activeTurn->id,
+                2),
+        },
+    });
+
+    m_engine->generate(providerRequest());
 }
 
 void RuntimeOrchestrator::handleRuntimeEvent(const RuntimeEvent &event)
@@ -309,7 +392,8 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
             m_activeAssistantText,
             suprai::domain::ConversationItemState::Completed,
             m_activeAssistantId,
-            m_activeTurn ? m_activeTurn->id : QString{}));
+            m_activeTurn ? m_activeTurn->id : QString{},
+            2));
     }
 
     emitApplicationEvent({
@@ -317,11 +401,20 @@ void RuntimeOrchestrator::finishAssistant(bool persistAnswer)
             .itemId = m_activeAssistantId,
         },
     });
+
+    clearActiveTurn();
+}
+
+void RuntimeOrchestrator::clearActiveTurn()
+{
     m_activeAssistantId.clear();
     m_activeAssistantText.clear();
     m_activeInput.reset();
     m_activeTurn.reset();
     m_activeRun.reset();
+    m_pendingUserItem.reset();
+    m_pendingPersistenceRequestId.clear();
+    m_cancelBeforeInference = false;
 }
 
 void RuntimeOrchestrator::setState(RuntimeState state)

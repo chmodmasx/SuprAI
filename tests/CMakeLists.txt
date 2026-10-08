@@ -53,7 +53,6 @@ target_link_libraries(tst_native_runtime
 )
 add_test(NAME native_runtime COMMAND tst_native_runtime)
 
-
 add_executable(tst_runtime_layering
     tst_runtime_layering.cpp
 )
@@ -67,9 +66,9 @@ target_link_libraries(tst_runtime_layering
         Qt6::Test
         suprai_runtime
         suprai_provider_api
+        suprai_persistence_api
 )
 add_test(NAME runtime_layering COMMAND tst_runtime_layering)
-
 
 add_executable(tst_platform
     tst_platform.cpp
@@ -105,7 +104,6 @@ target_link_libraries(tst_persistence_worker
 )
 add_test(NAME persistence_worker COMMAND tst_persistence_worker)
 
-
 add_executable(tst_domain_model
     tst_domain_model.cpp
 )
@@ -124,6 +122,7 @@ set_tests_properties(
     native_runtime
     runtime_layering
     platform
+    chat_controller
     persistence_worker
     domain_model
     PROPERTIES

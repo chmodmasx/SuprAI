@@ -67,7 +67,22 @@ target_link_libraries(suprai_platform
         Qt6::DBus
 )
 
-# Persistence ------------------------------------------------------------------
+# Persistence API --------------------------------------------------------------
+add_library(suprai_persistence_api STATIC
+    modules/persistence/include/suprai/persistence/PersistencePort.h
+    modules/persistence/src/PersistencePort.cpp
+)
+target_include_directories(suprai_persistence_api
+    PUBLIC
+        ${SUPRAI_MODULES_DIR}/persistence/include
+)
+target_link_libraries(suprai_persistence_api
+    PUBLIC
+        Qt6::Core
+        suprai_domain
+)
+
+# SQLite persistence implementation -------------------------------------------
 add_library(suprai_persistence STATIC
     modules/persistence/include/suprai/persistence/PersistenceWorker.h
     modules/persistence/src/PersistenceWorker.cpp
@@ -80,6 +95,7 @@ target_link_libraries(suprai_persistence
     PUBLIC
         Qt6::Core
         Qt6::Sql
+        suprai_persistence_api
 )
 
 # Runtime ----------------------------------------------------------------------
@@ -115,6 +131,8 @@ target_link_libraries(suprai_runtime
         Qt6::Core
         suprai_domain
         suprai_provider_api
+    PRIVATE
+        suprai_persistence_api
 )
 
 # UI facade --------------------------------------------------------------------
@@ -186,10 +204,6 @@ install(TARGETS suprai
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-# Qt's Linux deployment closure currently misses Qt6Widgets for this QML
-# executable even though QApplication creates a direct runtime dependency.
-# Keep the dependency explicit and let the deploy scanner close its transitive
-# dependencies and plugins.
 install(IMPORTED_RUNTIME_ARTIFACTS
     Qt6::Widgets
     Qt6::Sql

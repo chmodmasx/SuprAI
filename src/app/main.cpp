@@ -1,6 +1,7 @@
 #include "ApplicationBootstrap.h"
 #include "AppSettings.h"
 
+#include <suprai/persistence/PersistencePort.h>
 #include <suprai/persistence/PersistenceWorker.h>
 #include <suprai/platform/AppPaths.h>
 #include <suprai/platform/ApplicationIdentity.h>
@@ -75,8 +76,10 @@ int main(int argc, char *argv[])
     qRegisterMetaType<suprai::runtime::RuntimeState>();
     qRegisterMetaType<suprai::runtime::RuntimeCapabilities>();
     qRegisterMetaType<suprai::runtime::RuntimeApplicationEvent>();
+    qRegisterMetaType<suprai::persistence::TurnStartWrite>();
 
     suprai::app::AppSettings settings;
+    const auto appConfig = settings.config();
 
     QThread persistenceThread;
     persistenceThread.setObjectName(QStringLiteral("SuprAIPersistence"));
@@ -84,6 +87,35 @@ int main(int argc, char *argv[])
     auto *persistence =
         suprai::app::ApplicationBootstrap::createPersistenceWorker(appPaths.stateDir);
     persistence->moveToThread(&persistenceThread);
+
+    const bool nativeRuntime =
+        appConfig.runtimeMode.compare(QStringLiteral("mock"), Qt::CaseInsensitive) != 0;
+
+    suprai::persistence::PersistencePort *persistencePort = nullptr;
+    if (nativeRuntime) {
+        persistencePort = suprai::app::ApplicationBootstrap::createPersistencePort();
+
+        QObject::connect(
+            persistencePort,
+            &suprai::persistence::PersistencePort::persistTurnStartRequested,
+            persistence,
+            &suprai::persistence::PersistenceWorker::persistTurnStart,
+            Qt::QueuedConnection);
+
+        QObject::connect(
+            persistence,
+            &suprai::persistence::PersistenceWorker::turnStartPersisted,
+            persistencePort,
+            &suprai::persistence::PersistencePort::turnStartPersisted,
+            Qt::QueuedConnection);
+
+        QObject::connect(
+            persistence,
+            &suprai::persistence::PersistenceWorker::writeFailed,
+            persistencePort,
+            &suprai::persistence::PersistencePort::writeFailed,
+            Qt::QueuedConnection);
+    }
 
     QObject::connect(
         &persistenceThread,
@@ -119,14 +151,24 @@ int main(int argc, char *argv[])
     QThread runtimeThread;
     runtimeThread.setObjectName(QStringLiteral("SuprAIRuntime"));
 
-    auto *runtime = suprai::app::ApplicationBootstrap::createRuntime(settings.config());
+    auto *runtime =
+        suprai::app::ApplicationBootstrap::createRuntime(appConfig, persistencePort);
     runtime->moveToThread(&runtimeThread);
 
-    QObject::connect(
-        &runtimeThread,
-        &QThread::started,
-        runtime,
-        &suprai::runtime::AgentRuntime::start);
+    if (nativeRuntime) {
+        QObject::connect(
+            persistence,
+            &suprai::persistence::PersistenceWorker::ready,
+            runtime,
+            &suprai::runtime::AgentRuntime::start,
+            Qt::QueuedConnection);
+    } else {
+        QObject::connect(
+            &runtimeThread,
+            &QThread::started,
+            runtime,
+            &suprai::runtime::AgentRuntime::start);
+    }
 
     QObject::connect(
         &runtimeThread,
@@ -168,8 +210,8 @@ int main(int argc, char *argv[])
             window->requestActivate();
         });
 
-    persistenceThread.start();
     runtimeThread.start();
+    persistenceThread.start();
 
     engine.loadFromModule(QStringLiteral("SuprAI"), QStringLiteral("Main"));
 

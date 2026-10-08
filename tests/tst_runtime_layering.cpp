@@ -1,6 +1,7 @@
 #include "AgentEngine.h"
 #include "RuntimeOrchestrator.h"
 
+#include <suprai/persistence/PersistencePort.h>
 #include <suprai/providers/Provider.h>
 
 #include <QTest>
@@ -58,11 +59,72 @@ private:
     QVector<suprai::providers::ProviderRequest> m_requests;
 };
 
+class FakePersistencePort final : public suprai::persistence::PersistencePort
+{
+public:
+    using PersistencePort::PersistencePort;
+
+    void persistTurnStart(suprai::persistence::TurnStartWrite request) override
+    {
+        ++writeCount;
+        lastWrite = std::move(request);
+    }
+
+    void succeed()
+    {
+        emit turnStartPersisted(lastWrite.requestId);
+    }
+
+    int writeCount = 0;
+    suprai::persistence::TurnStartWrite lastWrite;
+};
+
 class RuntimeLayeringTest final : public QObject
 {
     Q_OBJECT
 
 private slots:
+    void durableAckPrecedesProviderInference()
+    {
+        using namespace suprai::runtime::internal;
+
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+
+        RuntimeOrchestrator orchestrator(
+            {
+                .model = QStringLiteral("test-model"),
+                .systemPrompt = QStringLiteral("system"),
+            },
+            &engine,
+            &persistence);
+
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("persistime primero"));
+
+        QCOMPARE(persistence.writeCount, 1);
+        QCOMPARE(provider->requests().size(), 0);
+        QCOMPARE(orchestrator.history().size(), 0);
+        QCOMPARE(orchestrator.inputs().size(), 0);
+        QCOMPARE(orchestrator.turns().size(), 0);
+        QCOMPARE(orchestrator.runs().size(), 0);
+
+        QCOMPARE(persistence.lastWrite.input.sequence, 1);
+        QCOMPARE(persistence.lastWrite.turn.sequence, 1);
+        QCOMPARE(persistence.lastWrite.userItem.sequence, 1);
+        QCOMPARE(persistence.lastWrite.userItem.turnId, persistence.lastWrite.turn.id);
+        QCOMPARE(persistence.lastWrite.run.turnId, persistence.lastWrite.turn.id);
+
+        persistence.succeed();
+
+        QCOMPARE(provider->requests().size(), 1);
+        QCOMPARE(orchestrator.history().size(), 2);
+        QCOMPARE(orchestrator.inputs().size(), 1);
+        QCOMPARE(orchestrator.turns().size(), 1);
+        QCOMPARE(orchestrator.runs().size(), 1);
+    }
+
     void executionIdentitiesTrackConversationLineage()
     {
         using namespace suprai::runtime::internal;
@@ -92,13 +154,17 @@ private slots:
         const auto firstRun = orchestrator.runs().at(0);
 
         QCOMPARE(firstInput.sessionId, initialSessionId);
+        QCOMPARE(firstInput.sequence, 1);
         QCOMPARE(firstTurn.sessionId, initialSessionId);
         QCOMPARE(firstTurn.inputId, firstInput.id);
+        QCOMPARE(firstTurn.sequence, 1);
         QVERIFY(firstTurn.parentTurnId.isEmpty());
         QCOMPARE(firstRun.turnId, firstTurn.id);
         QCOMPARE(firstRun.generation, 1);
         QCOMPARE(orchestrator.history().at(0).turnId, firstTurn.id);
+        QCOMPARE(orchestrator.history().at(0).sequence, 1);
         QCOMPARE(orchestrator.history().at(1).turnId, firstTurn.id);
+        QCOMPARE(orchestrator.history().at(1).sequence, 2);
 
         orchestrator.submitPrompt(QStringLiteral("segundo"));
 
@@ -108,9 +174,13 @@ private slots:
         QCOMPARE(orchestrator.history().size(), 4);
 
         const auto secondTurn = orchestrator.turns().at(1);
+        QCOMPARE(orchestrator.inputs().at(1).sequence, 2);
+        QCOMPARE(secondTurn.sequence, 2);
         QCOMPARE(secondTurn.parentTurnId, firstTurn.id);
         QCOMPARE(orchestrator.history().at(2).turnId, secondTurn.id);
+        QCOMPARE(orchestrator.history().at(2).sequence, 1);
         QCOMPARE(orchestrator.history().at(3).turnId, secondTurn.id);
+        QCOMPARE(orchestrator.history().at(3).sequence, 2);
 
         orchestrator.resetSession();
 

@@ -89,6 +89,7 @@ using ConversationItemContent = std::variant<
 struct ConversationItem {
     QString id;
     QString turnId;
+    int sequence = 0;
     ConversationItemState state = ConversationItemState::Completed;
     ConversationItemContent content = MessageContent{};
 };
@@ -161,11 +162,13 @@ inline ConversationItem makeMessageItem(
     QString text,
     ConversationItemState state = ConversationItemState::Completed,
     QString id = newItemId(),
-    QString turnId = {})
+    QString turnId = {},
+    int sequence = 0)
 {
     return {
         .id = std::move(id),
         .turnId = std::move(turnId),
+        .sequence = sequence,
         .state = state,
         .content = MessageContent{
             .role = role,

@@ -10,9 +10,14 @@ namespace suprai::runtime {
 AgentRuntime *createNativeRuntime(
     AgentRuntimeConfig config,
     suprai::providers::Provider *provider,
+    suprai::persistence::PersistencePort *persistence,
     QObject *parent)
 {
-    return new internal::NativeSuprAIRuntime(std::move(config), provider, parent);
+    return new internal::NativeSuprAIRuntime(
+        std::move(config),
+        provider,
+        persistence,
+        parent);
 }
 
 AgentRuntime *createMockRuntime(QObject *parent)

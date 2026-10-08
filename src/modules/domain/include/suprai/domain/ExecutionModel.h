@@ -12,6 +12,7 @@ struct Session {
 struct Input {
     QString id;
     QString sessionId;
+    int sequence = 0;
     QString text;
 };
 
@@ -20,6 +21,7 @@ struct Turn {
     QString sessionId;
     QString inputId;
     QString parentTurnId;
+    int sequence = 0;
 };
 
 struct Run {

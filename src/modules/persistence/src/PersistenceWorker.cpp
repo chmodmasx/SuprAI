@@ -1,13 +1,17 @@
 #include <suprai/persistence/PersistenceWorker.h>
 
 #include <QDir>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStringList>
 #include <QThread>
 #include <QUuid>
 #include <QVariant>
+#include <QVariantList>
 
+#include <type_traits>
 #include <utility>
 
 namespace suprai::persistence {
@@ -31,6 +35,169 @@ bool execSql(
                             .arg(query.lastError().text(), sql);
     }
     return false;
+}
+
+bool execPrepared(
+    QSqlDatabase &database,
+    const QString &sql,
+    const QVariantList &bindings,
+    QString *errorMessage)
+{
+    QSqlQuery query(database);
+    if (!query.prepare(sql)) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("%1 | SQL: %2")
+                                .arg(query.lastError().text(), sql);
+        }
+        return false;
+    }
+
+    for (const auto &binding : bindings) {
+        query.addBindValue(binding);
+    }
+
+    if (query.exec()) {
+        return true;
+    }
+
+    if (errorMessage) {
+        *errorMessage = QStringLiteral("%1 | SQL: %2")
+                            .arg(query.lastError().text(), sql);
+    }
+    return false;
+}
+
+QVariant nullableText(const QString &value)
+{
+    return value.isEmpty() ? QVariant{} : QVariant{value};
+}
+
+QString itemKindName(suprai::domain::ConversationItemKind kind)
+{
+    using suprai::domain::ConversationItemKind;
+
+    switch (kind) {
+    case ConversationItemKind::Message:
+        return QStringLiteral("message");
+    case ConversationItemKind::ReasoningSummary:
+        return QStringLiteral("reasoning_summary");
+    case ConversationItemKind::ToolCall:
+        return QStringLiteral("tool_call");
+    case ConversationItemKind::ToolResult:
+        return QStringLiteral("tool_result");
+    case ConversationItemKind::Attachment:
+        return QStringLiteral("attachment");
+    case ConversationItemKind::RuntimeAnnotation:
+        return QStringLiteral("runtime_annotation");
+    }
+
+    return QStringLiteral("runtime_annotation");
+}
+
+QString itemStateName(suprai::domain::ConversationItemState state)
+{
+    using suprai::domain::ConversationItemState;
+
+    switch (state) {
+    case ConversationItemState::Pending:
+        return QStringLiteral("pending");
+    case ConversationItemState::Streaming:
+        return QStringLiteral("streaming");
+    case ConversationItemState::Completed:
+        return QStringLiteral("completed");
+    case ConversationItemState::Failed:
+        return QStringLiteral("failed");
+    case ConversationItemState::Cancelled:
+        return QStringLiteral("cancelled");
+    }
+
+    return QStringLiteral("failed");
+}
+
+QString toolResultStatusName(suprai::domain::ToolResultStatus status)
+{
+    using suprai::domain::ToolResultStatus;
+
+    switch (status) {
+    case ToolResultStatus::Success:
+        return QStringLiteral("success");
+    case ToolResultStatus::Error:
+        return QStringLiteral("error");
+    case ToolResultStatus::Denied:
+        return QStringLiteral("denied");
+    case ToolResultStatus::Cancelled:
+        return QStringLiteral("cancelled");
+    case ToolResultStatus::SkippedBySteering:
+        return QStringLiteral("skipped_by_steering");
+    case ToolResultStatus::OutcomeUnknown:
+        return QStringLiteral("outcome_unknown");
+    }
+
+    return QStringLiteral("error");
+}
+
+QJsonObject itemPayload(const suprai::domain::ConversationItem &item)
+{
+    return std::visit(
+        [](const auto &content) -> QJsonObject {
+            using T = std::decay_t<decltype(content)>;
+
+            if constexpr (std::is_same_v<T, suprai::domain::MessageContent>) {
+                return {
+                    {QStringLiteral("role"), suprai::domain::roleName(content.role)},
+                    {QStringLiteral("text"), content.text},
+                };
+            } else if constexpr (std::is_same_v<T, suprai::domain::ReasoningSummaryContent>) {
+                return {
+                    {QStringLiteral("summary"), content.summary},
+                };
+            } else if constexpr (std::is_same_v<T, suprai::domain::ToolCallContent>) {
+                return {
+                    {QStringLiteral("toolInvocationId"), content.toolInvocationId},
+                    {QStringLiteral("name"), content.name},
+                    {QStringLiteral("arguments"), content.arguments},
+                };
+            } else if constexpr (std::is_same_v<T, suprai::domain::ToolResultContent>) {
+                return {
+                    {QStringLiteral("toolInvocationId"), content.toolInvocationId},
+                    {QStringLiteral("status"), toolResultStatusName(content.status)},
+                    {QStringLiteral("text"), content.text},
+                };
+            } else if constexpr (std::is_same_v<T, suprai::domain::AttachmentContent>) {
+                return {
+                    {QStringLiteral("attachmentId"), content.attachmentId},
+                    {QStringLiteral("displayName"), content.displayName},
+                    {QStringLiteral("mimeType"), content.mimeType},
+                };
+            } else {
+                return {
+                    {QStringLiteral("code"), content.code},
+                    {QStringLiteral("text"), content.text},
+                };
+            }
+        },
+        item.content);
+}
+
+QString indexText(const suprai::domain::ConversationItem &item)
+{
+    return std::visit(
+        [](const auto &content) -> QString {
+            using T = std::decay_t<decltype(content)>;
+
+            if constexpr (std::is_same_v<T, suprai::domain::MessageContent>) {
+                return content.text;
+            } else if constexpr (std::is_same_v<T, suprai::domain::ReasoningSummaryContent>) {
+                return content.summary;
+            } else if constexpr (std::is_same_v<T, suprai::domain::ToolResultContent>) {
+                return content.text;
+            } else if constexpr (std::is_same_v<T, suprai::domain::RuntimeAnnotationContent>) {
+                return content.text;
+            } else {
+                return {};
+            }
+        },
+        item.content);
 }
 
 } // namespace
@@ -82,6 +249,152 @@ void PersistenceWorker::initialize()
 
     m_ready = true;
     emit ready();
+}
+
+void PersistenceWorker::persistTurnStart(TurnStartWrite request)
+{
+    Q_ASSERT(thread() == QThread::currentThread());
+
+    const auto fail = [this, &request](const QString &message) {
+        emit writeFailed(request.requestId, message);
+    };
+
+    if (!m_ready || !m_database.isOpen()) {
+        fail(QStringLiteral("SQLite no está listo para persistir el turno."));
+        return;
+    }
+
+    if (request.requestId.isEmpty()
+        || request.session.id.isEmpty()
+        || request.input.id.isEmpty()
+        || request.input.sessionId != request.session.id
+        || request.input.sequence < 1
+        || request.turn.id.isEmpty()
+        || request.turn.sessionId != request.session.id
+        || request.turn.inputId != request.input.id
+        || request.turn.sequence < 1
+        || request.run.id.isEmpty()
+        || request.run.turnId != request.turn.id
+        || request.run.generation < 1
+        || request.userItem.id.isEmpty()
+        || request.userItem.turnId != request.turn.id
+        || request.userItem.sequence < 1) {
+        fail(QStringLiteral("El lote durable de inicio de turno es inválido."));
+        return;
+    }
+
+    if (!m_database.transaction()) {
+        fail(QStringLiteral("No se pudo iniciar la transacción del turno: %1")
+                 .arg(m_database.lastError().text()));
+        return;
+    }
+
+    QString errorMessage;
+
+    if (!execPrepared(
+            m_database,
+            QStringLiteral(
+                "INSERT INTO sessions(id,parent_session_id) VALUES(?,?) "
+                "ON CONFLICT(id) DO UPDATE SET "
+                "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')"),
+            {
+                request.session.id,
+                nullableText(request.session.parentSessionId),
+            },
+            &errorMessage)
+        || !execPrepared(
+            m_database,
+            QStringLiteral(
+                "INSERT INTO inputs(id,session_id,sequence,text) "
+                "VALUES(?,?,?,?)"),
+            {
+                request.input.id,
+                request.input.sessionId,
+                request.input.sequence,
+                request.input.text,
+            },
+            &errorMessage)
+        || !execPrepared(
+            m_database,
+            QStringLiteral(
+                "INSERT INTO turns(id,session_id,input_id,parent_turn_id,sequence) "
+                "VALUES(?,?,?,?,?)"),
+            {
+                request.turn.id,
+                request.turn.sessionId,
+                request.turn.inputId,
+                nullableText(request.turn.parentTurnId),
+                request.turn.sequence,
+            },
+            &errorMessage)
+        || !execPrepared(
+            m_database,
+            QStringLiteral(
+                "INSERT INTO runs(id,turn_id,generation,status) "
+                "VALUES(?,?,?,?)"),
+            {
+                request.run.id,
+                request.run.turnId,
+                request.run.generation,
+                QStringLiteral("prepared"),
+            },
+            &errorMessage)) {
+        m_database.rollback();
+        fail(errorMessage);
+        return;
+    }
+
+    const QString payloadJson = QString::fromUtf8(
+        QJsonDocument(itemPayload(request.userItem))
+            .toJson(QJsonDocument::Compact));
+
+    if (!execPrepared(
+            m_database,
+            QStringLiteral(
+                "INSERT INTO conversation_items("
+                "id,turn_id,sequence,kind,state,payload_json"
+                ") VALUES(?,?,?,?,?,?)"),
+            {
+                request.userItem.id,
+                request.userItem.turnId,
+                request.userItem.sequence,
+                itemKindName(suprai::domain::itemKind(request.userItem)),
+                itemStateName(request.userItem.state),
+                payloadJson,
+            },
+            &errorMessage)) {
+        m_database.rollback();
+        fail(errorMessage);
+        return;
+    }
+
+    const QString searchableText = indexText(request.userItem);
+    if (!searchableText.isEmpty()
+        && !execPrepared(
+            m_database,
+            QStringLiteral(
+                "INSERT INTO conversation_items_fts(item_id,session_id,text) "
+                "VALUES(?,?,?)"),
+            {
+                request.userItem.id,
+                request.session.id,
+                searchableText,
+            },
+            &errorMessage)) {
+        m_database.rollback();
+        fail(errorMessage);
+        return;
+    }
+
+    if (!m_database.commit()) {
+        errorMessage = QStringLiteral("No se pudo confirmar el inicio durable del turno: %1")
+                           .arg(m_database.lastError().text());
+        m_database.rollback();
+        fail(errorMessage);
+        return;
+    }
+
+    emit turnStartPersisted(request.requestId);
 }
 
 void PersistenceWorker::shutdown()

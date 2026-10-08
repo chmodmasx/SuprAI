@@ -3,6 +3,8 @@
 #include "AgentEngine.h"
 #include "RuntimeOrchestrator.h"
 
+#include <suprai/persistence/PersistencePort.h>
+
 #include <utility>
 
 namespace suprai::runtime::internal {
@@ -10,11 +12,21 @@ namespace suprai::runtime::internal {
 NativeSuprAIRuntime::NativeSuprAIRuntime(
     suprai::runtime::AgentRuntimeConfig config,
     suprai::providers::Provider *provider,
+    suprai::persistence::PersistencePort *persistence,
     QObject *parent)
     : AgentRuntime(parent)
     , m_engine(new AgentEngine(provider, this))
-    , m_orchestrator(new RuntimeOrchestrator(std::move(config), m_engine, this))
 {
+    if (persistence && !persistence->parent()) {
+        persistence->setParent(this);
+    }
+
+    m_orchestrator = new RuntimeOrchestrator(
+        std::move(config),
+        m_engine,
+        persistence,
+        this);
+
     connect(m_orchestrator, &RuntimeOrchestrator::eventOccurred,
             this, &AgentRuntime::eventOccurred);
     connect(m_orchestrator, &RuntimeOrchestrator::stopped,
