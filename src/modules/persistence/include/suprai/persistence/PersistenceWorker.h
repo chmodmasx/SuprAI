@@ -20,12 +20,14 @@ public:
 public slots:
     void initialize();
     void persistTurnStart(suprai::persistence::TurnStartWrite request);
+    void persistTurnTerminal(suprai::persistence::TurnTerminalWrite request);
     void shutdown();
 
 signals:
     void ready();
     void errorOccurred(const QString &message);
     void turnStartPersisted(const QString &requestId);
+    void turnTerminalPersisted(const QString &requestId);
     void writeFailed(const QString &requestId, const QString &message);
     void stopped();
 
