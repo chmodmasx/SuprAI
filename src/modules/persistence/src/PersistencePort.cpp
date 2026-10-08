@@ -19,4 +19,9 @@ void PersistencePort::persistTurnTerminal(TurnTerminalWrite request)
     emit persistTurnTerminalRequested(std::move(request));
 }
 
+void PersistencePort::loadLatestSession()
+{
+    emit loadLatestSessionRequested();
+}
+
 } // namespace suprai::persistence

@@ -6,6 +6,7 @@
 #include <QMetaType>
 #include <QObject>
 #include <QString>
+#include <QVector>
 #include <optional>
 
 namespace suprai::persistence {
@@ -29,6 +30,16 @@ struct TurnTerminalWrite {
     std::optional<suprai::domain::ConversationItem> assistantItem;
 };
 
+// A full canonical projection, loaded without provider-side state.
+struct SessionSnapshot {
+    bool found = false;
+    suprai::domain::Session session;
+    QVector<suprai::domain::Input> inputs;
+    QVector<suprai::domain::Turn> turns;
+    QVector<suprai::domain::Run> runs;
+    QVector<suprai::domain::ConversationItem> items;
+};
+
 class PersistencePort : public QObject
 {
     Q_OBJECT
@@ -38,12 +49,16 @@ public:
 
     virtual void persistTurnStart(TurnStartWrite request);
     virtual void persistTurnTerminal(TurnTerminalWrite request);
+    virtual void loadLatestSession();
 
 signals:
     void persistTurnStartRequested(suprai::persistence::TurnStartWrite request);
     void persistTurnTerminalRequested(suprai::persistence::TurnTerminalWrite request);
+    void loadLatestSessionRequested();
     void turnStartPersisted(const QString &requestId);
     void turnTerminalPersisted(const QString &requestId);
+    void latestSessionLoaded(suprai::persistence::SessionSnapshot snapshot);
+    void readFailed(const QString &message);
     void writeFailed(const QString &requestId, const QString &message);
 };
 
@@ -51,3 +66,4 @@ signals:
 
 Q_DECLARE_METATYPE(suprai::persistence::TurnStartWrite)
 Q_DECLARE_METATYPE(suprai::persistence::TurnTerminalWrite)
+Q_DECLARE_METATYPE(suprai::persistence::SessionSnapshot)

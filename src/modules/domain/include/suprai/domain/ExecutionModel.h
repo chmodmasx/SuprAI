@@ -24,10 +24,13 @@ struct Turn {
     int sequence = 0;
 };
 
+enum class RunStatus { Prepared, Completed, Failed, Cancelled, Interrupted };
+
 struct Run {
     QString id;
     QString turnId;
     int generation = 1;
+    RunStatus status = RunStatus::Prepared;
 };
 
 } // namespace suprai::domain
