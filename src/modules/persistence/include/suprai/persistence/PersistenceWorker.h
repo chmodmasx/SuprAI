@@ -21,6 +21,7 @@ public slots:
     void initialize();
     void persistTurnStart(suprai::persistence::TurnStartWrite request);
     void persistTurnTerminal(suprai::persistence::TurnTerminalWrite request);
+    void loadLatestSession();
     void shutdown();
 
 signals:
@@ -28,6 +29,8 @@ signals:
     void errorOccurred(const QString &message);
     void turnStartPersisted(const QString &requestId);
     void turnTerminalPersisted(const QString &requestId);
+    void latestSessionLoaded(suprai::persistence::SessionSnapshot snapshot);
+    void readFailed(const QString &message);
     void writeFailed(const QString &requestId, const QString &message);
     void stopped();
 

@@ -53,6 +53,8 @@ signals:
 private:
     void handleRuntimeEvent(const suprai::runtime::internal::RuntimeEvent &event);
     void handleTurnStartPersisted(const QString &requestId);
+    void handleSessionLoaded(suprai::persistence::SessionSnapshot snapshot);
+    void handleSessionReadFailure(const QString &message);
     void handleTurnTerminalPersisted(const QString &requestId);
     void handlePersistenceFailure(const QString &requestId, const QString &message);
     void admitPendingTurnAndStartInference();

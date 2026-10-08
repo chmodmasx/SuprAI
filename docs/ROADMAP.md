@@ -70,6 +70,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - native turn admission persists Session/Input/Turn/Run(status=prepared)/user item in one transaction;
 - provider inference is blocked until the persistence ACK arrives;
 - terminal Run status and assistant item are committed atomically and terminal events await the durable ACK (CI verified);
+- latest-session snapshot read and interrupted-Run reconciliation implemented on review branch (verification pending);
 - runtime-layering tests prove provider request count remains zero before ACK;
 - persistence tests verify the durable batch and FTS entry;
 - ordinary chat rendering remains plain text in this prototype.
@@ -126,7 +127,7 @@ Early prototype proof already exists for:
 - cancellation;
 - error display.
 
-M2 is not complete: durable read/resume, tool/approval/clarification UI and safe Markdown proof remain. Terminal writes are implemented and CI-verified. The generalized domain foundation and runtime capability projection are implemented.
+M2 is not complete: typed session restoration is on a review branch; session navigation, tool/approval/clarification UI and safe Markdown proof remain. Terminal writes are implemented and CI-verified. The generalized domain foundation and runtime capability projection are implemented.
 
 Implemented foundation:
 - AgentRuntime abstract interface;
@@ -143,7 +144,7 @@ Implemented foundation:
 
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
-- retain verified terminal assistant/Run persistence and implement durable read/resume in M3;
+- retain verified terminal assistant/Run persistence and CI-verify latest-session read/reconstruction in M3;
 - safe native Markdown rendering proof;
 - tool cards;
 - approval/clarification component.

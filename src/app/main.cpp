@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<suprai::runtime::RuntimeApplicationEvent>();
     qRegisterMetaType<suprai::persistence::TurnStartWrite>();
     qRegisterMetaType<suprai::persistence::TurnTerminalWrite>();
+    qRegisterMetaType<suprai::persistence::SessionSnapshot>();
 
     suprai::app::AppSettings settings;
     const auto appConfig = settings.config();
@@ -101,6 +102,27 @@ int main(int argc, char *argv[])
             &suprai::persistence::PersistencePort::persistTurnStartRequested,
             persistence,
             &suprai::persistence::PersistenceWorker::persistTurnStart,
+            Qt::QueuedConnection);
+
+        QObject::connect(
+            persistencePort,
+            &suprai::persistence::PersistencePort::loadLatestSessionRequested,
+            persistence,
+            &suprai::persistence::PersistenceWorker::loadLatestSession,
+            Qt::QueuedConnection);
+
+        QObject::connect(
+            persistence,
+            &suprai::persistence::PersistenceWorker::latestSessionLoaded,
+            persistencePort,
+            &suprai::persistence::PersistencePort::latestSessionLoaded,
+            Qt::QueuedConnection);
+
+        QObject::connect(
+            persistence,
+            &suprai::persistence::PersistenceWorker::readFailed,
+            persistencePort,
+            &suprai::persistence::PersistencePort::readFailed,
             Qt::QueuedConnection);
 
         QObject::connect(
