@@ -53,12 +53,14 @@ signals:
 private:
     void handleRuntimeEvent(const suprai::runtime::internal::RuntimeEvent &event);
     void handleTurnStartPersisted(const QString &requestId);
+    void handleTurnTerminalPersisted(const QString &requestId);
     void handlePersistenceFailure(const QString &requestId, const QString &message);
     void admitPendingTurnAndStartInference();
     void setState(suprai::runtime::RuntimeState state);
     void setCapabilities(const suprai::runtime::RuntimeCapabilities &capabilities);
     void emitApplicationEvent(suprai::runtime::RuntimeApplicationEvent event);
-    void finishAssistant(bool persistAnswer);
+    void beginTerminalWrite(const QString &status, const QString &providerError = {});
+    void finishDurableTerminal();
     suprai::providers::ProviderRequest providerRequest() const;
     void clearActiveTurn();
 
@@ -76,6 +78,8 @@ private:
     std::optional<suprai::domain::Run> m_activeRun;
     std::optional<suprai::domain::ConversationItem> m_pendingUserItem;
     QString m_pendingPersistenceRequestId;
+    std::optional<suprai::persistence::TurnTerminalWrite> m_pendingTerminal;
+    QString m_pendingProviderError;
     suprai::runtime::RuntimeState m_state = suprai::runtime::RuntimeState::Stopped;
     suprai::runtime::RuntimeCapabilities m_capabilities;
     QString m_activeAssistantId;
