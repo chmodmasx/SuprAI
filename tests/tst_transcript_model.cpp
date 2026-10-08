@@ -37,6 +37,25 @@ private slots:
             false);
     }
 
+    void abortedStreamPreservesTerminalFailureState()
+    {
+        using suprai::domain::ConversationItemState;
+        suprai::ui::internal::TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant, {},
+            ConversationItemState::Streaming, QStringLiteral("fail-item")));
+        model.appendDelta(QStringLiteral("fail-item"), QStringLiteral("partial"));
+        model.stop(QStringLiteral("fail-item"), ConversationItemState::Failed);
+        QCOMPARE(model.data(model.index(0),
+            suprai::ui::internal::TranscriptModel::StreamingRole).toBool(), false);
+        QCOMPARE(model.data(model.index(0),
+            suprai::ui::internal::TranscriptModel::StateRole).toString(),
+            QStringLiteral("failed"));
+        QCOMPARE(model.data(model.index(0),
+            suprai::ui::internal::TranscriptModel::TextRole).toString(),
+            QStringLiteral("partial"));
+    }
+
     void ignoresNonMessageDomainItems()
     {
         suprai::ui::internal::TranscriptModel model;

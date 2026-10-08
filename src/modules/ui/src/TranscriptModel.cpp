@@ -2,6 +2,21 @@
 
 namespace suprai::ui::internal {
 
+namespace {
+QString itemStateName(suprai::domain::ConversationItemState state)
+{
+    using suprai::domain::ConversationItemState;
+    switch (state) {
+    case ConversationItemState::Pending: return QStringLiteral("pending");
+    case ConversationItemState::Streaming: return QStringLiteral("streaming");
+    case ConversationItemState::Completed: return QStringLiteral("completed");
+    case ConversationItemState::Failed: return QStringLiteral("failed");
+    case ConversationItemState::Cancelled: return QStringLiteral("cancelled");
+    }
+    return QStringLiteral("failed");
+}
+} // namespace
+
 TranscriptModel::TranscriptModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -33,6 +48,8 @@ QVariant TranscriptModel::data(const QModelIndex &index, int role) const
         return message->text;
     case StreamingRole:
         return suprai::domain::isStreaming(item);
+    case StateRole:
+        return itemStateName(item.state);
     default:
         return {};
     }
@@ -45,6 +62,7 @@ QHash<int, QByteArray> TranscriptModel::roleNames() const
         {SpeakerRole, "speaker"},
         {TextRole, "text"},
         {StreamingRole, "streaming"},
+        {StateRole, "messageState"},
     };
 }
 
@@ -91,7 +109,24 @@ void TranscriptModel::finish(const QString &itemId)
 
     m_items[row].state = suprai::domain::ConversationItemState::Completed;
     const auto modelIndex = index(row);
-    emit dataChanged(modelIndex, modelIndex, {StreamingRole});
+    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole});
+}
+
+void TranscriptModel::stop(
+    const QString &itemId,
+    suprai::domain::ConversationItemState terminalState)
+{
+    if (terminalState != suprai::domain::ConversationItemState::Failed
+        && terminalState != suprai::domain::ConversationItemState::Cancelled) {
+        return;
+    }
+    const int row = rowForId(itemId);
+    if (row < 0 || !suprai::domain::isStreaming(m_items[row])) {
+        return;
+    }
+    m_items[row].state = terminalState;
+    const auto modelIndex = index(row);
+    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole});
 }
 
 void TranscriptModel::clear()

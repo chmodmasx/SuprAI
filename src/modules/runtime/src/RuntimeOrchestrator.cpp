@@ -320,7 +320,10 @@ void RuntimeOrchestrator::handlePersistenceFailure(
         const QString itemId = m_activeAssistantId;
         clearActiveTurn();
         if (!itemId.isEmpty()) {
-            emitApplicationEvent({.payload = ConversationItemCompleted{.itemId = itemId}});
+            emitApplicationEvent({.payload = ConversationItemStopped{
+                .itemId = itemId,
+                .state = suprai::domain::ConversationItemState::Failed,
+            }});
         }
         setState(RuntimeState::Failed);
         emitApplicationEvent({
@@ -495,9 +498,19 @@ void RuntimeOrchestrator::finishDurableTerminal()
 
     const QString itemId = m_activeAssistantId;
     const QString providerError = m_pendingProviderError;
+    const QString terminalStatus = m_pendingTerminal->status;
     clearActiveTurn();
     if (!itemId.isEmpty()) {
-        emitApplicationEvent({.payload = ConversationItemCompleted{.itemId = itemId}});
+        if (terminalStatus == QStringLiteral("completed")) {
+            emitApplicationEvent({.payload = ConversationItemCompleted{.itemId = itemId}});
+        } else {
+            emitApplicationEvent({.payload = ConversationItemStopped{
+                .itemId = itemId,
+                .state = terminalStatus == QStringLiteral("cancelled")
+                    ? suprai::domain::ConversationItemState::Cancelled
+                    : suprai::domain::ConversationItemState::Failed,
+            }});
+        }
     }
     setState(RuntimeState::Ready);
     if (!providerError.isEmpty()) {

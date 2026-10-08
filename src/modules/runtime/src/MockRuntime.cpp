@@ -106,8 +106,9 @@ void MockRuntime::cancelTurn()
         },
     });
     emit eventOccurred({
-        .payload = ConversationItemCompleted{
+        .payload = ConversationItemStopped{
             .itemId = m_activeId,
+            .state = suprai::domain::ConversationItemState::Cancelled,
         },
     });
     m_activeId.clear();

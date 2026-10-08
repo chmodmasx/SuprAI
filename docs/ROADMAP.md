@@ -139,6 +139,7 @@ Implemented foundation:
 - TranscriptModel projects message items only and ignores unsupported domain kinds safely;
 - MockRuntime scripted fixture;
 - composer, streaming deltas, cancellation and error-state UI;
+- separate stopped/completed transcript projection for failed/cancelled terminal events implemented on review branch (verification pending);
 - C++ QAbstractListModel transcript projection;
 - first durable turn-admission write path through PersistencePort.
 

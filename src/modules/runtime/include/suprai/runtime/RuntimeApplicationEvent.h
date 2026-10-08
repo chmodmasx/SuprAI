@@ -32,6 +32,12 @@ struct ConversationItemCompleted {
     QString itemId;
 };
 
+// Finalized without successful canonical completion (failure or cancellation).
+struct ConversationItemStopped {
+    QString itemId;
+    suprai::domain::ConversationItemState state = suprai::domain::ConversationItemState::Failed;
+};
+
 struct ReasoningActiveChanged {
     bool active = false;
 };
@@ -49,6 +55,7 @@ using RuntimeApplicationEventPayload = std::variant<
     ConversationItemStarted,
     ConversationTextDelta,
     ConversationItemCompleted,
+    ConversationItemStopped,
     ReasoningActiveChanged,
     ConversationReset,
     RuntimeError>;

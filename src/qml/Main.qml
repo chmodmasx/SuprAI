@@ -235,6 +235,7 @@ ApplicationWindow {
                         required property string speaker
                         required property string text
                         required property bool streaming
+                        required property string messageState
 
                         width: ListView.view.width - transcript.leftMargin - transcript.rightMargin
                         implicitHeight: bubble.implicitHeight
@@ -261,7 +262,10 @@ ApplicationWindow {
                                 anchors.top: parent.top
                                 anchors.margins: 13
 
-                                text: parent.parent.text + (parent.parent.streaming ? " ▋" : "")
+                                text: parent.parent.text
+                                      + (parent.parent.streaming ? " ▋"
+                                         : parent.parent.messageState === "cancelled" ? " (cancelado)"
+                                         : parent.parent.messageState === "failed" ? " (error)" : "")
                                 color: root.foreground
                                 wrapMode: Text.Wrap
                                 textFormat: Text.PlainText

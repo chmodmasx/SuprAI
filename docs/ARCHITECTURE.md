@@ -106,6 +106,8 @@ QML never manipulates runtime-owned network/process/database QObjects directly.
 
 High-frequency text deltas may be coalesced at the UI boundary, but state transitions and terminal events are not dropped.
 
+A review-branch refinement distinguishes `ConversationItemCompleted` (committed success) from `ConversationItemStopped` (failed/cancelled stream, including failed terminal persistence). The UI projection retains explicit failed/cancelled state rather than marking an uncommitted stream as successfully completed. This refinement is not yet CI verified.
+
 ## 3. Why Qt Quick/QML
 
 Use QML for presentation and C++ for application/runtime logic.

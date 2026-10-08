@@ -12,6 +12,30 @@ class MockRuntimeTest final : public QObject
     Q_OBJECT
 
 private slots:
+    void cancelEmitsStoppedInsteadOfCompleted()
+    {
+        auto *runtime = suprai::runtime::createMockRuntime();
+        int stopped = 0;
+        int completed = 0;
+        connect(runtime, &suprai::runtime::AgentRuntime::eventOccurred,
+                this, [&](const suprai::runtime::RuntimeApplicationEvent &event) {
+            if (const auto *aborted = suprai::runtime::eventPayload<
+                    suprai::runtime::ConversationItemStopped>(event)) {
+                QCOMPARE(aborted->state, suprai::domain::ConversationItemState::Cancelled);
+                ++stopped;
+            }
+            if (suprai::runtime::eventPayload<
+                    suprai::runtime::ConversationItemCompleted>(event)) ++completed;
+        });
+        runtime->start();
+        runtime->submitPrompt(QStringLiteral("test"));
+        runtime->cancelTurn();
+        QCOMPARE(stopped, 1);
+        QCOMPARE(completed, 0);
+        runtime->shutdown();
+        delete runtime;
+    }
+
     void completesAStreamingTurnThroughApplicationEvents()
     {
         auto *runtime = suprai::runtime::createMockRuntime();
