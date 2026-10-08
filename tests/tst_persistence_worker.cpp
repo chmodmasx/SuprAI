@@ -42,6 +42,13 @@ private slots:
         QSignalSpy terminalCommitted(
             worker,
             &suprai::persistence::PersistenceWorker::turnTerminalPersisted);
+        qRegisterMetaType<suprai::persistence::SessionSnapshot>();
+        QSignalSpy snapshotLoaded(
+            worker,
+            &suprai::persistence::PersistenceWorker::latestSessionLoaded);
+        QSignalSpy readFailures(
+            worker,
+            &suprai::persistence::PersistenceWorker::readFailed);
         QSignalSpy stopped(worker, &suprai::persistence::PersistenceWorker::stopped);
 
         connect(&thread, &QThread::started,
@@ -215,6 +222,45 @@ private slots:
             database.close();
         }
         QSqlDatabase::removeDatabase(readConnectionName);
+
+        // Simulate a crash after the next durable admission but before terminal ACK.
+        const suprai::domain::Input secondInput{
+            .id = suprai::domain::newInputId(),
+            .sessionId = session.id, .sequence = 2,
+            .text = QStringLiteral("incompleto")};
+        const suprai::domain::Turn secondTurn{
+            .id = suprai::domain::newTurnId(), .sessionId = session.id,
+            .inputId = secondInput.id, .parentTurnId = turn.id, .sequence = 2};
+        const suprai::domain::Run secondRun{
+            .id = suprai::domain::newRunId(), .turnId = secondTurn.id, .generation = 1};
+        const suprai::persistence::TurnStartWrite secondWrite{
+            .requestId = secondRun.id, .session = session,
+            .input = secondInput, .turn = secondTurn, .run = secondRun,
+            .userItem = suprai::domain::makeMessageItem(
+                suprai::domain::ConversationRole::User, secondInput.text,
+                suprai::domain::ConversationItemState::Completed,
+                suprai::domain::newItemId(), secondTurn.id, 1)};
+        QMetaObject::invokeMethod(worker, [worker, secondWrite] {
+            worker->persistTurnStart(secondWrite);
+        }, Qt::QueuedConnection);
+        QTRY_COMPARE_WITH_TIMEOUT(writeCommitted.size(), 2, 3000);
+        QMetaObject::invokeMethod(
+            worker, &suprai::persistence::PersistenceWorker::loadLatestSession,
+            Qt::QueuedConnection);
+        QTRY_COMPARE_WITH_TIMEOUT(snapshotLoaded.size(), 1, 3000);
+        QCOMPARE(readFailures.size(), 0);
+        const auto restored = qvariant_cast<suprai::persistence::SessionSnapshot>(
+            snapshotLoaded.at(0).at(0));
+        QVERIFY(restored.found);
+        QCOMPARE(restored.session.id, session.id);
+        QCOMPARE(restored.inputs.size(), 2);
+        QCOMPARE(restored.turns.size(), 2);
+        QCOMPARE(restored.runs.size(), 2);
+        QCOMPARE(restored.runs.at(0).status, suprai::domain::RunStatus::Completed);
+        QCOMPARE(restored.runs.at(1).status, suprai::domain::RunStatus::Interrupted);
+        QCOMPARE(restored.items.size(), 3);
+        QCOMPARE(suprai::domain::messageContent(restored.items.at(1))->text,
+                 QStringLiteral("respuesta durable"));
 
         QMetaObject::invokeMethod(
             worker,

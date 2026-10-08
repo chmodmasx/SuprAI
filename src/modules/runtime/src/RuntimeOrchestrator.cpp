@@ -30,6 +30,10 @@ RuntimeOrchestrator::RuntimeOrchestrator(
             this, &RuntimeOrchestrator::handleRuntimeEvent);
 
     if (m_persistence) {
+        connect(m_persistence, &suprai::persistence::PersistencePort::latestSessionLoaded,
+                this, &RuntimeOrchestrator::handleSessionLoaded);
+        connect(m_persistence, &suprai::persistence::PersistencePort::readFailed,
+                this, &RuntimeOrchestrator::handleSessionReadFailure);
         connect(m_persistence, &suprai::persistence::PersistencePort::turnStartPersisted,
                 this, &RuntimeOrchestrator::handleTurnStartPersisted);
         connect(m_persistence, &suprai::persistence::PersistencePort::turnTerminalPersisted,
@@ -83,7 +87,11 @@ void RuntimeOrchestrator::start()
     }
 
     setCapabilities(m_engine->capabilities(m_config.model));
-    setState(RuntimeState::Ready);
+    if (m_persistence) {
+        m_persistence->loadLatestSession();
+    } else {
+        setState(RuntimeState::Ready);
+    }
 }
 
 void RuntimeOrchestrator::shutdown()
@@ -243,6 +251,38 @@ void RuntimeOrchestrator::resetSession()
     clearActiveTurn();
     emitApplicationEvent({
         .payload = ConversationReset{},
+    });
+}
+
+void RuntimeOrchestrator::handleSessionLoaded(suprai::persistence::SessionSnapshot snapshot)
+{
+    if (m_state != RuntimeState::Starting) {
+        return;
+    }
+    if (snapshot.found) {
+        m_session = std::move(snapshot.session);
+        m_inputs = std::move(snapshot.inputs);
+        m_turns = std::move(snapshot.turns);
+        m_runs = std::move(snapshot.runs);
+        m_history = std::move(snapshot.items);
+        emitApplicationEvent({.payload = ConversationReset{}});
+        for (const auto &item : m_history) {
+            emitApplicationEvent({.payload = ConversationItemStarted{.item = item}});
+        }
+    }
+    setState(RuntimeState::Ready);
+}
+
+void RuntimeOrchestrator::handleSessionReadFailure(const QString &message)
+{
+    if (m_state != RuntimeState::Starting) {
+        return;
+    }
+    setState(RuntimeState::Failed);
+    emitApplicationEvent({
+        .payload = RuntimeError{
+            .message = QStringLiteral("No se pudo recuperar la sesión: %1").arg(message),
+        },
     });
 }
 
@@ -440,6 +480,17 @@ void RuntimeOrchestrator::finishDurableTerminal()
 
     if (m_pendingTerminal->assistantItem) {
         m_history.push_back(*m_pendingTerminal->assistantItem);
+    }
+    for (auto &run : m_runs) {
+        if (run.id != m_pendingTerminal->runId) continue;
+        if (m_pendingTerminal->status == QStringLiteral("completed")) {
+            run.status = suprai::domain::RunStatus::Completed;
+        } else if (m_pendingTerminal->status == QStringLiteral("failed")) {
+            run.status = suprai::domain::RunStatus::Failed;
+        } else {
+            run.status = suprai::domain::RunStatus::Cancelled;
+        }
+        break;
     }
 
     const QString itemId = m_activeAssistantId;

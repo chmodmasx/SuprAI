@@ -164,9 +164,9 @@ Terminal Run writes are deliberately not replayed blindly: the update requires t
 This implementation is merged and passed the GitHub Actions build, tests and staged XCB/Wayland checks.
 
 Not yet implemented:
-- durable read/resume/session reconstruction;
+- automatic latest-session read/resume and conservative prepared-to-interrupted recovery (implemented on review branch, CI proof pending);
 - restart reconciliation of prepared/interrupted Runs;
 - ProviderAttempt persistence;
 - side-effect journal tables/logic for ToolInvocation lifecycle.
 
-Those remain required before full durable session recovery can be claimed.
+The review branch loads typed Session/Input/Turn/Run/items through the persistence worker, restoring transcript/context without provider cache. Prepared Runs are marked interrupted rather than replayed. Full session navigation, ProviderAttempt journaling and more sophisticated recovery remain future work. Review-branch functionality is not verified until CI passes.

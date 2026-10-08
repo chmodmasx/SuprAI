@@ -78,6 +78,17 @@ public:
         lastWrite = std::move(request);
     }
 
+    void loadLatestSession() override
+    {
+        ++loadCount;
+        if (!deferLoad) emit latestSessionLoaded(snapshot);
+    }
+
+    void loaded()
+    {
+        emit latestSessionLoaded(snapshot);
+    }
+
     void persistTurnTerminal(suprai::persistence::TurnTerminalWrite request) override
     {
         ++terminalWriteCount;
@@ -100,6 +111,9 @@ public:
     }
 
     int writeCount = 0;
+    int loadCount = 0;
+    bool deferLoad = false;
+    suprai::persistence::SessionSnapshot snapshot;
     int terminalWriteCount = 0;
     suprai::persistence::TurnTerminalWrite lastTerminal;
     suprai::persistence::TurnStartWrite lastWrite;
@@ -218,6 +232,57 @@ private slots:
         QCOMPARE(orchestrator.history().size(), 1);
         persistence.terminalSucceeded();
         QCOMPARE(orchestrator.history().size(), 1);
+    }
+
+    void startupRestoresLocalHistoryAndLineage()
+    {
+        using namespace suprai::runtime::internal;
+        const suprai::domain::Session session{.id = suprai::domain::newSessionId()};
+        const suprai::domain::Input input{
+            .id = suprai::domain::newInputId(), .sessionId = session.id,
+            .sequence = 1, .text = QStringLiteral("vieja")};
+        const suprai::domain::Turn turn{
+            .id = suprai::domain::newTurnId(), .sessionId = session.id,
+            .inputId = input.id, .sequence = 1};
+        const suprai::domain::Run run{
+            .id = suprai::domain::newRunId(), .turnId = turn.id,
+            .generation = 1, .status = suprai::domain::RunStatus::Completed};
+        FakePersistencePort persistence;
+        persistence.deferLoad = true;
+        persistence.snapshot.found = true;
+        persistence.snapshot.session = session;
+        persistence.snapshot.inputs = {input};
+        persistence.snapshot.turns = {turn};
+        persistence.snapshot.runs = {run};
+        persistence.snapshot.items = {
+            suprai::domain::makeMessageItem(suprai::domain::ConversationRole::User,
+                input.text, suprai::domain::ConversationItemState::Completed,
+                suprai::domain::newItemId(), turn.id, 1),
+            suprai::domain::makeMessageItem(suprai::domain::ConversationRole::Assistant,
+                QStringLiteral("guardada"), suprai::domain::ConversationItemState::Completed,
+                suprai::domain::newItemId(), turn.id, 2),
+        };
+
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        orchestrator.start();
+        QCOMPARE(persistence.loadCount, 1);
+        orchestrator.submitPrompt(QStringLiteral("ignorar mientras se restaura"));
+        QCOMPARE(persistence.writeCount, 0);
+        persistence.loaded();
+        QCOMPARE(orchestrator.session().id, session.id);
+        QCOMPARE(orchestrator.history().size(), 2);
+        QCOMPARE(orchestrator.runs().constLast().status, suprai::domain::RunStatus::Completed);
+        orchestrator.submitPrompt(QStringLiteral("nueva"));
+        QCOMPARE(persistence.writeCount, 1);
+        QCOMPARE(persistence.lastWrite.input.sequence, 2);
+        QCOMPARE(persistence.lastWrite.turn.sequence, 2);
+        QCOMPARE(persistence.lastWrite.turn.parentTurnId, turn.id);
+        QCOMPARE(provider->requests().size(), 0);
+        persistence.succeed();
+        QCOMPARE(provider->requests().size(), 1);
+        QCOMPARE(provider->requests().constLast().messages.size(), 3);
     }
 
     void executionIdentitiesTrackConversationLineage()
