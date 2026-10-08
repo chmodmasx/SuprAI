@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStringList>
@@ -11,6 +12,7 @@
 #include <QVariant>
 #include <QVariantList>
 
+#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -198,6 +200,94 @@ QString indexText(const suprai::domain::ConversationItem &item)
             }
         },
         item.content);
+}
+
+std::optional<suprai::domain::RunStatus> decodeRunStatus(const QString &status)
+{
+    using suprai::domain::RunStatus;
+    if (status == QStringLiteral("prepared")) return RunStatus::Prepared;
+    if (status == QStringLiteral("completed")) return RunStatus::Completed;
+    if (status == QStringLiteral("failed")) return RunStatus::Failed;
+    if (status == QStringLiteral("cancelled")) return RunStatus::Cancelled;
+    if (status == QStringLiteral("interrupted")) return RunStatus::Interrupted;
+    return std::nullopt;
+}
+
+std::optional<suprai::domain::ConversationItem> decodeItem(const QSqlQuery &query)
+{
+    using namespace suprai::domain;
+    const QString kind = query.value(3).toString();
+    const QString stateName = query.value(4).toString();
+    ConversationItemState state;
+    if (stateName == QStringLiteral("pending")) state = ConversationItemState::Pending;
+    else if (stateName == QStringLiteral("streaming")) state = ConversationItemState::Streaming;
+    else if (stateName == QStringLiteral("completed")) state = ConversationItemState::Completed;
+    else if (stateName == QStringLiteral("failed")) state = ConversationItemState::Failed;
+    else if (stateName == QStringLiteral("cancelled")) state = ConversationItemState::Cancelled;
+    else return std::nullopt;
+
+    QJsonParseError parseError;
+    const auto json = QJsonDocument::fromJson(query.value(5).toByteArray(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !json.isObject()) return std::nullopt;
+    const auto payload = json.object();
+
+    ConversationItem item{
+        .id = query.value(0).toString(),
+        .turnId = query.value(1).toString(),
+        .sequence = query.value(2).toInt(),
+        .state = state,
+    };
+    if (item.id.isEmpty() || item.turnId.isEmpty() || item.sequence < 1) return std::nullopt;
+
+    if (kind == QStringLiteral("message")) {
+        const QString role = payload.value(QStringLiteral("role")).toString();
+        ConversationRole parsedRole;
+        if (role == QStringLiteral("user")) parsedRole = ConversationRole::User;
+        else if (role == QStringLiteral("assistant")) parsedRole = ConversationRole::Assistant;
+        else if (role == QStringLiteral("system")) parsedRole = ConversationRole::System;
+        else if (role == QStringLiteral("tool")) parsedRole = ConversationRole::Tool;
+        else if (role == QStringLiteral("runtime")) parsedRole = ConversationRole::Runtime;
+        else return std::nullopt;
+        item.content = MessageContent{.role = parsedRole,
+            .text = payload.value(QStringLiteral("text")).toString()};
+    } else if (kind == QStringLiteral("reasoning_summary")) {
+        item.content = ReasoningSummaryContent{
+            .summary = payload.value(QStringLiteral("summary")).toString()};
+    } else if (kind == QStringLiteral("tool_call")) {
+        if (!payload.value(QStringLiteral("arguments")).isObject()) return std::nullopt;
+        item.content = ToolCallContent{
+            .toolInvocationId = payload.value(QStringLiteral("toolInvocationId")).toString(),
+            .name = payload.value(QStringLiteral("name")).toString(),
+            .arguments = payload.value(QStringLiteral("arguments")).toObject()};
+    } else if (kind == QStringLiteral("tool_result")) {
+        const QString statusText = payload.value(QStringLiteral("status")).toString();
+        ToolResultStatus status;
+        if (statusText == QStringLiteral("success")) status = ToolResultStatus::Success;
+        else if (statusText == QStringLiteral("error")) status = ToolResultStatus::Error;
+        else if (statusText == QStringLiteral("denied")) status = ToolResultStatus::Denied;
+        else if (statusText == QStringLiteral("cancelled")) status = ToolResultStatus::Cancelled;
+        else if (statusText == QStringLiteral("skipped_by_steering"))
+            status = ToolResultStatus::SkippedBySteering;
+        else if (statusText == QStringLiteral("outcome_unknown"))
+            status = ToolResultStatus::OutcomeUnknown;
+        else return std::nullopt;
+        item.content = ToolResultContent{
+            .toolInvocationId = payload.value(QStringLiteral("toolInvocationId")).toString(),
+            .status = status,
+            .text = payload.value(QStringLiteral("text")).toString()};
+    } else if (kind == QStringLiteral("attachment")) {
+        item.content = AttachmentContent{
+            .attachmentId = payload.value(QStringLiteral("attachmentId")).toString(),
+            .displayName = payload.value(QStringLiteral("displayName")).toString(),
+            .mimeType = payload.value(QStringLiteral("mimeType")).toString()};
+    } else if (kind == QStringLiteral("runtime_annotation")) {
+        item.content = RuntimeAnnotationContent{
+            .code = payload.value(QStringLiteral("code")).toString(),
+            .text = payload.value(QStringLiteral("text")).toString()};
+    } else {
+        return std::nullopt;
+    }
+    return item;
 }
 
 } // namespace
@@ -501,6 +591,129 @@ void PersistenceWorker::persistTurnTerminal(TurnTerminalWrite request)
         return;
     }
     emit turnTerminalPersisted(request.requestId);
+}
+
+void PersistenceWorker::loadLatestSession()
+{
+    Q_ASSERT(thread() == QThread::currentThread());
+    if (!m_ready || !m_database.isOpen()) {
+        emit readFailed(QStringLiteral("SQLite no está listo para restaurar sesiones."));
+        return;
+    }
+
+    // A previous process cannot own a live Run. Do not replay it automatically.
+    QString errorMessage;
+    if (!m_database.transaction()) {
+        emit readFailed(m_database.lastError().text());
+        return;
+    }
+    if (!execPrepared(
+            m_database,
+            QStringLiteral(
+                "UPDATE runs SET status='interrupted', "
+                "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') "
+                "WHERE status='prepared'"),
+            {}, &errorMessage)) {
+        m_database.rollback();
+        emit readFailed(errorMessage);
+        return;
+    }
+    if (!m_database.commit()) {
+        errorMessage = m_database.lastError().text();
+        m_database.rollback();
+        emit readFailed(errorMessage);
+        return;
+    }
+
+    SessionSnapshot snapshot;
+    QSqlQuery sessionQuery(m_database);
+    if (!sessionQuery.exec(QStringLiteral(
+        "SELECT id, parent_session_id FROM sessions "
+        "ORDER BY updated_at DESC, rowid DESC LIMIT 1"))) {
+        emit readFailed(sessionQuery.lastError().text());
+        return;
+    }
+    if (!sessionQuery.next()) {
+        emit latestSessionLoaded(std::move(snapshot));
+        return;
+    }
+    snapshot.found = true;
+    snapshot.session = {
+        .id = sessionQuery.value(0).toString(),
+        .parentSessionId = sessionQuery.value(1).toString(),
+    };
+
+    const auto read = [this, &snapshot](
+        const QString &sql, auto &&consume) -> QString {
+        QSqlQuery query(m_database);
+        if (!query.prepare(sql)) return query.lastError().text();
+        query.addBindValue(snapshot.session.id);
+        if (!query.exec()) return query.lastError().text();
+        while (query.next()) {
+            if (!consume(query)) return QStringLiteral("Registro de historial no válido.");
+        }
+        return {};
+    };
+
+    errorMessage = read(QStringLiteral(
+        "SELECT id,session_id,sequence,text FROM inputs "
+        "WHERE session_id=? ORDER BY sequence"),
+        [&snapshot](const QSqlQuery &q) {
+            snapshot.inputs.push_back({
+                .id = q.value(0).toString(),
+                .sessionId = q.value(1).toString(),
+                .sequence = q.value(2).toInt(),
+                .text = q.value(3).toString(),
+            });
+            return true;
+        });
+    if (!errorMessage.isEmpty()) { emit readFailed(errorMessage); return; }
+
+    errorMessage = read(QStringLiteral(
+        "SELECT id,session_id,input_id,parent_turn_id,sequence FROM turns "
+        "WHERE session_id=? ORDER BY sequence"),
+        [&snapshot](const QSqlQuery &q) {
+            snapshot.turns.push_back({
+                .id = q.value(0).toString(),
+                .sessionId = q.value(1).toString(),
+                .inputId = q.value(2).toString(),
+                .parentTurnId = q.value(3).toString(),
+                .sequence = q.value(4).toInt(),
+            });
+            return true;
+        });
+    if (!errorMessage.isEmpty()) { emit readFailed(errorMessage); return; }
+
+    errorMessage = read(QStringLiteral(
+        "SELECT r.id,r.turn_id,r.generation,r.status FROM runs r "
+        "JOIN turns t ON t.id=r.turn_id "
+        "WHERE t.session_id=? ORDER BY t.sequence,r.generation"),
+        [&snapshot](const QSqlQuery &q) {
+            const auto state = decodeRunStatus(q.value(3).toString());
+            if (!state) return false;
+            snapshot.runs.push_back({
+                .id = q.value(0).toString(),
+                .turnId = q.value(1).toString(),
+                .generation = q.value(2).toInt(),
+                .status = *state,
+            });
+            return true;
+        });
+    if (!errorMessage.isEmpty()) { emit readFailed(errorMessage); return; }
+
+    errorMessage = read(QStringLiteral(
+        "SELECT i.id,i.turn_id,i.sequence,i.kind,i.state,i.payload_json "
+        "FROM conversation_items i JOIN turns t ON t.id=i.turn_id "
+        "WHERE t.session_id=? ORDER BY t.sequence,i.sequence"),
+        [&snapshot](const QSqlQuery &q) {
+            const auto item = decodeItem(q);
+            if (!item) return false;
+            snapshot.items.push_back(*item);
+            return true;
+        });
+    if (!errorMessage.isEmpty()) { emit readFailed(errorMessage); return; }
+
+    emit latestSessionLoaded(std::move(snapshot));
 }
 
 void PersistenceWorker::shutdown()
