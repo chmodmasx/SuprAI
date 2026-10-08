@@ -39,6 +39,9 @@ private slots:
         QSignalSpy writeFailures(
             worker,
             &suprai::persistence::PersistenceWorker::writeFailed);
+        QSignalSpy terminalCommitted(
+            worker,
+            &suprai::persistence::PersistenceWorker::turnTerminalPersisted);
         QSignalSpy stopped(worker, &suprai::persistence::PersistenceWorker::stopped);
 
         connect(&thread, &QThread::started,
@@ -160,6 +163,57 @@ private slots:
             database.close();
         }
 
+        QSqlDatabase::removeDatabase(readConnectionName);
+
+        const auto assistant = suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant,
+            QStringLiteral("respuesta durable"),
+            suprai::domain::ConversationItemState::Completed,
+            suprai::domain::newItemId(), turn.id, 2);
+        const suprai::persistence::TurnTerminalWrite terminal{
+            .requestId = run.id,
+            .runId = run.id,
+            .turnId = turn.id,
+            .sessionId = session.id,
+            .status = QStringLiteral("completed"),
+            .assistantItem = assistant,
+        };
+        QMetaObject::invokeMethod(worker, [worker, terminal] {
+            worker->persistTurnTerminal(terminal);
+        }, Qt::QueuedConnection);
+        QTRY_COMPARE_WITH_TIMEOUT(terminalCommitted.size(), 1, 3000);
+        QCOMPARE(writeFailures.size(), 0);
+
+        // Replaying the terminal transition cannot duplicate output.
+        QMetaObject::invokeMethod(worker, [worker, terminal] {
+            worker->persistTurnTerminal(terminal);
+        }, Qt::QueuedConnection);
+        QTRY_COMPARE_WITH_TIMEOUT(writeFailures.size(), 1, 3000);
+
+        {
+            auto database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), readConnectionName);
+            database.setDatabaseName(databasePath);
+            QVERIFY(database.open());
+            QSqlQuery finalRun(database);
+            finalRun.prepare(QStringLiteral("SELECT status FROM runs WHERE id=?"));
+            finalRun.addBindValue(run.id);
+            QVERIFY(finalRun.exec());
+            QVERIFY(finalRun.next());
+            QCOMPARE(finalRun.value(0).toString(), QStringLiteral("completed"));
+            QSqlQuery finalItems(database);
+            finalItems.prepare(QStringLiteral("SELECT COUNT(*) FROM conversation_items WHERE turn_id=?"));
+            finalItems.addBindValue(turn.id);
+            QVERIFY(finalItems.exec());
+            QVERIFY(finalItems.next());
+            QCOMPARE(finalItems.value(0).toInt(), 2);
+            QSqlQuery indexed(database);
+            QVERIFY(indexed.exec(QStringLiteral(
+                "SELECT item_id FROM conversation_items_fts "
+                "WHERE conversation_items_fts MATCH 'respuesta'")));
+            QVERIFY(indexed.next());
+            QCOMPARE(indexed.value(0).toString(), assistant.id);
+            database.close();
+        }
         QSqlDatabase::removeDatabase(readConnectionName);
 
         QMetaObject::invokeMethod(

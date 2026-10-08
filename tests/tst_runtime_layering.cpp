@@ -70,12 +70,30 @@ public:
         lastWrite = std::move(request);
     }
 
+    void persistTurnTerminal(suprai::persistence::TurnTerminalWrite request) override
+    {
+        ++terminalWriteCount;
+        lastTerminal = std::move(request);
+    }
+
     void succeed()
     {
         emit turnStartPersisted(lastWrite.requestId);
     }
 
+    void terminalSucceeded()
+    {
+        emit turnTerminalPersisted(lastTerminal.requestId);
+    }
+
+    void terminalFailed()
+    {
+        emit writeFailed(lastTerminal.requestId, QStringLiteral("disk-full"));
+    }
+
     int writeCount = 0;
+    int terminalWriteCount = 0;
+    suprai::persistence::TurnTerminalWrite lastTerminal;
     suprai::persistence::TurnStartWrite lastWrite;
 };
 
@@ -119,10 +137,41 @@ private slots:
         persistence.succeed();
 
         QCOMPARE(provider->requests().size(), 1);
+        QCOMPARE(persistence.terminalWriteCount, 1);
+        QCOMPARE(orchestrator.history().size(), 1);
+        QCOMPARE(persistence.lastTerminal.status, QStringLiteral("completed"));
+        QVERIFY(persistence.lastTerminal.assistantItem.has_value());
+
+        persistence.terminalSucceeded();
         QCOMPARE(orchestrator.history().size(), 2);
         QCOMPARE(orchestrator.inputs().size(), 1);
         QCOMPARE(orchestrator.turns().size(), 1);
         QCOMPARE(orchestrator.runs().size(), 1);
+    }
+
+    void terminalWriteFailureDoesNotPublishCanonicalAnswer()
+    {
+        using namespace suprai::runtime::internal;
+        auto *provider = new FakeProvider;
+        AgentEngine engine(provider);
+        FakePersistencePort persistence;
+        RuntimeOrchestrator orchestrator({.model = QStringLiteral("test")}, &engine, &persistence);
+        int completed = 0;
+        connect(&orchestrator, &RuntimeOrchestrator::eventOccurred,
+                this, [&](const auto &event) {
+            if (suprai::runtime::eventPayload<suprai::runtime::ConversationItemCompleted>(event)) {
+                ++completed;
+            }
+        });
+        orchestrator.start();
+        orchestrator.submitPrompt(QStringLiteral("hola"));
+        persistence.succeed();
+        QCOMPARE(orchestrator.history().size(), 1);
+        QCOMPARE(completed, 0);
+        persistence.terminalFailed();
+        QCOMPARE(orchestrator.history().size(), 1);
+        QCOMPARE(completed, 1); // End UI streaming, do not commit canonical answer.
+        QCOMPARE(provider->requests().size(), 1);
     }
 
     void executionIdentitiesTrackConversationLineage()
