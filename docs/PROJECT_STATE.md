@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: cd762f66f63322ced333658ae9ed30c39b1ec732
-last_verified_code_commit: cd762f66f63322ced333658ae9ed30c39b1ec732
+last_verified_commit: 95e1ad31880d54cbb38e35f6d0ce8072d7c74411
+last_verified_code_commit: 95e1ad31880d54cbb38e35f6d0ce8072d7c74411
 
 working:
   - repository exists and is writable
@@ -61,7 +61,12 @@ working:
   - concrete providers/runtimes are selected only by ApplicationBootstrap
   - three-pane QML shell starts successfully in offscreen CI smoke test
   - NativeSuprAIRuntime runs on a dedicated QThread
-  - PersistenceWorker skeleton runs on its own dedicated QThread with explicit startup/shutdown
+  - PersistenceWorker runs on its own dedicated QThread and owns the primary SQLite writer connection
+  - SQLite startup configures WAL, foreign keys, busy timeout and synchronous=NORMAL
+  - schema v1 migration creates sessions/inputs/turns/runs/conversation_items plus lineage indexes
+  - shipped SQLite FTS5 support is actively probed and conversation_items_fts is created
+  - SQLite quick_check and foreign_key_check are verified in tests/startup
+  - portable staging includes Qt6Sql and QSQLiteDriverPlugin explicitly
   - AppPaths resolves XDG config/data/cache/state through QStandardPaths and startup ensures them
   - logging categories suprai.app, suprai.runtime, suprai.provider, suprai.persistence, and suprai.platform are implemented
   - explicit QML Chat/Configuración routing exists
@@ -82,6 +87,7 @@ working:
   - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
   - GitHub Actions build/test/QML smoke run passes at verified code commit
   - CTest suite passes 8/8 on verified prototype commit
+  - staged XCB and Wayland smoke tests also initialize persistence successfully; persistence_worker_error fails CI
 
 accepted_adrs:
   - ADR-0001 native Qt stack
@@ -218,7 +224,7 @@ decisions:
   - concrete implementations are wired only at the application composition root
   - current prototype wiring uses provider factory -> Provider port -> AgentEngine inside RuntimeOrchestrator inside NativeSuprAIRuntime
   - current native vertical slice uses Chat Completions only; Responses remains planned
-  - current prototype conversation history is in-memory and is not durable
+  - current runtime conversation history remains in-memory; SQLite/schema infrastructure exists but runtime repository mapping is not wired yet
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -269,7 +275,8 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - exact durable Session/Input/Turn/Run repository ports and database constraints as the in-memory model moves to SQLite
+  - exact asynchronous RuntimeOrchestrator <-> persistence repository/command port and ACK protocol
+  - durable Session/Input/Turn/Run/ConversationItem write/read mapping over schema v1
   - LargeResultArtifact storage/retention/read-range implementation details
   - WorkspaceCheckpointService backend, Git/non-Git scope and cleanup policy
   - exact ChangeSet diff representation/hash/base-version strategy
@@ -285,7 +292,9 @@ next_exact_steps:
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
-  - then complete M2 domain/runtime UI contract before expanding M3 durability/tool semantics
+  - then implement the first crash-safe durable write path: commit Session/Input/Turn/Run/user-item before provider inference
+  - keep RuntimeOrchestrator free of SQL and require persistence ACK before external inference begins
+  - then complete the remaining M2 UI contract before broader M3/tool semantics
 
 verification_commands:
   - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSUPRAI_BUILD_TESTS=ON
