@@ -207,8 +207,10 @@ Current implemented structure:
 
       persistence/
         include/suprai/persistence/
+          PersistencePort.h
           PersistenceWorker.h
         src/
+          PersistencePort.cpp
           PersistenceWorker.cpp
 
       platform/
@@ -245,6 +247,7 @@ suprai_domain
 suprai_provider_api
 suprai_provider_openai
 suprai_platform
+suprai_persistence_api
 suprai_persistence
 suprai_runtime
 suprai_ui
@@ -253,6 +256,7 @@ suprai
 
 Important dependency enforcement:
 - `suprai_runtime` links `suprai_provider_api`, not `suprai_provider_openai`;
+- `suprai_runtime` links only `suprai_persistence_api`, not Qt SQL or the SQLite implementation;
 - the concrete OpenAI adapter exposes only its factory include directory publicly;
 - concrete runtime classes and TranscriptModel remain private implementation headers;
 - tests that intentionally inspect an internal helper receive that private include path explicitly and locally;
@@ -843,10 +847,23 @@ Implemented baseline:
 - Qt6Sql/QSQLiteDriverPlugin included in portable staging;
 - no arbitrary SQL from QML/runtime components.
 
+Implemented turn-admission durability:
+```text
+RuntimeOrchestrator
+  -> PersistencePort (runtime thread)
+  -> queued TurnStartWrite
+  -> PersistenceWorker transaction (persistence thread)
+  -> durable ACK
+  -> admit user item in runtime
+  -> AgentEngine/provider inference
+```
+
+The initial transaction writes Session, Input, Turn, Run(status=prepared) and the user ConversationItem atomically. Provider inference does not begin until the commit ACK returns. RuntimeOrchestrator has no SQL dependency.
+
 Still missing:
-- asynchronous repository/command ports between RuntimeOrchestrator and PersistenceWorker;
-- durable runtime writes/reads and resume path;
-- crash reconciliation for active Runs;
+- assistant/final ConversationItem and terminal Run-state persistence;
+- durable read/resume and session reconstruction from SQLite;
+- crash reconciliation for active/prepared Runs;
 - durable ToolInvocation side-effect journal.
 
 ### Side-effect journal

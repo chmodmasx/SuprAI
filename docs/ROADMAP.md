@@ -28,7 +28,7 @@ Goal: prove the Qt foundation before agent complexity.
 
 Status: **IN PROGRESS**.
 
-Verified vertical slice at commit `95e1ad31880d54cbb38e35f6d0ce8072d7c74411`:
+Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - CMake/C++20/Qt 6 application builds in CI with Qt 6.12.0;
 - module PUBLIC/PRIVATE include boundaries are enforced by target-scoped CMake paths;
 - `ApplicationBootstrap` is the concrete composition root;
@@ -54,7 +54,7 @@ Verified vertical slice at commit `95e1ad31880d54cbb38e35f6d0ce8072d7c74411`:
 - a fake OpenAI-compatible integration test completes two streamed turns;
 - a dedicated runtime-layering test verifies that raw reasoning stays outside orchestrator history;
 - raw `reasoning_content` from the first turn is verified absent from the second request;
-- 8/8 CTest tests pass;
+- 9/9 CTest tests pass;
 - worker shutdown completes cleanly and CI fails on any shutdown timeout;
 - CMake install staging deploys Qt runtime, QML imports and qt.conf;
 - Qt6Widgets is staged explicitly because QApplication is a deliberate runtime dependency;
@@ -66,6 +66,11 @@ Verified vertical slice at commit `95e1ad31880d54cbb38e35f6d0ce8072d7c74411`:
 - schema v1 migrations create sessions, inputs, turns, runs, generalized conversation_items and FTS5 history index;
 - startup/tests verify QSQLITE, FTS5, user_version, quick_check and foreign_key_check;
 - Qt6Sql and QSQLiteDriverPlugin are explicitly included in the portable stage;
+- PersistencePort is a separate runtime-facing target; RuntimeOrchestrator does not link Qt SQL;
+- native turn admission persists Session/Input/Turn/Run(status=prepared)/user item in one transaction;
+- provider inference is blocked until the persistence ACK arrives;
+- runtime-layering tests prove provider request count remains zero before ACK;
+- persistence tests verify the durable batch and FTS entry;
 - ordinary chat rendering remains plain text in this prototype.
 
 Still required before M1 can be COMPLETE:
@@ -120,29 +125,27 @@ Early prototype proof already exists for:
 - cancellation;
 - error display.
 
-M2 is not complete: persistence/durable repositories, tool/approval/clarification UI, runtime capability projection and safe Markdown proof remain. The generalized in-memory domain foundation is now implemented.
+M2 is not complete: durable read/resume and terminal item persistence, tool/approval/clarification UI and safe Markdown proof remain. The generalized domain foundation and runtime capability projection are implemented.
 
 Implemented foundation:
 - AgentRuntime abstract interface;
 - Session/Input/Turn/Run identity value types and semantic ID factories;
 - generalized ConversationItem with typed message/reasoning/tool/attachment/runtime content;
-- RuntimeOrchestrator uses Session/Input/Turn/Run and generalized items in memory;
+- RuntimeOrchestrator uses Session/Input/Turn/Run and generalized items;
+- typed domain/application event contract distinct from AgentEngine events;
+- runtime capability projection into ChatController;
 - TranscriptModel projects message items only and ignores unsupported domain kinds safely;
 - MockRuntime scripted fixture;
-- C++ QAbstractListModel transcript projection.
+- composer, streaming deltas, cancellation and error-state UI;
+- C++ QAbstractListModel transcript projection;
+- first durable turn-admission write path through PersistencePort.
 
 Still implement:
-- runtime capability projection;
-- typed domain/application event contract distinct from AgentEngine events;
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
-- durable repository mapping in M3;
+- assistant/terminal Run persistence plus durable read/resume in M3;
 - safe native Markdown rendering proof;
-- composer;
-- streaming delta path;
 - tool cards;
-- approval/clarification component;
-- cancellation;
-- error-state UI.
+- approval/clarification component.
 
 Exit:
 - a complete deterministic fake agent turn works end-to-end.
@@ -164,7 +167,7 @@ An intentionally small M3 vertical slice was prototyped early:
 - separated `reasoning_content` is ephemeral and is not replayed into the next prompt;
 - these boundaries are covered by deterministic fake-provider/fake-server tests.
 
-This is not the final M3 runtime. SQLite/schema infrastructure exists, but runtime-to-repository durable Session/Input/Turn/Run/item mapping, Responses, capability probing, token budgeting and explicit turn-state-machine semantics remain.
+This is not the final M3 runtime. Initial Session/Input/Turn/Run/user-item admission is durable and ACK-gated before inference, but assistant/terminal-state persistence, read/resume/recovery, Responses, capability probing, token budgeting and full turn-state-machine semantics remain.
 
 Implement:
 - retain/expand the implemented NativeSuprAIRuntime -> RuntimeOrchestrator -> AgentEngine split;
@@ -186,8 +189,10 @@ Implement:
 - TokenBudgetService capability ladder;
 - model configuration;
 - local endpoint support;
-- connect RuntimeOrchestrator to explicit asynchronous persistence/repository ports;
-- durable Session/Input/Turn/Run/Item write/read mapping;
+- retain the implemented asynchronous PersistencePort command/ACK boundary;
+- persist assistant/final items and terminal Run outcomes;
+- durable Session/Turn/item read/resume mapping and startup reconstruction;
+- reconcile prepared/interrupted Runs on restart;
 - retain the implemented dedicated PersistenceWorker, WAL/foreign-keys/busy-timeout/migrations and FTS5 proof;
 - provider-state-independent session reconstruction;
 - cancellation request/confirmation semantics;

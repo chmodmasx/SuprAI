@@ -122,10 +122,39 @@ Schema v1 currently creates:
 
 Portable staging explicitly includes Qt6Sql and the QSQLiteDriverPlugin, and staged XCB/Wayland smoke tests exercise PersistenceWorker initialization. CI treats persistence_worker_error as a smoke-test failure.
 
+## Implemented pre-inference durability gate
+
+The runtime/persistence boundary is now explicit:
+
+```text
+RuntimeOrchestrator
+  -> PersistencePort
+  -> queued TurnStartWrite
+  -> PersistenceWorker transaction
+  -> turnStartPersisted ACK
+  -> AgentEngine/provider inference
+```
+
+For a native user turn, SuprAI atomically commits:
+- Session (insert/update timestamp);
+- Input with session sequence;
+- Turn with parent lineage and session sequence;
+- Run generation with status `prepared`;
+- completed user ConversationItem with turn sequence;
+- searchable user text into FTS5.
+
+The provider is not called before the commit ACK. A runtime-layering test explicitly verifies zero provider requests before ACK.
+
+RuntimeOrchestrator does not include Qt SQL or issue SQL. `suprai_persistence_api` contains the typed port; the SQLite worker implementation remains a separate target/thread.
+
+The `prepared` Run status is intentionally conservative: this first durability gate proves admission before inference, but ProviderAttempt/start/terminal-state journaling is not implemented yet.
+
 Not yet implemented:
-- repository/command ports between RuntimeOrchestrator and PersistenceWorker;
-- durable runtime writes/reads for the v1 entities;
-- crash reconciliation of persisted active Runs;
+- persistence of assistant/final ConversationItems;
+- terminal Run state updates for success/failure/cancellation;
+- durable read/resume/session reconstruction;
+- restart reconciliation of prepared/interrupted Runs;
+- ProviderAttempt persistence;
 - side-effect journal tables/logic for ToolInvocation lifecycle.
 
-Those remain required before durable session recovery can be claimed.
+Those remain required before full durable session recovery can be claimed.

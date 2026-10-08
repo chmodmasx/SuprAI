@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 95e1ad31880d54cbb38e35f6d0ce8072d7c74411
-last_verified_code_commit: 95e1ad31880d54cbb38e35f6d0ce8072d7c74411
+last_verified_commit: d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8
+last_verified_code_commit: d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8
 
 working:
   - repository exists and is writable
@@ -56,7 +56,7 @@ working:
   - untouched empty chats may remain transient until the first accepted Input
   - functional Qt/QML prototype source exists and builds in CI with Qt 6.12.0
   - current source tree enforces module public/private include boundaries
-  - current CMake targets include suprai_domain, suprai_provider_api, suprai_provider_openai, suprai_runtime, suprai_ui, suprai_platform, suprai_persistence, and suprai
+  - current CMake targets include suprai_domain, suprai_provider_api, suprai_provider_openai, suprai_platform, suprai_persistence_api, suprai_persistence, suprai_runtime, suprai_ui, and suprai
   - runtime depends on provider contract, not the concrete OpenAI adapter
   - concrete providers/runtimes are selected only by ApplicationBootstrap
   - three-pane QML shell starts successfully in offscreen CI smoke test
@@ -67,6 +67,13 @@ working:
   - shipped SQLite FTS5 support is actively probed and conversation_items_fts is created
   - SQLite quick_check and foreign_key_check are verified in tests/startup
   - portable staging includes Qt6Sql and QSQLiteDriverPlugin explicitly
+  - PersistencePort is implemented as the runtime-facing persistence API and carries typed queued commands/ACKs
+  - suprai_runtime depends on suprai_persistence_api but not Qt SQL or the SQLite worker implementation
+  - Input, Turn and ConversationItem carry explicit sequence values matching schema ordering
+  - native turn admission persists Session/Input/Turn/Run(status=prepared)/user item atomically before inference
+  - RuntimeOrchestrator waits for persistence ACK before admitting the pending user item and invoking AgentEngine
+  - persistence failure before inference transitions the runtime to Failed instead of calling the provider
+  - runtime-layering test proves provider inference count is zero before durable ACK
   - AppPaths resolves XDG config/data/cache/state through QStandardPaths and startup ensures them
   - logging categories suprai.app, suprai.runtime, suprai.provider, suprai.persistence, and suprai.platform are implemented
   - explicit QML Chat/Configuración routing exists
@@ -86,7 +93,7 @@ working:
   - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
   - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
   - GitHub Actions build/test/QML smoke run passes at verified code commit
-  - CTest suite passes 8/8 on verified prototype commit
+  - CTest suite passes 9/9 on verified prototype commit
   - staged XCB and Wayland smoke tests also initialize persistence successfully; persistence_worker_error fails CI
 
 accepted_adrs:
@@ -224,7 +231,7 @@ decisions:
   - concrete implementations are wired only at the application composition root
   - current prototype wiring uses provider factory -> Provider port -> AgentEngine inside RuntimeOrchestrator inside NativeSuprAIRuntime
   - current native vertical slice uses Chat Completions only; Responses remains planned
-  - current runtime conversation history remains in-memory; SQLite/schema infrastructure exists but runtime repository mapping is not wired yet
+  - user-side turn admission is now durable; assistant completion, terminal Run state and read/resume remain in-memory/not yet wired
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -246,7 +253,6 @@ decisions:
 open_questions:
   - exact visual language and component system
   - physical validation against the user's local NInfer endpoint
-  - physical KDE Wayland / GNOME Wayland / X11 launch verification
   - physical KDE Wayland/X11 launch verification and GNOME Wayland proof
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - exact safe transcript renderer implementation after benchmark
@@ -275,8 +281,9 @@ open_questions:
   - parent-vs-child reasoning effort/profile policy
   - multiple deliberator/verifier scheduling policy
   - generic OpenAI-compatible reasoning-history capability detection
-  - exact asynchronous RuntimeOrchestrator <-> persistence repository/command port and ACK protocol
-  - durable Session/Input/Turn/Run/ConversationItem write/read mapping over schema v1
+  - exact terminal-write protocol for assistant item and Run outcome
+  - durable Session/Turn/ConversationItem read/resume mapping over schema v1
+  - restart reconciliation semantics for prepared Runs before ProviderAttempt persistence exists
   - LargeResultArtifact storage/retention/read-range implementation details
   - WorkspaceCheckpointService backend, Git/non-Git scope and cleanup policy
   - exact ChangeSet diff representation/hash/base-version strategy
@@ -292,8 +299,9 @@ next_exact_steps:
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
-  - then implement the first crash-safe durable write path: commit Session/Input/Turn/Run/user-item before provider inference
-  - keep RuntimeOrchestrator free of SQL and require persistence ACK before external inference begins
+  - extend the durable path to persist assistant completion/failure/cancellation and terminal Run state
+  - add durable Session/Turn/item reads and resume/reconstruction without provider-side conversation state
+  - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 
 verification_commands:

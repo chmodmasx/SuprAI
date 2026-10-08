@@ -32,17 +32,21 @@ Implemented:
 - typed AgentEngineEvent -> RuntimeEvent adapter boundary;
 - raw provider `reasoning_content` treated as ephemeral and excluded from later reconstructed prompts;
 - explicit public/private module include boundaries enforced by CMake targets;
-- CI build, 8/8 unit/integration tests and QML startup smoke test;
+- CI build, 9/9 unit/integration tests and QML startup smoke test;
 - CMake-owned portable staging of Qt libraries, QML imports and plugins;
 - independent staged smoke tests through XCB/Xvfb and Wayland/Weston with Qt development environment variables removed;
 - bundled X11 and Wayland QPA plugins verified in the stage;
 - SQLite bootstrap with WAL, foreign keys, busy timeout, schema migrations, quick/integrity checks and FTS5 capability proof;
 - schema v1 for sessions, inputs, turns, runs and generalized conversation items;
+- typed PersistencePort command/ACK boundary between runtime and SQLite worker;
+- native turn-start transaction persists Session/Input/Turn/Run/user item before provider inference begins;
+- runtime waits for durable ACK before calling AgentEngine/provider;
 - SQLite QSQLITE runtime/plugin included in the portable stage;
 - clean worker shutdown enforced by CI.
 
 Not implemented yet:
-- runtime-to-repository durable write/read mapping for sessions/Inputs/Turns/Runs/items;
+- assistant/final item and terminal Run-state persistence;
+- durable Session read/resume and restart recovery;
 - Responses transport;
 - tool calling and approvals;
 - MCP;
@@ -88,7 +92,7 @@ ApplicationBootstrap
 
 Current source modules expose only their public `include/suprai/...` surface. Concrete runtime/provider implementations live in private source directories and are not visible to unrelated consumers.
 
-The runtime split required by ADR-0002 is already implemented in the current vertical slice. The current AgentEngine still has only the minimal provider execution behavior needed by the prototype; durable Turn/Run state, tool iteration and the rest of M3 build on this boundary rather than replacing it.
+The runtime split required by ADR-0002 is already implemented in the current vertical slice. Turn admission is now partially durable: the Session/Input/Turn/Run plus user item commit before inference. Assistant completion, terminal Run state and read/resume remain M3 work. Tool iteration and the rest of M3 build on these boundaries rather than replacing them.
 
 This is deliberate: adding or replacing a provider should not require changes to QML or stateful orchestration, and session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
 
