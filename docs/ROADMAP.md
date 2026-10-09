@@ -370,6 +370,10 @@ Initial alpha preview packaging implemented and PR CI-verified:
 - `SuprAI-0.1.0-alpha.1-x86_64.AppImage` and SHA-256;
 - extract-and-run smoke tests on XCB/Xvfb and Wayland/Weston;
 - release pipeline publishes from main only after packaged tests pass.
+- main publication currently creates the fixed tag v0.1.0-alpha.1; because
+  that release already exists, subsequent main pushes may pass packaging but
+  fail at release publication. Immutable per-build versioning must be resolved
+  before merging further changes into main.
 
 Still required for M9 completion:
 - inspect and record GLIBC/GLIBCXX ABI floor;

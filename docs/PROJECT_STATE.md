@@ -281,6 +281,8 @@ open_questions:
   - jsoncons proof results and exact dependency pin
   - exact Qt 6.12 toolchain source for Ubuntu-22.04-compatible release builds
   - final AppImage finalizer/tool
+  - v0.1.0-alpha.1 release already exists; main-only fixed-tag gh release create
+    is not repeatable and needs a deliberate immutable versioning policy
   - exact MCP legacy 2025-era compatibility scope
   - MCP Tasks extension implementation timing
   - memory mutation/review UX
