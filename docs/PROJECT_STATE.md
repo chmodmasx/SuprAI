@@ -3,8 +3,8 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 53d7338f089ca0ad5940e1f922b3f86ccf26f94c
-last_verified_code_commit: 53d7338f089ca0ad5940e1f922b3f86ccf26f94c
+last_verified_commit: a580d4a164be9fb451d45ae4ea7a6555fe6f9f71
+last_verified_code_commit: a580d4a164be9fb451d45ae4ea7a6555fe6f9f71
 
 working:
   - repository exists and is writable
@@ -19,6 +19,9 @@ working:
   - advanced execution research is recorded under docs/research/
   - deep current-Cline code review is recorded under docs/research/2026-10-07-cline-code-review.md
   - AppImage selected as first portable artifact
+  - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
+  - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
+  - main-only pre-release publication runs after packaged checks pass; physical host/cross-distro ABI proof remains pending
   - canonical conversation state is SuprAI-owned
   - runtime, UI and persistence have explicit thread ownership
   - context/token/compaction/cache semantics are documented
@@ -299,7 +302,7 @@ open_questions:
 
 next_milestone: M1
 next_exact_steps:
-  - run the verified prototype against the user's real local NInfer endpoint
+  - download and launch the verified alpha AppImage on local KDE/NVIDIA and connect to the real NInfer endpoint
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives

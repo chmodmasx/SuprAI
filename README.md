@@ -42,11 +42,12 @@ Implemented:
 - native turn-start transaction persists Session/Input/Turn/Run/user item before provider inference begins;
 - runtime waits for durable ACK before calling AgentEngine/provider;
 - SQLite QSQLITE runtime/plugin included in the portable stage;
-- clean worker shutdown enforced by CI.
+- clean worker shutdown enforced by CI;
+- newest session restored from SQLite, prepared Runs reconciled as interrupted, and assistant terminal outcome committed before completion ACK;
+- initial AppImage preview built from the staged Qt runtime, with bundled Qt/QML/XCB/Wayland/SQLite, SHA-256 file, and packaged XCB/Wayland CI smoke tests.
 
 Not implemented yet:
-- assistant/final item and terminal Run-state persistence;
-- durable Session read/resume and restart recovery;
+- older-session selection and advanced ProviderAttempt/Task recovery;
 - Responses transport;
 - tool calling and approvals;
 - MCP;
@@ -55,7 +56,7 @@ Not implemented yet:
 - projects/files;
 - safe Markdown renderer;
 - editable persisted provider settings and secure SecretStore;
-- final AppImage release artifact and ABI-floor proof;
+- release-grade AppImage ABI-floor/cross-distro proof (initial alpha AppImage preview is available through the CI/release pipeline);
 - physical KDE/GNOME Wayland and X11 smoke tests.
 
 ## Module shape
@@ -95,6 +96,21 @@ Current source modules expose only their public `include/suprai/...` surface. Co
 The runtime split required by ADR-0002 is implemented in the current vertical slice. SQLite commits the Session/Input/Turn/Run and the user item before inference, then atomically commits the terminal Run outcome and assistant item before the terminal UI ACK. On startup the native runtime restores the newest local session from SQLite and marks previously prepared Runs as interrupted without replaying them. Selectable older sessions, ProviderAttempt journaling, tool iteration and the remainder of M3 build on these boundaries rather than replacing them.
 
 This is deliberate: adding or replacing a provider should not require changes to QML or stateful orchestration, and session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
+
+## AppImage preview
+
+SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.1-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. This does **not** yet prove compatibility with every Linux distro or the actual KDE/NVIDIA host.
+
+The `appimage-preview` GitHub Actions workflow uploads the AppImage + `.sha256`; after verified `main` builds it publishes the same pair as a GitHub pre-release. To run it on a machine whose local inference server speaks OpenAI-compatible Chat Completions:
+
+```bash
+chmod +x SuprAI-0.1.0-alpha.1-x86_64.AppImage
+SUPRAI_RUNTIME=native SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
+  SUPRAI_MODEL=qwen3.8-27b SUPRAI_API_KEY=no-key \
+  ./SuprAI-0.1.0-alpha.1-x86_64.AppImage
+```
+
+If FUSE is unavailable, add `APPIMAGE_EXTRACT_AND_RUN=1` before the invocation. For a fake local test, use `SUPRAI_RUNTIME=mock`. Full build instructions follow for contributors.
 
 ## Build
 

@@ -361,17 +361,22 @@ Validate:
 
 ## M9 — AppImage release pipeline
 
-Implement:
-- release CMake install layout;
-- AppDir generation;
-- Qt/QML deployment;
-- AppImage generation;
-- CI artifact;
-- clean VM smoke test;
-- dependency report;
-- checksums.
+Initial alpha preview packaging implemented and PR CI-verified:
+- CMake install layout, Qt-managed library/QML/plugin deployment, and AppDir;
+- executable AppRun, desktop entry and icon;
+- pinned/hash-verified appimagetool finalizer;
+- `SuprAI-0.1.0-alpha.1-x86_64.AppImage` and SHA-256;
+- extract-and-run smoke tests on XCB/Xvfb and Wayland/Weston;
+- release pipeline publishes from main only after packaged tests pass.
 
-Record exact ABI floor.
+Still required for M9 completion:
+- inspect and record GLIBC/GLIBCXX ABI floor;
+- test actual clean VMs (Ubuntu 22.04/24.04/26.04, Debian 12);
+- physical KDE Wayland/X11 and GNOME Wayland proof;
+- license and Qt relinking/distribution notices;
+- final AppImage release/compatibility report.
+
+The alpha preview does not make M9 COMPLETE.
 
 ## M10 — Orchestration, Tasks and advanced agent UX
 
