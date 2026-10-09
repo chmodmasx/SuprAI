@@ -31,6 +31,7 @@ QString safeMarkdownToStyledText(const QString &markdown)
             }
         }
 
+        QString previousHref;
         const bool heading = block.blockFormat().headingLevel() > 0;
         if (heading) result += QStringLiteral("<b>");
 
@@ -55,8 +56,15 @@ QString safeMarkdownToStyledText(const QString &markdown)
             if (italic) result += QStringLiteral("<i>");
             if (code) result += QStringLiteral("<font face=\"monospace\">");
 
-            // Links stay inactive pending the explicit platform OpenURI policy.
+            // Links are inert, but their targets stay visible and copyable.
             result += text;
+            const QString href = format.isAnchor() ? format.anchorHref() : QString();
+            if (!href.isEmpty() && href != fragment.text() && href != previousHref) {
+                result += QStringLiteral(" (");
+                result += href.toHtmlEscaped();
+                result += QStringLiteral(")");
+            }
+            previousHref = href;
 
             if (code) result += QStringLiteral("</font>");
             if (italic) result += QStringLiteral("</i>");
