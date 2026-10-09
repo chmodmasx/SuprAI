@@ -3,9 +3,10 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: a580d4a164be9fb451d45ae4ea7a6555fe6f9f71
-last_verified_code_commit: a580d4a164be9fb451d45ae4ea7a6555fe6f9f71
-pending_ci_code_commit: a22ad837daca0045d215167568f7d71ef2d7989e
+last_verified_commit: 961fe3652d344dd7bae9dec667dafef99c4b0628
+last_verified_code_commit: 961fe3652d344dd7bae9dec667dafef99c4b0628
+verified_pr_build_run: 37950042863
+verified_pr_appimage_run: 37950042816
 
 working:
   - repository exists and is writable
@@ -312,7 +313,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - verify the new completion-only safe Markdown projection in Actions and follow up with performance/security UI proof
+  - complete physical KDE/NVIDIA proof of the CI-verified safe Markdown projection, including malicious Markdown, visible inert URLs, long code and real scroll/selection behavior
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 
