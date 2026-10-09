@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SuprAI
+Comment=Linux-native local AI assistant
+Exec=suprai
+Icon=suprai
+Terminal=false
+Categories=Utility;Development;
+StartupNotify=true
