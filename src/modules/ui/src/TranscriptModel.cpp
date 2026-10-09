@@ -1,8 +1,13 @@
 #include "TranscriptModel.h"
+#include "SafeMarkdownRenderer.h"
 
 namespace suprai::ui::internal {
 
 namespace {
+// Keep synchronous parsing bounded; long answers remain plain text until a
+// benchmarked block-based renderer exists.
+constexpr qsizetype kMarkdownLimit = 65536;
+
 QString itemStateName(suprai::domain::ConversationItemState state)
 {
     using suprai::domain::ConversationItemState;
@@ -50,6 +55,10 @@ QVariant TranscriptModel::data(const QModelIndex &index, int role) const
         return suprai::domain::isStreaming(item);
     case StateRole:
         return itemStateName(item.state);
+    case DisplayTextRole:
+        return m_styledRows.at(index.row()) ? m_styledText.at(index.row()) : message->text;
+    case StyledTextRole:
+        return m_styledRows.at(index.row());
     default:
         return {};
     }
@@ -63,6 +72,8 @@ QHash<int, QByteArray> TranscriptModel::roleNames() const
         {TextRole, "text"},
         {StreamingRole, "streaming"},
         {StateRole, "messageState"},
+        {DisplayTextRole, "displayText"},
+        {StyledTextRole, "displayStyled"},
     };
 }
 
@@ -79,6 +90,9 @@ void TranscriptModel::append(const suprai::domain::ConversationItem &item)
     const int row = m_items.size();
     beginInsertRows({}, row, row);
     m_items.push_back(item);
+    m_styledText.push_back({});
+    m_styledRows.push_back(false);
+    updateCompletedProjection(row);
     m_rowsById.insert(item.id, row);
     endInsertRows();
 }
@@ -97,7 +111,7 @@ void TranscriptModel::appendDelta(const QString &itemId, const QString &delta)
 
     message->text += delta;
     const auto modelIndex = index(row);
-    emit dataChanged(modelIndex, modelIndex, {TextRole});
+    emit dataChanged(modelIndex, modelIndex, {TextRole, DisplayTextRole});
 }
 
 void TranscriptModel::finish(const QString &itemId)
@@ -108,8 +122,9 @@ void TranscriptModel::finish(const QString &itemId)
     }
 
     m_items[row].state = suprai::domain::ConversationItemState::Completed;
+    updateCompletedProjection(row);
     const auto modelIndex = index(row);
-    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole});
+    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole, DisplayTextRole, StyledTextRole});
 }
 
 void TranscriptModel::stop(
@@ -137,8 +152,25 @@ void TranscriptModel::clear()
 
     beginResetModel();
     m_items.clear();
+    m_styledText.clear();
+    m_styledRows.clear();
     m_rowsById.clear();
     endResetModel();
+}
+
+void TranscriptModel::updateCompletedProjection(int row)
+{
+    const auto &item = m_items.at(row);
+    const auto *message = suprai::domain::messageContent(item);
+    if (!message || message->role != suprai::domain::ConversationRole::Assistant
+        || item.state != suprai::domain::ConversationItemState::Completed
+        || message->text.size() > kMarkdownLimit) {
+        m_styledText[row].clear();
+        m_styledRows[row] = false;
+        return;
+    }
+    m_styledText[row] = safeMarkdownToStyledText(message->text);
+    m_styledRows[row] = true;
 }
 
 int TranscriptModel::rowForId(const QString &itemId) const

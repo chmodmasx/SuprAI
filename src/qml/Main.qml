@@ -234,6 +234,8 @@ ApplicationWindow {
                         required property string itemId
                         required property string speaker
                         required property string text
+                        required property string displayText
+                        required property bool displayStyled
                         required property bool streaming
                         required property string messageState
 
@@ -262,13 +264,13 @@ ApplicationWindow {
                                 anchors.top: parent.top
                                 anchors.margins: 13
 
-                                text: parent.parent.text
+                                text: parent.parent.displayText
                                       + (parent.parent.streaming ? " ▋"
                                          : parent.parent.messageState === "cancelled" ? " (cancelado)"
                                          : parent.parent.messageState === "failed" ? " (error)" : "")
                                 color: root.foreground
                                 wrapMode: Text.Wrap
-                                textFormat: Text.PlainText
+                                textFormat: parent.parent.displayStyled ? Text.StyledText : Text.PlainText
                                 font.pixelSize: 14
                                 lineHeight: 1.25
                             }
