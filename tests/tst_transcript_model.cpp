@@ -80,6 +80,21 @@ private slots:
         QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(), raw);
     }
 
+    void linkDestinationRemainsVisibleWithoutAnchor()
+    {
+        using suprai::ui::internal::TranscriptModel;
+        TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant,
+            QStringLiteral("[sitio](https://example.org/path?q=1&x=2)"),
+            suprai::domain::ConversationItemState::Completed,
+            QStringLiteral("md-link")));
+        const QString rendered = model.data(
+            model.index(0), TranscriptModel::DisplayTextRole).toString();
+        QVERIFY(rendered.contains(QStringLiteral("https://example.org/path?q=1&amp;x=2")));
+        QVERIFY(!rendered.contains(QStringLiteral("<a "), Qt::CaseInsensitive));
+    }
+
     void largeAnswerFallsBackToPlainText()
     {
         using suprai::ui::internal::TranscriptModel;
