@@ -5,6 +5,7 @@ milestone: M1
 status: in_progress_vertical_slice_verified
 last_verified_commit: a580d4a164be9fb451d45ae4ea7a6555fe6f9f71
 last_verified_code_commit: a580d4a164be9fb451d45ae4ea7a6555fe6f9f71
+pending_ci_code_commit: a22ad837daca0045d215167568f7d71ef2d7989e
 
 working:
   - repository exists and is writable
@@ -240,6 +241,8 @@ decisions:
   - SQLite writer reopening and restoration across worker restart are CI tested
   - distinct ConversationItemCompleted/ConversationItemStopped events preserve completed/failed/cancelled stream semantics, including terminal-write failures (CI verified)
   - transcript projection exposes explicit messageState and preserves failure/cancellation across streaming completion
+  - initial Markdown presentation slice uses Qt MarkdownNoHTML parsed on completion and an allowlisted StyledText projection only
+  - raw model HTML/anchors/images never reach rich QML; streaming and oversized replies remain plain text, with no per-token Markdown reparse
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -263,7 +266,7 @@ open_questions:
   - physical validation against the user's local NInfer endpoint
   - physical KDE Wayland/X11 launch verification and GNOME Wayland proof
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - exact safe transcript renderer implementation after benchmark
+  - full safe Markdown renderer proof: realistic scroll/selection/copy/large-code benchmarks, resource handling and explicit external-link policy
   - QtKeychain proof on KDE/GNOME/AppImage
   - exact first built-in tool set
   - default persisted permission UX
@@ -309,6 +312,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
+  - verify the new completion-only safe Markdown projection in Actions and follow up with performance/security UI proof
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

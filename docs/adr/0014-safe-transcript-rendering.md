@@ -85,3 +85,23 @@ Choose the simpler implementation if it stays within performance targets.
 - smooth long transcript scroll;
 - streaming does not produce O(n)-sized UI object churn per token;
 - external links require a user action.
+
+## Implemented M2 slice (2026-10-09)
+
+A private SafeMarkdownRenderer owned by suprai_ui now:
+
+- Parses completed assistant messages using QTextDocument MarkdownNoHTML.
+- Iterates only text fragments, escaping all model-supplied text.
+- Projects to a minimal explicit allowlist of Qt StyledText tags: b, i,
+  font and br. Images become a placeholder; anchors and resource URLs are
+  not emitted. No renderer-initiated network access is expected.
+- Keeps streaming output, user text, failed/cancelled items and output over
+  65,536 UTF-16 code units as plain text.
+- Caches rich text once per completed message; streaming deltas do not parse
+  Markdown. The canonical conversation stays unmodified.
+- Adds security and large-message boundary tests without any new third-party
+  runtime or WebEngine dependency.
+
+ADR remains proposed. This is only the initial safe subset. Selection/copy,
+large code blocks, external links with policy-backed OpenURI, attachment
+resources and full long-transcript performance proof remain unverified.
