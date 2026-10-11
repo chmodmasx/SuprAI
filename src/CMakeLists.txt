@@ -220,6 +220,7 @@ install(TARGETS suprai
 install(IMPORTED_RUNTIME_ARTIFACTS
     Qt6::Widgets
     Qt6::Sql
+    Qt6Keychain::Qt6Keychain
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
