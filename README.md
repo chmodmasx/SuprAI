@@ -6,7 +6,7 @@ SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface
 
 **Status: functional modular prototype / M1 in progress.**
 
-Alpha.4 has passed build and packaged XCB/Wayland CI verification. Alpha.5 adds a modular text-block presentation slice and remains unverified until its own CI and desktop tests pass. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+Alpha.5 adds native bounded text/code presentation and passed 12/12 automated tests, actual QML delegate instantiation and packaged XCB/Wayland AppImage smoke in CI. Physical KDE text interactions and long-transcript benchmarks remain unverified. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
 
 ## Current prototype
 
@@ -112,7 +112,7 @@ The authenticated test **only runs when repository Actions secret `NINFER_API_KE
 
 The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
 
-## Text rendering (alpha.5 candidate)
+## Text rendering (alpha.5)
 
 Completed assistant messages now have a bounded `messageBlocks` presentation role: safe styled prose plus explicit fenced-code cards, selectable read-only text, monospace code, code-language labels and copy actions. Inline HTTP(S) links are generated from validated Markdown destinations, **never activated by rendering**; clicking opens a confirmation showing the full destination before QDesktopServices opens the browser. Non-HTTP(S), credential-bearing and malformed links remain inert, with destinations visible. Model-provided HTML/images are not loaded. Streaming and failed/cancelled messages remain plain text, and very large messages safely fall back to non-parsed text.
 

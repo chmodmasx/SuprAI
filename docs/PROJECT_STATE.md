@@ -3,12 +3,12 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 3dda14921c72e754c3f8a5dcc2d680e1f57a9829
-last_verified_code_commit: 3dda14921c72e754c3f8a5dcc2d680e1f57a9829
-verified_pr_appimage_run: 38180368583
-verified_pr_build_run: 38180368560
-verified_release_appimage_run: 38180539891
-verified_main_build_run: 38180539904
+last_verified_commit: 510d9434eb8b238d97789e0623c0e58cb19ea3f8
+last_verified_code_commit: 510d9434eb8b238d97789e0623c0e58cb19ea3f8
+verified_pr_appimage_run: 38185272987
+verified_pr_build_run: 38185273070
+verified_release_appimage_run: 38185449542
+verified_main_build_run: 38185449564
 verified_live_ninfer_run: 38162535283
 
 working:
@@ -27,7 +27,7 @@ working:
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
   - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
-  - immutable alpha.4 AppImage is published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.4 after build, CTest and packaged XCB/Wayland CI PASS; alpha.3 remains available
+  - immutable alpha.5 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.5 after 12/12 CTest and packaged XCB/Wayland CI PASS; alpha.4 remains available
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
@@ -61,7 +61,7 @@ working:
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
   - physical alpha.3 test confirmed model discovery and preference save; alpha.4 clarifies the required restart and fixes Enter/Shift+Enter (CI verified, physical acceptance pending)
-  - alpha.5 candidate: bounded structured Markdown/code presentation, read-only selection/copy and confirmation-gated safe HTTP(S) links; PR CI and physical text UX proof pending
+  - alpha.5 implemented and CI-verified: bounded structured Markdown/code, read-only selection/copy and confirmation-gated safe HTTP(S) links; native MessageBubble QML instantiation test and packaged XCB/Wayland smoke PASS; physical KDE UX proof pending
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.5 text presentation is in development; outstanding tests: long transcript scroll/resize, accessibility/selection, external-link confirmation on physical KDE, resources/attachments
+  - alpha.5 text rendering is published; outstanding physical KDE tests: selection, copy, link confirmation; long transcript scroll/resize, accessibility and resources/attachments still unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX

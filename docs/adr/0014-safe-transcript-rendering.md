@@ -103,7 +103,7 @@ A private SafeMarkdownRenderer owned by suprai_ui now:
 - Adds security and large-message boundary tests without any new third-party
   runtime or WebEngine dependency.
 
-## Alpha.5 presentation extension (CI pending)
+## Alpha.5 presentation extension (CI verified, physical validation pending)
 
 `MarkdownBlocks` transforms only bounded, completed assistant messages into
 safe prose and fenced-code segment maps; `TranscriptModel` exposes
@@ -124,6 +124,9 @@ existing 65,536 UTF-16 limit and a maximum of 80 presentation blocks bound
 synchronous CPU/object churn; oversized messages fall back to plain text.
 No network request, WebEngine, executable code, or HTML source injection is
 introduced by rendering.
+
+CI results: 12/12 CTest including native MessageBubble QML instantiation,
+plus packaged AppImage XCB and Wayland launch, main run 38185449542.
 
 Still unverified: real physical KDE/GNOME selection/copy/link UX, 1k-message
 virtualization and long-response resizing/scroll benchmarks, keyboard
