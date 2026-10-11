@@ -139,7 +139,7 @@ Implemented foundation:
 - TranscriptModel projects message items only and ignores unsupported domain kinds safely;
 - MockRuntime scripted fixture;
 - composer, streaming deltas, cancellation and error-state UI;
-- alpha.4 candidate: sending is gated on a Ready runtime and an actually active model; pending provider restart is called out explicitly, with Enter to send and Shift+Enter for a newline;
+- alpha.4 release: sending is gated on a Ready runtime and an actually active model; pending provider restart is explained, with Enter to send and Shift+Enter for a newline (CI verified; physical KDE acceptance pending);
 - separate completed/stopped transcript projection preserves failed/cancelled states, including persistence errors (CI verified);
 - C++ QAbstractListModel transcript projection;
 - completion-only assistant Markdown projection to allowlisted Qt StyledText, without images, injected HTML or clickable model-supplied links;
@@ -193,7 +193,7 @@ Implement:
 - capability provenance/probing/cache invalidation without treating missing metadata as denial;
 - provider effective context-window discovery;
 - TokenBudgetService capability ladder;
-- initial editable active OpenAI-compatible endpoint/model settings with /v1/models discovery and QtKeychain-backed credentials (alpha.3 candidate, pending CI/physical KDE proof);
+- initial editable active OpenAI-compatible endpoint/model settings with /v1/models discovery and QtKeychain-backed credentials (alpha.3/alpha.4 build and AppImage CI passed; physical KDE wallet restoration pending);
 - replace that single-active-endpoint settings slice with a proper multi-profile ProviderRegistry, model selection and capability probing;
 - local endpoint support;
 - retain the implemented asynchronous PersistencePort command/ACK boundary;
