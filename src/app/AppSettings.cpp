@@ -2,6 +2,7 @@
 
 #include <qt6keychain/keychain.h>
 
+#include <QCryptographicHash>
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -18,7 +19,12 @@ namespace suprai::app {
 
 namespace {
 const QString Service = QStringLiteral("org.supralinux.SuprAI");
-const QString CredentialKey = QStringLiteral("provider/active");
+QString credentialKey(const QString &baseUrl)
+{
+    return QStringLiteral("provider/")
+        + QString::fromLatin1(QCryptographicHash::hash(
+            baseUrl.toUtf8(), QCryptographicHash::Sha256).toHex());
+}
 }
 
 AppSettings::AppSettings(QObject *parent)
@@ -121,7 +127,7 @@ void AppSettings::resolveStartupCredential()
     }
 
     auto *job = new QKeychain::ReadPasswordJob(Service, this);
-    job->setKey(CredentialKey);
+    job->setKey(credentialKey(m_config.baseUrl));
     job->setInsecureFallback(false);
     connect(job, &QKeychain::Job::finished, this, [this](QKeychain::Job *finished) {
         const auto *read = static_cast<QKeychain::ReadPasswordJob *>(finished);
@@ -160,7 +166,9 @@ void AppSettings::discoverModels(const QString &baseUrl, const QString &temporar
     request.setTransferTimeout(12000);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::ManualRedirectPolicy);
-    const QString key = temporaryKey.isEmpty() ? m_config.apiKey : temporaryKey;
+    const QString key = !temporaryKey.isEmpty()
+        ? temporaryKey
+        : (baseUrl.trimmed() == m_config.baseUrl ? m_config.apiKey : QString{});
     if (!key.isEmpty()) {
         request.setRawHeader("Authorization", QByteArray("Bearer ") + key.toUtf8());
     }
@@ -223,7 +231,7 @@ void AppSettings::beginCredentialWrite(const QString &baseUrl, const QString &mo
 {
     setBusy(true);
     auto *job = new QKeychain::WritePasswordJob(Service, this);
-    job->setKey(CredentialKey);
+    job->setKey(credentialKey(baseUrl));
     job->setTextData(replacementKey);
     job->setInsecureFallback(false);
     connect(job, &QKeychain::Job::finished, this,
@@ -278,7 +286,7 @@ void AppSettings::deleteStoredKey()
     if (!m_secretResolved || m_busy) return;
     setBusy(true);
     auto *job = new QKeychain::DeletePasswordJob(Service, this);
-    job->setKey(CredentialKey);
+    job->setKey(credentialKey(m_config.baseUrl));
     job->setInsecureFallback(false);
     connect(job, &QKeychain::Job::finished, this, [this](QKeychain::Job *finished) {
         setBusy(false);
