@@ -54,6 +54,8 @@ public:
     Q_INVOKABLE void cancel();
     Q_INVOKABLE void newConversation();
     Q_INVOKABLE void clearError();
+    Q_INVOKABLE void copyText(const QString &text);
+    Q_INVOKABLE bool openExternalLink(const QString &uri);
 
 signals:
     void runtimeStateChanged();

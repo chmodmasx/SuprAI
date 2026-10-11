@@ -1,11 +1,16 @@
 #include <suprai/ui/ChatController.h>
 
 #include "TranscriptModel.h"
+#include "SafeMarkdownRenderer.h"
 
 #include <suprai/domain/ConversationItem.h>
 #include <suprai/runtime/AgentRuntime.h>
 
 #include <QMetaObject>
+#include <QClipboard>
+#include <QDesktopServices>
+#include <QGuiApplication>
+#include <QUrl>
 
 namespace suprai::ui {
 
@@ -127,6 +132,21 @@ void ChatController::newConversation()
 void ChatController::clearError()
 {
     setLastError({});
+}
+
+void ChatController::copyText(const QString &text)
+{
+    if (QClipboard *clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(text);
+    }
+}
+
+bool ChatController::openExternalLink(const QString &uri)
+{
+    // Defense in depth: caller displays explicit confirmation, AND the
+    // application validates the scheme and host immediately before opening.
+    if (!internal::isAllowedExternalUrl(uri)) return false;
+    return QDesktopServices::openUrl(QUrl(uri, QUrl::StrictMode));
 }
 
 void ChatController::connectRuntime()

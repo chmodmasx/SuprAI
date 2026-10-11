@@ -143,6 +143,8 @@ add_library(suprai_ui STATIC
     modules/ui/src/TranscriptModel.cpp
     modules/ui/src/SafeMarkdownRenderer.h
     modules/ui/src/SafeMarkdownRenderer.cpp
+    modules/ui/src/MarkdownBlocks.h
+    modules/ui/src/MarkdownBlocks.cpp
 )
 target_include_directories(suprai_ui
     PUBLIC

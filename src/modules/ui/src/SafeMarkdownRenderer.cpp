@@ -7,8 +7,23 @@
 #include <QTextFragment>
 #include <QTextList>
 #include <QTextListFormat>
+#include <QUrl>
 
 namespace suprai::ui::internal {
+
+bool isAllowedExternalUrl(const QString &uri)
+{
+    if (uri.isEmpty() || uri.size() > 2048) return false;
+    for (const QChar ch : uri) {
+        if (ch.isSpace() || ch.isNull() || ch.category() == QChar::Other_Control) {
+            return false;
+        }
+    }
+    const QUrl url(uri, QUrl::StrictMode);
+    return url.isValid() && !url.host().isEmpty() && url.userInfo().isEmpty()
+        && (url.scheme() == QStringLiteral("https")
+            || url.scheme() == QStringLiteral("http"));
+}
 
 QString safeMarkdownToStyledText(const QString &markdown)
 {
@@ -56,9 +71,19 @@ QString safeMarkdownToStyledText(const QString &markdown)
             if (italic) result += QStringLiteral("<i>");
             if (code) result += QStringLiteral("<font face=\"monospace\">");
 
-            // Links are inert, but their targets stay visible and copyable.
-            result += text;
+            // Only generated, strictly validated HTTP(S) anchors are active.
+            // No model HTML or image URLs reach the QML text surface.
             const QString href = format.isAnchor() ? format.anchorHref() : QString();
+            if (isAllowedExternalUrl(href)) {
+                result += QStringLiteral("<a href=\"");
+                result += href.toHtmlEscaped();
+                result += QStringLiteral("\">");
+                result += text;
+                result += QStringLiteral("</a>");
+            } else {
+                result += text;
+            }
+            // Make the destination visible even when the label differs.
             if (!href.isEmpty() && href != fragment.text() && href != previousHref) {
                 result += QStringLiteral(" (");
                 result += href.toHtmlEscaped();

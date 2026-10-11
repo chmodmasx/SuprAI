@@ -20,7 +20,8 @@ public:
         StreamingRole,
         StateRole,
         DisplayTextRole,
-        StyledTextRole
+        StyledTextRole,
+        MessageBlocksRole
     };
 
     explicit TranscriptModel(QObject *parent = nullptr);
@@ -41,6 +42,7 @@ private:
 
     QVector<QString> m_styledText;
     QVector<bool> m_styledRows;
+    QVector<QVariantList> m_messageBlocks;
     QVector<suprai::domain::ConversationItem> m_items;
     QHash<QString, int> m_rowsById;
 };
