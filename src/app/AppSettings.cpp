@@ -250,6 +250,13 @@ void AppSettings::saveProvider(const QString &baseUrl, const QString &model,
         setStatusMessage(QStringLiteral("La clave no puede contener saltos de línea."));
         return;
     }
+    // A credential is scoped to its configured endpoint. Changing the URL
+    // must not accidentally forward an existing bearer token to a new host.
+    if (baseUrl.trimmed() != m_config.baseUrl && !m_config.apiKey.isEmpty()
+        && replacementKey.isEmpty()) {
+        setStatusMessage(QStringLiteral("Para cambiar de endpoint, ingresá la clave del nuevo servidor o borrá primero la credencial anterior."));
+        return;
+    }
     if (!replacementKey.isEmpty()) {
         beginCredentialWrite(baseUrl.trimmed(), cleanedModel, replacementKey);
     } else {
