@@ -2,7 +2,7 @@
 
 Status: proposed (preview packaging implemented; release compatibility gates open)
 Date: 2026-10-06
-Updated: 2026-10-08
+Updated: 2026-10-11
 
 ## Current decision
 
@@ -15,11 +15,11 @@ CMake / Qt 6.12 build
   -> Qt-managed QML imports, libraries, plugins, qt.conf
   -> AppDir root: executable AppRun + desktop entry + icon
   -> pinned appimagetool 1.9.1, SHA-256 checked
-  -> SuprAI-0.1.0-alpha.1-x86_64.AppImage + SHA256
+  -> SuprAI-0.1.0-alpha.2-x86_64.AppImage + SHA256
   -> AppImage extract-and-run smoke under XCB/Xvfb
   -> AppImage extract-and-run smoke under Wayland/Weston
   -> CI artifact
-  -> main-only GitHub pre-release after all tests pass
+  -> main-only immutable, versioned GitHub pre-release after all tests pass
 ```
 
 Implemented in `scripts/package-appimage.sh`, `packaging/` and `.github/workflows/appimage.yml`. The first AppImage preview build passed on the PR head `a580d4a164be9fb451d45ae4ea7a6555fe6f9f71`, including its packaged desktop smoke tests. The main-branch pre-release pipeline is separate and must pass before the release asset is treated as published.
@@ -40,7 +40,7 @@ The preview uses GitHub Actions Ubuntu 24.04 with Qt 6.12.0, so an Ubuntu 22.04 
 Still required for release-grade acceptance:
 - determine actual GLIBC/GLIBCXX symbol floor from shipped binaries and libraries;
 - clean-host Ubuntu 22.04, 24.04, 26.04 and Debian 12 runs;
-- physical KDE/GNOME Wayland and X11 compatibility, including the local NVIDIA host;
+- physical KDE/GNOME Wayland compatibility and other-distro ABI proof; KDE X11/NVIDIA with NInfer was verified on 2026-10-11;
 - verify real NInfer Chat Completions behavior and SQLite recovery;
 - audit dynamically bundled Qt and third-party modules, include applicable LGPL and other license notices, and document corresponding sources/relinking obligations;
 - publish project license/distribution notices.

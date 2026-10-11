@@ -3,10 +3,10 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 961fe3652d344dd7bae9dec667dafef99c4b0628
-last_verified_code_commit: 961fe3652d344dd7bae9dec667dafef99c4b0628
-verified_pr_build_run: 37950042863
-verified_pr_appimage_run: 37950042816
+last_verified_commit: e512b6cc361b11791b87df64882f868127bde80d
+last_verified_code_commit: e512b6cc361b11791b87df64882f868127bde80d
+verified_pr_appimage_run: 38162397110
+verified_pr_build_run: 38162204097
 
 working:
   - repository exists and is writable
@@ -23,12 +23,12 @@ working:
   - AppImage selected as first portable artifact
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
-  - optional C++ native-runtime integration test exercises the actual provider, SQLite restart recovery and canonical-context reconstruction against the remote NInfer; must be verified on main with an Actions secret
+  - optional C++ native-runtime integration test exercises real NInfer, SQLite restart recovery and canonical-context reconstruction; authenticated main workflow verification is a separate release gate
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - remote authenticated inference/context remains unverified: main Actions run 38161054774 reported SKIP because NINFER_API_KEY secret is absent; do not conflate a successful workflow with an executed inference test
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
-  - main-only pre-release publication runs after packaged checks pass; physical host/cross-distro ABI proof remains pending
+  - main-only pre-release publication uses packaging/version.txt and skips existing immutable tags; ABI/cross-distro proof remains pending
   - canonical conversation state is SuprAI-owned
   - runtime, UI and persistence have explicit thread ownership
   - context/token/compaction/cache semantics are documented
@@ -103,7 +103,7 @@ working:
   - fake OpenAI-compatible integration test verifies reasoning_content is absent from the second turn request
   - runtime-layering unit test verifies orchestrator owns conversation history while engine reasoning remains ephemeral
   - GitHub Actions build/test/QML smoke run passes at verified code commit
-  - CTest suite passes 9/9 on verified prototype commit
+  - deterministic CTest suite includes 10 targets; remote NInfer integration is gated by credentials and exercised separately from PRs
   - staged XCB and Wayland smoke tests also initialize persistence successfully; persistence_worker_error fails CI
 
 accepted_adrs:
@@ -247,7 +247,7 @@ decisions:
   - SQLite writer reopening and restoration across worker restart are CI tested
   - distinct ConversationItemCompleted/ConversationItemStopped events preserve completed/failed/cancelled stream semantics, including terminal-write failures (CI verified)
   - transcript projection exposes explicit messageState and preserves failure/cancellation across streaming completion
-  - initial Markdown presentation slice uses Qt MarkdownNoHTML parsed on completion and an allowlisted StyledText projection only
+  - initial safe Markdown display for completed assistant messages is merged into main; Qt MarkdownNoHTML and allowlisted StyledText only
   - raw model HTML/anchors/images never reach rich QML; streaming and oversized replies remain plain text, with no per-token Markdown reparse
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
@@ -269,8 +269,8 @@ decisions:
 
 open_questions:
   - exact visual language and component system
-  - physical validation against the user's local NInfer endpoint
-  - physical KDE Wayland/X11 launch verification and GNOME Wayland proof
+  - actual NInfer remote C++ runtime test and persisted SQLite context proof from the GitHub-hosted native-runtime job
+  - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - full safe Markdown renderer proof: realistic scroll/selection/copy/large-code benchmarks, resource handling and explicit external-link policy
   - QtKeychain proof on KDE/GNOME/AppImage
@@ -286,8 +286,7 @@ open_questions:
   - jsoncons proof results and exact dependency pin
   - exact Qt 6.12 toolchain source for Ubuntu-22.04-compatible release builds
   - final AppImage finalizer/tool
-  - v0.1.0-alpha.1 release already exists; main-only fixed-tag gh release create
-    is not repeatable and needs a deliberate immutable versioning policy
+  - release version bump is explicit through packaging/version.txt; tags are immutable and previous artifacts are not overwritten
   - exact MCP legacy 2025-era compatibility scope
   - MCP Tasks extension implementation timing
   - memory mutation/review UX
