@@ -6,7 +6,7 @@ SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface
 
 **Status: functional modular prototype / M1 in progress.**
 
-The latest alpha.3 provider-settings branch passed build and packaged XCB/Wayland CI verification with Qt 6.12; its real desktop wallet integration still requires physical testing. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+The alpha.4 AppImage passed build, unit tests, and packaged XCB/Wayland CI verification with Qt 6.12; real KDE wallet loading after restart remains to be validated. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
 
 ## Current prototype
 
@@ -112,7 +112,7 @@ The authenticated test **only runs when repository Actions secret `NINFER_API_KE
 
 The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
 
-## Provider configuration (alpha.3 candidate)
+## Provider configuration (alpha.4)
 
 The **Configuración** page now edits one active OpenAI-compatible endpoint and model. It can query `/v1/models` using the entered key or the locally stored credential. User-entered API keys are persisted asynchronously through QtKeychain into the desktop's KWallet/Secret Service; no insecure fallback is enabled. Provider URLs and model IDs are the only data stored in QSettings. Secret-store entries are endpoint-hash-scoped. Remote endpoints must use HTTPS; HTTP is restricted to local/private addresses. Discovery never reuses a previously loaded key for a different endpoint.
 
@@ -122,18 +122,18 @@ This first slice supports **one active endpoint/model**; named provider profiles
 
 ## AppImage preview
 
-SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.3-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
+SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.4-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
 
 The `appimage-preview` GitHub Actions workflow uploads the AppImage + `.sha256`; after verified `main` builds it publishes the same pair as a GitHub pre-release. To run it on a machine whose local inference server speaks OpenAI-compatible Chat Completions:
 
 ```bash
-chmod +x SuprAI-0.1.0-alpha.3-x86_64.AppImage
+chmod +x SuprAI-0.1.0-alpha.4-x86_64.AppImage
 SUPRAI_RUNTIME=native SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
   SUPRAI_MODEL=your-model-id SUPRAI_API_KEY=your-local-api-key \
-  ./SuprAI-0.1.0-alpha.3-x86_64.AppImage
+  ./SuprAI-0.1.0-alpha.4-x86_64.AppImage
 ```
 
-If FUSE is unavailable, add `APPIMAGE_EXTRACT_AND_RUN=1` before the invocation. For a fake local test, use `SUPRAI_RUNTIME=mock`. Full build instructions follow for contributors.
+If FUSE is unavailable, add `APPIMAGE_EXTRACT_AND_RUN=1` before the invocation. After saving a model in the Configuración page, close SuprAI completely and reopen it before using the chat; an explicit notice explains why Send is disabled in the current process. For a fake local test, use `SUPRAI_RUNTIME=mock`. Full build instructions follow for contributors.
 
 ## Build
 
