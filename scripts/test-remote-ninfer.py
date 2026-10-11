@@ -20,6 +20,17 @@ class SmokeFailure(Exception):
     pass
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects rather than risk forwarding an Authorization header."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise SmokeFailure("Redirección HTTP rechazada: endpoint/host no confiable")
+
+
+def open_request(request: urllib.request.Request, timeout: int):
+    return urllib.request.build_opener(NoRedirect()).open(request, timeout=timeout)
+
+
 def api_base() -> str:
     base = os.environ.get("NINFER_BASE_URL", "").rstrip("/")
     parsed = urlparse(base)
@@ -36,7 +47,7 @@ def get_json(url: str, api_key: str | None = None) -> dict:
         headers["Authorization"] = "Bearer " + api_key
     request = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=25) as response:
+        with open_request(request, timeout=25) as response:
             if response.status != 200:
                 raise SmokeFailure(f"GET: HTTP {response.status}")
             raw = response.read(1_000_001)
@@ -73,7 +84,7 @@ def chat_stream(base: str, api_key: str, model: str, messages: list[dict]) -> st
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=80) as response:
+        with open_request(request, timeout=80) as response:
             if response.status != 200:
                 raise SmokeFailure(f"Chat: HTTP {response.status}")
             if "text/event-stream" not in response.headers.get("Content-Type", ""):
