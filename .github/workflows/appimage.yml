@@ -45,7 +45,7 @@ jobs:
       - name: Install build and smoke-test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y qtkeychain-qt6-dev \
             ninja-build build-essential libgl1-mesa-dev libgles2-mesa-dev \
             libwayland-dev libwayland-egl1-mesa libxkbcommon-dev \
             xvfb weston desktop-file-utils curl

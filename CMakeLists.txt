@@ -26,6 +26,8 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     WaylandClient
 )
 
+find_package(Qt6Keychain CONFIG REQUIRED)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 add_subdirectory(src)

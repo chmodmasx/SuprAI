@@ -159,12 +159,21 @@ target_link_libraries(suprai_ui
         suprai_domain
 )
 
-# Composition root / application -----------------------------------------------
-qt_add_executable(suprai
-    app/main.cpp
+# Provider preferences / secure secret-store / model catalogue ------------------
+add_library(suprai_app_settings STATIC
     app/AppConfig.h
     app/AppSettings.h
     app/AppSettings.cpp
+)
+target_include_directories(suprai_app_settings PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/app)
+target_link_libraries(suprai_app_settings
+    PUBLIC Qt6::Core suprai_runtime
+    PRIVATE Qt6::Network Qt6Keychain::Qt6Keychain
+)
+
+# Composition root / application -----------------------------------------------
+qt_add_executable(suprai
+    app/main.cpp
     app/ApplicationBootstrap.h
     app/ApplicationBootstrap.cpp
 )
@@ -196,6 +205,7 @@ target_link_libraries(suprai
         Qt6::Qml
         Qt6::Quick
         Qt6::QuickControls2
+        suprai_app_settings
         suprai_ui
         suprai_runtime
         suprai_provider_openai
@@ -238,3 +248,7 @@ qt_deploy_runtime_dependencies(
 "
 )
 install(SCRIPT "${SUPRAI_DEPLOY_SCRIPT}")
+
+# QtKeychain's BSD notice is shipped with the portable application.
+install(FILES "${CMAKE_SOURCE_DIR}/packaging/licenses/qtkeychain-COPYING"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/suprai/licenses")
