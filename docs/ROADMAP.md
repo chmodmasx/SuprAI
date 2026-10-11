@@ -54,7 +54,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - a fake OpenAI-compatible integration test completes two streamed turns;
 - a dedicated runtime-layering test verifies that raw reasoning stays outside orchestrator history;
 - raw `reasoning_content` from the first turn is verified absent from the second request;
-- 9/9 CTest tests pass;
+- the deterministic CTest suite passes (10 current targets; live remote test is separately credential-gated);
 - worker shutdown completes cleanly and CI fails on any shutdown timeout;
 - CMake install staging deploys Qt runtime, QML imports and qt.conf;
 - Qt6Widgets is staged explicitly because QApplication is a deliberate runtime dependency;
@@ -76,7 +76,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - streaming chat, user messages and failed/cancelled responses remain plain text; completed assistant responses have a bounded safe StyledText projection (full Markdown proof remains open).
 
 Still required before M1 can be COMPLETE:
-- physical KDE Wayland and X11 launch proof on a real desktop;
+- KDE Wayland and GNOME Wayland physical proof (KDE X11/NVIDIA AppImage and NInfer chat/recovery were verified on 2026-10-11);
 - GNOME Wayland proof when available.
 
 Implement:
@@ -370,15 +370,12 @@ Initial alpha preview packaging implemented and PR CI-verified:
 - `SuprAI-0.1.0-alpha.1-x86_64.AppImage` and SHA-256;
 - extract-and-run smoke tests on XCB/Xvfb and Wayland/Weston;
 - release pipeline publishes from main only after packaged tests pass.
-- main publication currently creates the fixed tag v0.1.0-alpha.1; because
-  that release already exists, subsequent main pushes may pass packaging but
-  fail at release publication. Immutable per-build versioning must be resolved
-  before merging further changes into main.
+- app versions come from packaging/version.txt; previously published tags are immutable and the release step skips them without overwriting artifacts.
 
 Still required for M9 completion:
 - inspect and record GLIBC/GLIBCXX ABI floor;
 - test actual clean VMs (Ubuntu 22.04/24.04/26.04, Debian 12);
-- physical KDE Wayland/X11 and GNOME Wayland proof;
+- physical KDE Wayland and GNOME Wayland proof (KDE X11/NVIDIA validated);
 - license and Qt relinking/distribution notices;
 - final AppImage release/compatibility report.
 

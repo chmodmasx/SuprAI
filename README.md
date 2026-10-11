@@ -32,7 +32,7 @@ Implemented:
 - typed AgentEngineEvent -> RuntimeEvent adapter boundary;
 - raw provider `reasoning_content` treated as ephemeral and excluded from later reconstructed prompts;
 - explicit public/private module include boundaries enforced by CMake targets;
-- CI build, 9/9 unit/integration tests and QML startup smoke test;
+- CI build, deterministic CTest suite, QML startup smoke, plus an optional authenticated native-runtime/SQLite NInfer remote test;
 - CMake-owned portable staging of Qt libraries, QML imports and plugins;
 - independent staged smoke tests through XCB/Xvfb and Wayland/Weston with Qt development environment variables removed;
 - bundled X11 and Wayland QPA plugins verified in the stage;
@@ -57,7 +57,7 @@ Not implemented yet:
 - safe Markdown renderer;
 - editable persisted provider settings and secure SecretStore;
 - release-grade AppImage ABI-floor/cross-distro proof (initial alpha AppImage preview is available through the CI/release pipeline);
-- physical KDE/GNOME Wayland and X11 smoke tests.
+- physical KDE Wayland and GNOME Wayland smoke tests (KDE X11/NVIDIA AppImage with NInfer and SQLite recovery verified).
 
 ## Module shape
 
@@ -113,15 +113,15 @@ The external endpoint is a test service, **not** a permanent default; changing m
 
 ## AppImage preview
 
-SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.1-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. This does **not** yet prove compatibility with every Linux distro or the actual KDE/NVIDIA host.
+SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.2-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
 
 The `appimage-preview` GitHub Actions workflow uploads the AppImage + `.sha256`; after verified `main` builds it publishes the same pair as a GitHub pre-release. To run it on a machine whose local inference server speaks OpenAI-compatible Chat Completions:
 
 ```bash
-chmod +x SuprAI-0.1.0-alpha.1-x86_64.AppImage
+chmod +x SuprAI-0.1.0-alpha.2-x86_64.AppImage
 SUPRAI_RUNTIME=native SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
   SUPRAI_MODEL=your-model-id SUPRAI_API_KEY=your-local-api-key \
-  ./SuprAI-0.1.0-alpha.1-x86_64.AppImage
+  ./SuprAI-0.1.0-alpha.2-x86_64.AppImage
 ```
 
 If FUSE is unavailable, add `APPIMAGE_EXTRACT_AND_RUN=1` before the invocation. For a fake local test, use `SUPRAI_RUNTIME=mock`. Full build instructions follow for contributors.
