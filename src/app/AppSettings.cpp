@@ -57,6 +57,7 @@ QStringList AppSettings::discoveredModels() const { return m_discoveredModels; }
 QString AppSettings::statusMessage() const { return m_statusMessage; }
 bool AppSettings::busy() const { return m_busy; }
 bool AppSettings::hasStoredKey() const { return m_hasStoredKey; }
+bool AppSettings::restartRequired() const { return m_restartRequired; }
 AppConfig AppSettings::config() const { return m_activeConfig; }
 
 QString AppSettings::envOrDefault(const char *name, const QString &fallback)
@@ -222,6 +223,7 @@ void AppSettings::persistMetadata(const QString &baseUrl, const QString &model)
     }
     m_config.baseUrl = baseUrl;
     m_config.model = model;
+    m_restartRequired = true;
     emit configurationChanged();
     setStatusMessage(QStringLiteral("Configuración guardada. Cerrá SuprAI y volvé a abrirlo para aplicar el cambio."));
 }
@@ -297,6 +299,8 @@ void AppSettings::deleteStoredKey()
         }
         m_hasStoredKey = false;
         m_config.apiKey.clear();
+        m_restartRequired = true;
+        emit configurationChanged();
         emit credentialStatusChanged();
         setStatusMessage(QStringLiteral("Clave borrada. Reiniciá SuprAI para aplicar el cambio."));
     });

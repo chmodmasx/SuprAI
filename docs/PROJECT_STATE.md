@@ -62,6 +62,7 @@ working:
   - ProviderCapabilities tri-state contract is implemented in the public provider API
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
+  - physical alpha.3 test confirmed model discovery and preference save, but reported disabled Send and Enter inserting a newline before the required restart; alpha.4 fix makes restart requirement prominent and Enter/Shift+Enter explicit (CI proof pending)
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
