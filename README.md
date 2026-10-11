@@ -97,6 +97,14 @@ The runtime split required by ADR-0002 is implemented in the current vertical sl
 
 This is deliberate: adding or replacing a provider should not require changes to QML or stateful orchestration, and session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
 
+## Remote NInfer CI smoke
+
+`.github/workflows/remote-ninfer-smoke.yml` checks `https://ninfer.minilinux.win/health` from an Ubuntu GitHub-hosted runner. On manual dispatch and main-branch updates to the smoke-test files, the optional authenticated stage discovers the model via `/v1/models`, performs two short synthetic streaming requests, and checks that conversation context can be rebuilt in a second request.
+
+The authenticated test **only runs when repository Actions secret `NINFER_API_KEY` is configured**; otherwise the Actions summary explicitly says `SKIP`. The credential must not be checked into Git, logged, or supplied via untrusted PRs. A public health check does not prove live inference. This tests the remote provider wire protocol, not SuprAI's own SQLite persistence or UI.
+
+The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
+
 ## AppImage preview
 
 SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.1-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. This does **not** yet prove compatibility with every Linux distro or the actual KDE/NVIDIA host.
@@ -106,7 +114,7 @@ The `appimage-preview` GitHub Actions workflow uploads the AppImage + `.sha256`;
 ```bash
 chmod +x SuprAI-0.1.0-alpha.1-x86_64.AppImage
 SUPRAI_RUNTIME=native SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
-  SUPRAI_MODEL=qwen3.8-27b SUPRAI_API_KEY=no-key \
+  SUPRAI_MODEL=your-model-id SUPRAI_API_KEY=your-local-api-key \
   ./SuprAI-0.1.0-alpha.1-x86_64.AppImage
 ```
 
@@ -140,8 +148,8 @@ Run against an OpenAI-compatible local endpoint:
 ```bash
 SUPRAI_RUNTIME=native \
 SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
-SUPRAI_MODEL=bonsai2-27b \
-SUPRAI_API_KEY=no-key \
+SUPRAI_MODEL=your-model-id \
+SUPRAI_API_KEY=your-local-api-key \
 ./build/src/suprai
 ```
 
