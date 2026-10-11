@@ -26,6 +26,7 @@ class AppSettings final : public QObject
     Q_PROPERTY(QStringList discoveredModels READ discoveredModels NOTIFY discoveredModelsChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(bool hasStoredKey READ hasStoredKey NOTIFY credentialStatusChanged)
+    Q_PROPERTY(bool restartRequired READ restartRequired NOTIFY configurationChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
 public:
@@ -41,6 +42,7 @@ public:
     QString statusMessage() const;
     bool busy() const;
     bool hasStoredKey() const;
+    bool restartRequired() const;
     AppConfig config() const;
 
     // Called after QML is loaded. Never stores secrets in unencrypted files.
@@ -80,6 +82,7 @@ private:
     bool m_busy = false;
     bool m_hasStoredKey = false;
     bool m_secretResolved = false;
+    bool m_restartRequired = false;
 };
 
 } // namespace suprai::app

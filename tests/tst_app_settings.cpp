@@ -31,6 +31,7 @@ private slots:
                               QStringLiteral("custom-test-model"), {});
         QCOMPARE(settings.model(), QStringLiteral("custom-test-model"));
         QCOMPARE(settings.activeModel(), QString());
+        QVERIFY(settings.restartRequired());
         QSettings persisted(QStringLiteral("SuprAI"), QStringLiteral("SuprAI"));
         QCOMPARE(persisted.value(QStringLiteral("provider/model")).toString(),
                  QStringLiteral("custom-test-model"));

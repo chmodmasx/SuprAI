@@ -148,6 +148,15 @@ Rectangle {
 
             Label {
                 Layout.fillWidth: true
+                visible: page.settings.restartRequired
+                text: "Cambios guardados: para activar el modelo, cerrá SuprAI completamente y volvé a abrir el AppImage."
+                color: page.accentColor
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+
+            Label {
+                Layout.fillWidth: true
                 visible: page.settings.statusMessage.length > 0
                 text: page.settings.statusMessage
                 color: page.foregroundColor

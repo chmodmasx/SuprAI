@@ -139,6 +139,7 @@ Implemented foundation:
 - TranscriptModel projects message items only and ignores unsupported domain kinds safely;
 - MockRuntime scripted fixture;
 - composer, streaming deltas, cancellation and error-state UI;
+- alpha.4 candidate: sending is gated on a Ready runtime and an actually active model; pending provider restart is called out explicitly, with Enter to send and Shift+Enter for a newline;
 - separate completed/stopped transcript projection preserves failed/cancelled states, including persistence errors (CI verified);
 - C++ QAbstractListModel transcript projection;
 - completion-only assistant Markdown projection to allowlisted Qt StyledText, without images, injected HTML or clickable model-supplied links;

@@ -16,6 +16,23 @@ ApplicationWindow {
 
     property string currentRoute: "chat"
 
+    // A saved model is not necessarily the model currently owned by the runtime.
+    readonly property bool missingActiveModel: appSettings.runtimeMode !== "mock"
+                                               && appSettings.activeModel.length === 0
+    readonly property bool canSendMessage: chatController.runtimeState === "Ready"
+                                           && !chatController.busy
+                                           && !missingActiveModel
+
+    function submitComposerMessage() {
+        if (!canSendMessage)
+            return
+        var message = composer.text.trim()
+        if (message.length > 0) {
+            chatController.sendMessage(message)
+            composer.clear()
+        }
+    }
+
     readonly property color pageColor: "#1f1f1f"
     readonly property color panel: "#292929"
     readonly property color panelAlt: "#313131"
@@ -167,13 +184,13 @@ ApplicationWindow {
                             implicitWidth: statusLabel.implicitWidth + 20
                             implicitHeight: 30
                             radius: 15
-                            color: chatController.busy ? "#3a4c59" : "#314238"
+                            color: root.missingActiveModel ? "#454545" : chatController.busy ? "#3a4c59" : "#314238"
 
                             Label {
                                 id: statusLabel
                                 anchors.centerIn: parent
-                                text: chatController.reasoning
-                                      ? "Reasoning…"
+                                text: root.missingActiveModel ? "Sin modelo"
+                                      : chatController.reasoning ? "Reasoning…"
                                       : chatController.runtimeState
                                 color: root.foreground
                                 font.pixelSize: 12
@@ -204,6 +221,37 @@ ApplicationWindow {
                         ToolButton {
                             text: "×"
                             onClicked: chatController.clearError()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: root.missingActiveModel || appSettings.restartRequired
+                    implicitHeight: noticeRow.implicitHeight + 24
+                    color: root.panelAlt
+                    border.color: root.accent
+                    border.width: 1
+
+                    RowLayout {
+                        id: noticeRow
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 12
+
+                        Label {
+                            Layout.fillWidth: true
+                            color: root.foreground
+                            wrapMode: Text.Wrap
+                            text: appSettings.restartRequired
+                                  ? "Configuración guardada. Cerrá SuprAI completamente y volvé a abrirlo para activar el modelo. El chat actual no cambia hasta reiniciar."
+                                  : "No hay un modelo activo. Elegí un servidor y un modelo en Configuración, guardá los cambios y reiniciá SuprAI."
+                        }
+
+                        Button {
+                            text: "Configuración"
+                            visible: root.missingActiveModel
+                            onClicked: root.currentRoute = "settings"
                         }
                     }
                 }
@@ -316,15 +364,15 @@ ApplicationWindow {
                             }
 
                             Keys.onPressed: function(event) {
-                                if (event.key === Qt.Key_Return
+                                // Enter is an action even when sending is disabled: never
+                                // insert a misleading newline instead of reporting that
+                                // the configured model needs a full application restart.
+                                // Shift+Enter intentionally keeps the multiline editor.
+                                if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                         && !(event.modifiers & Qt.ShiftModifier)
-                                        && !chatController.busy && appSettings.activeModel.length > 0) {
-                                    var message = composer.text.trim()
-                                    if (message.length > 0) {
-                                        chatController.sendMessage(message)
-                                        composer.clear()
-                                    }
+                                        && !composer.inputMethodComposing) {
                                     event.accepted = true
+                                    root.submitComposerMessage()
                                 }
                             }
                         }
@@ -335,14 +383,8 @@ ApplicationWindow {
                             Button {
                                 Layout.fillWidth: true
                                 text: "Enviar"
-                                enabled: !chatController.busy && appSettings.activeModel.length > 0 && composer.text.trim().length > 0
-                                onClicked: {
-                                    var message = composer.text.trim()
-                                    if (message.length > 0) {
-                                        chatController.sendMessage(message)
-                                        composer.clear()
-                                    }
-                                }
+                                enabled: root.canSendMessage && composer.text.trim().length > 0
+                                onClicked: root.submitComposerMessage()
                             }
 
                             Button {
