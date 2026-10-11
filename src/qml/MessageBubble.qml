@@ -88,7 +88,6 @@ Item {
                         : root.displayStyled ? TextEdit.StyledText : TextEdit.PlainText
             color: root.foregroundColor
             font.pixelSize: 14
-            lineHeight: 1.25
             readOnly: true
             selectByMouse: true
             wrapMode: TextEdit.Wrap
