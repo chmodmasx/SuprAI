@@ -103,6 +103,15 @@ void AppSettings::setStatusMessage(const QString &text)
 void AppSettings::resolveStartupCredential()
 {
     if (m_secretResolved) return;
+    // Mock tests and first-run setup do not need to wake a desktop wallet.
+    if (m_config.runtimeMode.compare(QStringLiteral("mock"), Qt::CaseInsensitive) == 0
+        || m_config.model.isEmpty()) {
+        m_activeConfig = m_config;
+        m_secretResolved = true;
+        emit activeConfigurationChanged();
+        QTimer::singleShot(0, this, [this] { emit credentialsReady(); });
+        return;
+    }
     if (!m_config.apiKey.isEmpty()) {
         m_activeConfig = m_config;
         m_secretResolved = true;
