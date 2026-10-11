@@ -97,6 +97,12 @@ The runtime split required by ADR-0002 is implemented in the current vertical sl
 
 This is deliberate: adding or replacing a provider should not require changes to QML or stateful orchestration, and session/persistence/task concerns must not accumulate inside the low-level agent execution kernel.
 
+## Native runtime remote integration test
+
+The optional `native_remote_ninfer` CTest target connects the actual C++ OpenAI-compatible provider and NativeSuprAIRuntime to the authenticated external NInfer endpoint. A temporary SQLite database stores a synthetic first turn; a newly instantiated runtime then restores it and must answer a context probe. This complements, but does not replace, the deterministic fake-server regression tests and local physical AppImage testing.
+
+The `remote-ninfer-smoke` workflow discovers the current model alias via `/v1/models`, executes its small Python protocol smoke, and only then runs CTest using the repository secret `NINFER_API_KEY`. PRs cannot access this secret and do not execute the live C++ test. Outputs, keys, and synthetic markers are not printed. The live test should be treated as verified only after its dedicated GitHub Actions job succeeds.
+
 ## Remote NInfer CI smoke
 
 `.github/workflows/remote-ninfer-smoke.yml` checks `https://ninfer.minilinux.win/health` from an Ubuntu GitHub-hosted runner. On manual dispatch and main-branch updates to the smoke-test files, the optional authenticated stage discovers the model via `/v1/models`, performs two short synthetic streaming requests, and checks that conversation context can be rebuilt in a second request.

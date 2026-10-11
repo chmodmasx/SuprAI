@@ -167,6 +167,13 @@ def main() -> int:
     if not ids:
         raise SmokeFailure("Models: ningún ID de modelo disponible")
     model = ids[0]
+    if not all(ch.isascii() and (ch.isalnum() or ch in "._-") for ch in model) or len(model) > 128:
+        raise SmokeFailure("Model: ID inseguro para pasar a GitHub Actions")
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if output_file:
+        with open(output_file, "a", encoding="utf-8") as fp:
+            fp.write("authenticated=true\\n".replace("\\\\n", "\\n"))
+            fp.write(("model=" + model + "\\n").replace("\\\\n", "\\n"))
     summary("PASS: /v1/models autenticado; ID descubierto: " + model)
 
     marker = "CI" + secrets.token_hex(5).upper()
