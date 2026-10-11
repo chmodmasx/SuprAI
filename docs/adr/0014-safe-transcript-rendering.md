@@ -1,7 +1,8 @@
 # ADR-0014: Safe native transcript rendering
 
-Status: proposed
+Status: partially implemented / acceptance proof in progress
 Date: 2026-10-06
+Updated: 2026-10-11
 
 ## Problem
 
@@ -102,6 +103,29 @@ A private SafeMarkdownRenderer owned by suprai_ui now:
 - Adds security and large-message boundary tests without any new third-party
   runtime or WebEngine dependency.
 
-ADR remains proposed. This is only the initial safe subset. Selection/copy,
-large code blocks, external links with policy-backed OpenURI, attachment
-resources and full long-transcript performance proof remain unverified.
+## Alpha.5 presentation extension (CI pending)
+
+`MarkdownBlocks` transforms only bounded, completed assistant messages into
+safe prose and fenced-code segment maps; `TranscriptModel` exposes
+`messageBlocks` without modifying canonical message content or rebuilding
+Markdown on every streamed token. QML uses a standalone `MessageBubble.qml`
+with read-only selectable prose/code and bounded vertically scrollable code
+cards, language labels and explicit clipboard actions. Code is plain text and
+never executes on click.
+
+`SafeMarkdownRenderer` may now generate only strictly validated absolute
+HTTP(S) anchors (no embedded credentials). It still discards images and
+model-supplied HTML. Link clicks are intercepted, displayed in a confirmation
+dialog including the full URL, and revalidated by `ChatController` immediately
+before user-invoked QDesktopServices activation. Unsafe schemes remain inert.
+
+Fences require a matching close; unmatched markers remain styled prose. The
+existing 65,536 UTF-16 limit and a maximum of 80 presentation blocks bound
+synchronous CPU/object churn; oversized messages fall back to plain text.
+No network request, WebEngine, executable code, or HTML source injection is
+introduced by rendering.
+
+Still unverified: real physical KDE/GNOME selection/copy/link UX, 1k-message
+virtualization and long-response resizing/scroll benchmarks, keyboard
+accessibility, attachments and syntax highlighting. Those remain open; do not
+mark M2 rendering complete based solely on CI.

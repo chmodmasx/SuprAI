@@ -149,7 +149,7 @@ Implemented foundation:
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- **Next after provider settings**: complete native Markdown proof: fenced code blocks with language label and copy action; text selection/copy; safe externally opened links requiring a deliberate user action; scroll/load benchmarks; attachment resources; rendering long responses;
+- alpha.5 candidate: safe fenced-code cards with language labels and copy, selectable text and explicit-confirmation HTTP(S) links (awaiting CI and desktop verification); still required: realistic 1k-message/long-answer scroll and resize benchmarks, keyboard selection and accessibility, attachments and richer syntax highlighting;
 - tool cards;
 - approval/clarification component.
 
