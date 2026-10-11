@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${SUPRAI_BUILD_DIR:-${ROOT}/build}"
 DIST_DIR="${SUPRAI_DIST_DIR:-${ROOT}/dist}"
-VERSION="${SUPRAI_APPIMAGE_VERSION:-0.1.0-alpha.1}"
+VERSION="${SUPRAI_APPIMAGE_VERSION:-$(cat "${ROOT}/packaging/version.txt")}"
 APPDIR="${ROOT}/build-appimage/AppDir"
 NAME="SuprAI-${VERSION}-x86_64.AppImage"
 TOOL_VERSION="1.9.1"
