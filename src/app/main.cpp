@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     persistence->moveToThread(&persistenceThread);
 
     const bool nativeRuntime =
-        appConfig.runtimeMode.compare(QStringLiteral("mock"), Qt::CaseInsensitive) != 0;
+        settings.runtimeMode().compare(QStringLiteral("mock"), Qt::CaseInsensitive) != 0;
 
     suprai::persistence::PersistencePort *persistencePort = nullptr;
     if (nativeRuntime) {
