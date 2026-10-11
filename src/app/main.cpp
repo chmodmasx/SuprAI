@@ -81,8 +81,6 @@ int main(int argc, char *argv[])
     qRegisterMetaType<suprai::persistence::SessionSnapshot>();
 
     suprai::app::AppSettings settings;
-    const auto appConfig = settings.config();
-
     QThread persistenceThread;
     persistenceThread.setObjectName(QStringLiteral("SuprAIPersistence"));
 
@@ -188,32 +186,33 @@ int main(int argc, char *argv[])
     QThread runtimeThread;
     runtimeThread.setObjectName(QStringLiteral("SuprAIRuntime"));
 
-    auto *runtime =
-        suprai::app::ApplicationBootstrap::createRuntime(appConfig, persistencePort);
-    runtime->moveToThread(&runtimeThread);
+    suprai::runtime::AgentRuntime *runtime = nullptr;
+    suprai::ui::ChatController chatController(nullptr);
 
-    if (nativeRuntime) {
-        QObject::connect(
-            persistence,
-            &suprai::persistence::PersistenceWorker::ready,
-            runtime,
-            &suprai::runtime::AgentRuntime::start,
-            Qt::QueuedConnection);
-    } else {
-        QObject::connect(
-            &runtimeThread,
-            &QThread::started,
-            runtime,
-            &suprai::runtime::AgentRuntime::start);
-    }
+    // The wallet is asynchronous; show the UI first, then construct the real
+    // runtime only after credential loading completes. No blocking wallet
+    // read or nested Qt event loop on the main GUI thread.
+    QObject::connect(&settings, &suprai::app::AppSettings::credentialsReady,
+                     &app, [&] {
+        if (runtime) return;
+        runtime = suprai::app::ApplicationBootstrap::createRuntime(
+            settings.config(), persistencePort);
+        runtime->moveToThread(&runtimeThread);
+        chatController.attachRuntime(runtime);
 
-    QObject::connect(
-        &runtimeThread,
-        &QThread::finished,
-        runtime,
-        &QObject::deleteLater);
-
-    suprai::ui::ChatController chatController(runtime);
+        if (nativeRuntime) {
+            QObject::connect(persistence, &suprai::persistence::PersistenceWorker::ready,
+                             runtime, &suprai::runtime::AgentRuntime::start,
+                             Qt::QueuedConnection);
+        } else {
+            QObject::connect(&runtimeThread, &QThread::started,
+                             runtime, &suprai::runtime::AgentRuntime::start);
+        }
+        QObject::connect(&runtimeThread, &QThread::finished,
+                         runtime, &QObject::deleteLater);
+        runtimeThread.start();
+        persistenceThread.start();
+    });
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("chatController"), &chatController);
@@ -247,10 +246,8 @@ int main(int argc, char *argv[])
             window->requestActivate();
         });
 
-    runtimeThread.start();
-    persistenceThread.start();
-
     engine.loadFromModule(QStringLiteral("SuprAI"), QStringLiteral("Main"));
+    settings.resolveStartupCredential();
 
     const bool smokeTest =
         QCoreApplication::arguments().contains(QStringLiteral("--smoke-test"));
@@ -260,7 +257,7 @@ int main(int argc, char *argv[])
 
     const int result = app.exec();
 
-    if (runtimeThread.isRunning()) {
+    if (runtime && runtimeThread.isRunning()) {
         QMetaObject::invokeMethod(
             runtime,
             [runtime] {

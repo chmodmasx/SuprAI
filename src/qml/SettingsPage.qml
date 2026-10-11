@@ -18,125 +18,157 @@ Rectangle {
     Flickable {
         anchors.fill: parent
         contentWidth: width
-        contentHeight: content.implicitHeight + 48
+        contentHeight: form.implicitHeight + 64
         clip: true
 
         ColumnLayout {
-            id: content
-
+            id: form
             width: Math.min(parent.width - 64, 760)
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             anchors.topMargin: 32
-            spacing: 18
+            spacing: 16
 
             Label {
-                text: "Configuración"
+                text: "Configuración de modelo"
                 color: page.foregroundColor
-                font.pixelSize: 26
+                font.pixelSize: 25
                 font.bold: true
             }
 
             Label {
                 Layout.fillWidth: true
-                text: "Estado actual del runtime y del provider. La edición persistente se habilitará sólo donde exista un backend seguro para secretos."
+                text: "Servidor OpenAI-compatible activo. Los cambios se guardan para el próximo inicio de SuprAI; la conversación actual no cambia de modelo a mitad de turno."
                 color: page.mutedColor
                 wrapMode: Text.Wrap
             }
 
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: providerColumn.implicitHeight + 32
+                implicitHeight: fields.implicitHeight + 32
                 radius: 12
                 color: page.panelColor
                 border.color: page.borderColor
 
                 ColumnLayout {
-                    id: providerColumn
+                    id: fields
                     anchors.fill: parent
                     anchors.margins: 16
-                    spacing: 12
+                    spacing: 11
 
                     Label {
-                        text: "Runtime y provider"
+                        text: "Endpoint (/v1)"
                         color: page.foregroundColor
-                        font.pixelSize: 17
                         font.bold: true
                     }
-
-                    Label {
-                        text: "Runtime"
-                        color: page.mutedColor
-                        font.pixelSize: 11
+                    TextField {
+                        id: endpointField
+                        Layout.fillWidth: true
+                        text: page.settings.baseUrl
+                        placeholderText: "http://127.0.0.1:8090/v1"
+                        selectByMouse: true
                     }
 
+                    Label {
+                        text: "API key (KWallet / Secret Service)"
+                        color: page.foregroundColor
+                        font.bold: true
+                    }
                     TextField {
+                        id: keyField
                         Layout.fillWidth: true
-                        text: page.settings.runtimeMode
-                        readOnly: true
+                        echoMode: TextInput.Password
+                        placeholderText: page.settings.hasStoredKey
+                            ? "Clave segura guardada. Dejá vacío para conservarla."
+                            : "Introducí una clave si el servidor la exige."
+                        selectByMouse: true
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        text: "La clave no se guarda en QSettings ni en la base de conversaciones. Para servidores públicos se exige HTTPS."
+                        font.pixelSize: 12
+                        color: page.mutedColor
+                        wrapMode: Text.Wrap
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Button {
+                            text: "Buscar modelos"
+                            enabled: !page.settings.busy
+                            onClicked: page.settings.discoverModels(endpointField.text, keyField.text)
+                        }
+                        BusyIndicator {
+                            running: page.settings.busy
+                            visible: running
+                            implicitHeight: 26
+                            implicitWidth: 26
+                        }
+                        Item { Layout.fillWidth: true }
+                        Button {
+                            text: "Borrar clave guardada"
+                            enabled: page.settings.hasStoredKey && !page.settings.busy
+                            onClicked: page.settings.deleteStoredKey()
+                        }
                     }
 
                     Label {
                         text: "Modelo"
-                        color: page.mutedColor
-                        font.pixelSize: 11
-                    }
-
-                    TextField {
-                        Layout.fillWidth: true
-                        text: page.settings.model
-                        readOnly: true
-                    }
-
-                    Label {
-                        text: "Endpoint"
-                        color: page.mutedColor
-                        font.pixelSize: 11
-                    }
-
-                    TextField {
-                        Layout.fillWidth: true
-                        text: page.settings.baseUrl
-                        readOnly: true
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: secretColumn.implicitHeight + 32
-                radius: 12
-                color: page.panelAltColor
-                border.color: page.borderColor
-
-                ColumnLayout {
-                    id: secretColumn
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    spacing: 8
-
-                    Label {
-                        text: "Credenciales"
                         color: page.foregroundColor
-                        font.pixelSize: 17
                         font.bold: true
                     }
-
-                    Label {
+                    ComboBox {
+                        id: modelsBox
                         Layout.fillWidth: true
-                        text: "SUPRAI_API_KEY se lee del entorno y no se persiste en QSettings. No habrá fallback silencioso a texto plano."
-                        color: page.mutedColor
-                        wrapMode: Text.Wrap
+                        model: page.settings.discoveredModels
+                        visible: count > 0
+                        onActivated: modelField.text = currentText
+                    }
+                    TextField {
+                        id: modelField
+                        Layout.fillWidth: true
+                        text: page.settings.model
+                        placeholderText: "Elegí un modelo o ingresá su ID"
+                        selectByMouse: true
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Item { Layout.fillWidth: true }
+                        Button {
+                            text: "Guardar configuración"
+                            enabled: !page.settings.busy
+                            onClicked: {
+                                page.settings.saveProvider(endpointField.text, modelField.text, keyField.text)
+                                keyField.clear()
+                            }
+                        }
                     }
                 }
             }
 
             Label {
                 Layout.fillWidth: true
-                text: "Variables actuales: SUPRAI_RUNTIME, SUPRAI_BASE_URL, SUPRAI_MODEL, SUPRAI_API_KEY y SUPRAI_SYSTEM_PROMPT."
-                color: page.mutedColor
+                visible: page.settings.statusMessage.length > 0
+                text: page.settings.statusMessage
+                color: page.foregroundColor
                 wrapMode: Text.Wrap
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: "Servidor actualmente activo: " + (page.settings.activeModel || "(sin modelo)")
+                    + " · " + (page.settings.activeBaseUrl || "(sin endpoint)")
+                color: page.mutedColor
                 font.pixelSize: 12
+                wrapMode: Text.WrapAnywhere
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: "Las variables SUPRAI_BASE_URL, SUPRAI_MODEL y SUPRAI_API_KEY, si están definidas al iniciar, tienen prioridad sobre las preferencias guardadas."
+                color: page.mutedColor
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
             }
         }
     }

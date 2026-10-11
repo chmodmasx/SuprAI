@@ -148,14 +148,14 @@ ApplicationWindow {
                             spacing: 2
 
                             Label {
-                                text: appSettings.model
+                                text: appSettings.activeModel || "Sin modelo configurado"
                                 color: root.foreground
                                 font.pixelSize: 15
                                 font.bold: true
                             }
 
                             Label {
-                                text: appSettings.baseUrl
+                                text: appSettings.activeBaseUrl
                                 color: root.muted
                                 font.pixelSize: 11
                                 elide: Text.ElideMiddle
@@ -318,7 +318,7 @@ ApplicationWindow {
                             Keys.onPressed: function(event) {
                                 if (event.key === Qt.Key_Return
                                         && !(event.modifiers & Qt.ShiftModifier)
-                                        && !chatController.busy) {
+                                        && !chatController.busy && appSettings.activeModel.length > 0) {
                                     var message = composer.text.trim()
                                     if (message.length > 0) {
                                         chatController.sendMessage(message)
@@ -335,7 +335,7 @@ ApplicationWindow {
                             Button {
                                 Layout.fillWidth: true
                                 text: "Enviar"
-                                enabled: !chatController.busy && composer.text.trim().length > 0
+                                enabled: !chatController.busy && appSettings.activeModel.length > 0 && composer.text.trim().length > 0
                                 onClicked: {
                                     var message = composer.text.trim()
                                     if (message.length > 0) {
@@ -420,7 +420,7 @@ ApplicationWindow {
 
                 Label {
                     Layout.fillWidth: true
-                    text: appSettings.model
+                    text: appSettings.activeModel || "Sin modelo configurado"
                     color: root.foreground
                     wrapMode: Text.Wrap
                 }
@@ -433,7 +433,7 @@ ApplicationWindow {
 
                 Label {
                     Layout.fillWidth: true
-                    text: appSettings.baseUrl
+                    text: appSettings.activeBaseUrl
                     color: root.foreground
                     wrapMode: Text.WrapAnywhere
                     font.pixelSize: 12
