@@ -67,7 +67,7 @@ Item {
                     required property var modelData
                     property var segment: modelData
                     width: content.width
-                    implicitHeight: item ? item.implicitHeight : 0
+                    height: item ? item.implicitHeight : 0
                     sourceComponent: modelData.kind === "code" ? codeSegment : proseSegment
                 }
             }
