@@ -53,8 +53,10 @@ private slots:
 
         connect(&thread, &QThread::started,
                 worker, &suprai::persistence::PersistenceWorker::initialize);
+        // QThread lives in the test thread; AutoConnection would queue quit()
+        // to that thread, which thread.wait() below blocks. quit() is thread-safe.
         connect(worker, &suprai::persistence::PersistenceWorker::stopped,
-                &thread, &QThread::quit);
+                &thread, &QThread::quit, Qt::DirectConnection);
         connect(&thread, &QThread::finished,
                 worker, &QObject::deleteLater);
 
