@@ -59,6 +59,8 @@ working:
   - provider/model capabilities use supported/unsupported/unknown semantics
   - ProviderCapabilities tri-state contract is implemented in the public provider API
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
+  - alpha.3 candidate: AppSettings now exposes editable provider URL/model, authenticated bounded catalogue discovery and asynchronous QtKeychain secret operations; changes apply on next app restart
+  - no arbitrary model default; endpoint authentication is scoped to URL; only HTTPS permitted for public hosts; PR CI and actual wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
   - oversized ToolResults use LargeResultArtifact + bounded model projection semantics
@@ -274,8 +276,8 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - full safe Markdown renderer proof: realistic scroll/selection/copy/large-code benchmarks, resource handling and explicit external-link policy
-  - QtKeychain proof on KDE/GNOME/AppImage
+  - **next text iteration after provider editor**: fenced code blocks/language labels/copy, text selection, safe user-invoked links, long transcript scroll/resize benchmarks and resource handling
+  - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
   - exact initial steering UX exposed in M3/M10
@@ -314,14 +316,14 @@ open_questions:
 
 next_milestone: M1
 next_exact_steps:
-  - download and launch the verified alpha AppImage on local KDE/NVIDIA and connect to the real NInfer endpoint
+  - verify alpha.3 provider editor and saved key after full AppImage restart on local KDE; test discovered NInfer model with user-supplied key
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - complete physical KDE/NVIDIA proof of the CI-verified safe Markdown projection, including malicious Markdown, visible inert URLs, long code and real scroll/selection behavior
+  - return immediately to text UX after the provider editor: fenced code-block cards, copy, selection and safe external-link policy; keep MarkdownNoHTML threat model
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 
