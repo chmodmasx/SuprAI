@@ -172,8 +172,8 @@ def main() -> int:
     output_file = os.environ.get("GITHUB_OUTPUT")
     if output_file:
         with open(output_file, "a", encoding="utf-8") as fp:
-            fp.write("authenticated=true\\n".replace("\\\\n", "\\n"))
-            fp.write(("model=" + model + "\\n").replace("\\\\n", "\\n"))
+            fp.write("authenticated=true\n")
+            fp.write("model=" + model + "\n")
     summary("PASS: /v1/models autenticado; ID descubierto: " + model)
 
     marker = "CI" + secrets.token_hex(5).upper()
