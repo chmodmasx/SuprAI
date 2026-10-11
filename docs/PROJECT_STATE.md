@@ -3,10 +3,12 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: e512b6cc361b11791b87df64882f868127bde80d
-last_verified_code_commit: e512b6cc361b11791b87df64882f868127bde80d
-verified_pr_appimage_run: 38162397110
-verified_pr_build_run: 38162204097
+last_verified_commit: 8fe7393e124b2776cbd1f0a0756ef8cc3c4fcb8c
+last_verified_code_commit: 8fe7393e124b2776cbd1f0a0756ef8cc3c4fcb8c
+verified_pr_appimage_run: 38162652116
+verified_pr_build_run: 38162652071
+verified_release_appimage_run: 38162811884
+verified_live_ninfer_run: 38162535283
 
 working:
   - repository exists and is writable
@@ -23,7 +25,8 @@ working:
   - AppImage selected as first portable artifact
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
-  - optional C++ native-runtime integration test exercises real NInfer, SQLite restart recovery and canonical-context reconstruction; authenticated main workflow verification is a separate release gate
+  - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
+  - immutable alpha.2 AppImage release is published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.2 with packaged XCB/Wayland CI smoke success
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - remote authenticated inference/context remains unverified: main Actions run 38161054774 reported SKIP because NINFER_API_KEY secret is absent; do not conflate a successful workflow with an executed inference test
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
@@ -269,7 +272,6 @@ decisions:
 
 open_questions:
   - exact visual language and component system
-  - actual NInfer remote C++ runtime test and persisted SQLite context proof from the GitHub-hosted native-runtime job
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
   - full safe Markdown renderer proof: realistic scroll/selection/copy/large-code benchmarks, resource handling and explicit external-link policy
