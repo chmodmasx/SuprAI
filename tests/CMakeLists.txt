@@ -136,3 +136,8 @@ target_link_libraries(tst_remote_ninfer PRIVATE
     suprai_runtime suprai_provider_openai suprai_persistence)
 add_test(NAME native_remote_ninfer COMMAND tst_remote_ninfer)
 set_tests_properties(native_remote_ninfer PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+add_executable(tst_app_settings tst_app_settings.cpp)
+target_link_libraries(tst_app_settings PRIVATE Qt6::Core Qt6::Test suprai_app_settings)
+add_test(NAME app_settings COMMAND tst_app_settings)
+set_tests_properties(app_settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

@@ -3,10 +3,10 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 8fe7393e124b2776cbd1f0a0756ef8cc3c4fcb8c
-last_verified_code_commit: 8fe7393e124b2776cbd1f0a0756ef8cc3c4fcb8c
-verified_pr_appimage_run: 38162652116
-verified_pr_build_run: 38162652071
+last_verified_commit: 795a599a28e99d6ee871cf8fd4f079c8655d07b7
+last_verified_code_commit: 795a599a28e99d6ee871cf8fd4f079c8655d07b7
+verified_pr_appimage_run: 38167660144
+verified_pr_build_run: 38167660157
 verified_release_appimage_run: 38162811884
 verified_live_ninfer_run: 38162535283
 
@@ -28,7 +28,6 @@ working:
   - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
   - immutable alpha.2 AppImage release is published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.2 with packaged XCB/Wayland CI smoke success
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
-  - remote authenticated inference/context remains unverified: main Actions run 38161054774 reported SKIP because NINFER_API_KEY secret is absent; do not conflate a successful workflow with an executed inference test
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
   - main-only pre-release publication uses packaging/version.txt and skips existing immutable tags; ABI/cross-distro proof remains pending
@@ -59,6 +58,8 @@ working:
   - provider/model capabilities use supported/unsupported/unknown semantics
   - ProviderCapabilities tri-state contract is implemented in the public provider API
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
+  - alpha.3 candidate: AppSettings exposes editable provider URL/model, bounded catalogue discovery and asynchronous QtKeychain secret operations; PR build and packaged XCB/Wayland smoke PASS (38167660157 / 38167660144); changes apply on restart
+  - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
   - oversized ToolResults use LargeResultArtifact + bounded model projection semantics
@@ -274,8 +275,8 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - full safe Markdown renderer proof: realistic scroll/selection/copy/large-code benchmarks, resource handling and explicit external-link policy
-  - QtKeychain proof on KDE/GNOME/AppImage
+  - **next text iteration after provider editor**: fenced code blocks/language labels/copy, text selection, safe user-invoked links, long transcript scroll/resize benchmarks and resource handling
+  - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
   - exact initial steering UX exposed in M3/M10
@@ -314,14 +315,14 @@ open_questions:
 
 next_milestone: M1
 next_exact_steps:
-  - download and launch the verified alpha AppImage on local KDE/NVIDIA and connect to the real NInfer endpoint
+  - verify alpha.3 provider editor and saved key after full AppImage restart on local KDE; test discovered NInfer model with user-supplied key
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - complete physical KDE/NVIDIA proof of the CI-verified safe Markdown projection, including malicious Markdown, visible inert URLs, long code and real scroll/selection behavior
+  - return immediately to text UX after the provider editor: fenced code-block cards, copy, selection and safe external-link policy; keep MarkdownNoHTML threat model
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

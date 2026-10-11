@@ -6,7 +6,7 @@ SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface
 
 **Status: functional modular prototype / M1 in progress.**
 
-The current vertical slice compiles and is CI-verified with Qt 6.12. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+The latest alpha.3 provider-settings branch passed build and packaged XCB/Wayland CI verification with Qt 6.12; its real desktop wallet integration still requires physical testing. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
 
 ## Current prototype
 
@@ -44,7 +44,8 @@ Implemented:
 - SQLite QSQLITE runtime/plugin included in the portable stage;
 - clean worker shutdown enforced by CI;
 - newest session restored from SQLite, prepared Runs reconciled as interrupted, and assistant terminal outcome committed before completion ACK;
-- initial AppImage preview built from the staged Qt runtime, with bundled Qt/QML/XCB/Wayland/SQLite, SHA-256 file, and packaged XCB/Wayland CI smoke tests.
+- initial AppImage preview built from the staged Qt runtime, with bundled Qt/QML/XCB/Wayland/SQLite, SHA-256 file, and packaged XCB/Wayland CI smoke tests;
+- alpha.3 provider configuration slice: editable endpoint/model, safe /v1/models discovery, asynchronous QtKeychain-based stored credentials and explicit restart-to-apply (CI passed; physical KDE wallet proof pending).
 
 Not implemented yet:
 - older-session selection and advanced ProviderAttempt/Task recovery;
@@ -54,8 +55,8 @@ Not implemented yet:
 - memory;
 - subagents/deliberation;
 - projects/files;
-- safe Markdown renderer;
-- editable persisted provider settings and secure SecretStore;
+- full code block rendering, copy, safe clickable links, and long-transcript benchmarks;
+- multiple provider profiles with live switching, and secure credential store proof on physical KDE/GNOME;
 - release-grade AppImage ABI-floor/cross-distro proof (initial alpha AppImage preview is available through the CI/release pipeline);
 - physical KDE Wayland and GNOME Wayland smoke tests (KDE X11/NVIDIA AppImage with NInfer and SQLite recovery verified).
 
@@ -111,17 +112,25 @@ The authenticated test **only runs when repository Actions secret `NINFER_API_KE
 
 The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
 
+## Provider configuration (alpha.3 candidate)
+
+The **Configuración** page now edits one active OpenAI-compatible endpoint and model. It can query `/v1/models` using the entered key or the locally stored credential. User-entered API keys are persisted asynchronously through QtKeychain into the desktop's KWallet/Secret Service; no insecure fallback is enabled. Provider URLs and model IDs are the only data stored in QSettings. Secret-store entries are endpoint-hash-scoped. Remote endpoints must use HTTPS; HTTP is restricted to local/private addresses. Discovery never reuses a previously loaded key for a different endpoint.
+
+A change takes effect **after fully closing and reopening the application**. No live runtime mutation is attempted mid-turn. Startup waits asynchronously for a credential-store result before creating NativeSuprAIRuntime; KWallet may prompt to unlock. If a secure store is unavailable, configuration metadata can be saved but credentials cannot. Environment overrides remain available for CI and troubleshooting; they are not a permanent provider default.
+
+This first slice supports **one active endpoint/model**; named provider profiles, deleting profiles, live switching and fuller authenticated probing remain subsequent work. Its build uses the QtKeychain 6 package and includes the project's BSD license notice in AppImage staging.
+
 ## AppImage preview
 
-SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.2-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
+SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.3-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
 
 The `appimage-preview` GitHub Actions workflow uploads the AppImage + `.sha256`; after verified `main` builds it publishes the same pair as a GitHub pre-release. To run it on a machine whose local inference server speaks OpenAI-compatible Chat Completions:
 
 ```bash
-chmod +x SuprAI-0.1.0-alpha.2-x86_64.AppImage
+chmod +x SuprAI-0.1.0-alpha.3-x86_64.AppImage
 SUPRAI_RUNTIME=native SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
   SUPRAI_MODEL=your-model-id SUPRAI_API_KEY=your-local-api-key \
-  ./SuprAI-0.1.0-alpha.2-x86_64.AppImage
+  ./SuprAI-0.1.0-alpha.3-x86_64.AppImage
 ```
 
 If FUSE is unavailable, add `APPIMAGE_EXTRACT_AND_RUN=1` before the invocation. For a fake local test, use `SUPRAI_RUNTIME=mock`. Full build instructions follow for contributors.
@@ -133,6 +142,7 @@ Requirements:
 - Ninja;
 - C++20 compiler;
 - Qt 6.8+ with the WaylandClient component when building the Linux desktop target;
+- Qt6Keychain (e.g. Ubuntu package `qtkeychain-qt6-dev`) and a supported Linux wallet for persistent credentials;
 - Wayland client development headers/libraries on the build host.
 
 CI currently verifies with Qt 6.12.0.
@@ -166,7 +176,7 @@ Current configuration environment variables:
 - `SUPRAI_API_KEY`;
 - `SUPRAI_SYSTEM_PROMPT`.
 
-Prototype rule: API keys are not persisted in QSettings. Secure persistent credentials wait for SecretStore.
+Provider credentials are never persisted in QSettings. The alpha.3 candidate uses QtKeychain for secure asynchronous credential reads/writes, with no insecure fallback. Physical wallet proof remains pending.
 
 ## Target
 

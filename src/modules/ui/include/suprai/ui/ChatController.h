@@ -36,6 +36,8 @@ class ChatController final : public QObject
 public:
     explicit ChatController(suprai::runtime::AgentRuntime *runtime, QObject *parent = nullptr);
 
+    void attachRuntime(suprai::runtime::AgentRuntime *runtime);
+
     QAbstractItemModel *transcript() const;
     QString runtimeState() const;
     bool busy() const;

@@ -148,7 +148,7 @@ Implemented foundation:
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- complete native Markdown proof: scroll/load benchmarks, large code blocks, selection/copy, attachment resources, policy-bound OpenURI and rendering of long answers;
+- **Next after provider settings**: complete native Markdown proof: fenced code blocks with language label and copy action; text selection/copy; safe externally opened links requiring a deliberate user action; scroll/load benchmarks; attachment resources; rendering long responses;
 - tool cards;
 - approval/clarification component.
 
@@ -192,7 +192,8 @@ Implement:
 - capability provenance/probing/cache invalidation without treating missing metadata as denial;
 - provider effective context-window discovery;
 - TokenBudgetService capability ladder;
-- model configuration;
+- initial editable active OpenAI-compatible endpoint/model settings with /v1/models discovery and QtKeychain-backed credentials (alpha.3 candidate, pending CI/physical KDE proof);
+- replace that single-active-endpoint settings slice with a proper multi-profile ProviderRegistry, model selection and capability probing;
 - local endpoint support;
 - retain the implemented asynchronous PersistencePort command/ACK boundary;
 - retain implemented assistant/final item and terminal Run persistence;

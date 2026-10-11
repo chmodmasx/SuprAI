@@ -17,6 +17,16 @@ ChatController::ChatController(suprai::runtime::AgentRuntime *runtime, QObject *
     connectRuntime();
 }
 
+void ChatController::attachRuntime(suprai::runtime::AgentRuntime *runtime)
+{
+    if (runtime == m_runtime) return;
+    if (m_runtime) {
+        disconnect(m_runtime, nullptr, this, nullptr);
+    }
+    m_runtime = runtime;
+    connectRuntime();
+}
+
 QAbstractItemModel *ChatController::transcript() const
 {
     return m_transcript;
@@ -121,6 +131,7 @@ void ChatController::clearError()
 
 void ChatController::connectRuntime()
 {
+    if (!m_runtime) return;
     connect(m_runtime, &suprai::runtime::AgentRuntime::eventOccurred,
             this, &ChatController::handleRuntimeEvent);
 }

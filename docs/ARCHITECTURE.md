@@ -314,6 +314,21 @@ Examples:
 - provider modules do not reach into ToolExecutor internals;
 - platform-neutral modules do not include Linux implementation headers.
 
+### Current provider-configuration slice
+
+The alpha.3 candidate adds a narrow `suprai_app_settings` target at the composition/UI
+boundary, not inside `RuntimeOrchestrator` or `AgentEngine`. The configured endpoint/model
+are non-secret QSettings metadata. QtKeychain stores API keys in KWallet/Secret Service
+asynchronously with insecure fallback disabled. The first runtime instance is created only
+after secret resolution; ChatController attaches to it without blocking the GUI event loop.
+The setting changes are restart-to-apply, never mutations of an active Run. Public
+HTTP bearer transport is rejected at configuration/discovery time; discovery is bounded
+and never follows redirects.
+
+This is currently a **single active provider configuration**, not the complete
+multi-profile ProviderRegistry/SecretStore port. Live switching, multiple credentials,
+profile deletion and real desktop wallet verification are pending.
+
 ### 5.3 Composition root
 
 Concrete wiring happens only in the application bootstrap:

@@ -25,6 +25,10 @@ test -f "${APPDIR}/usr/bin/qt.conf"
 test -f "${APPDIR}/usr/plugins/platforms/libqxcb.so"
 test -f "${APPDIR}/usr/plugins/platforms/libqwayland.so"
 test -f "${APPDIR}/usr/plugins/sqldrivers/libqsqlite.so"
+if ! find "${APPDIR}/usr/lib" -maxdepth 2 -type f -name 'libqt6keychain.so*' | grep -q .; then
+  echo "QtKeychain missing from AppImage stage" >&2
+  exit 3
+fi
 
 cp "${ROOT}/packaging/org.supralinux.SuprAI.desktop" "${APPDIR}/"
 cp "${ROOT}/packaging/suprai.svg" "${APPDIR}/"
