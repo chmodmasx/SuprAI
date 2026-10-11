@@ -65,6 +65,7 @@ Item {
                 Loader {
                     id: segmentLoader
                     required property var modelData
+                    property var segment: modelData
                     width: content.width
                     implicitHeight: item ? item.implicitHeight : 0
                     sourceComponent: modelData.kind === "code" ? codeSegment : proseSegment
@@ -77,8 +78,8 @@ Item {
         id: proseSegment
 
         TextEdit {
-            width: segmentLoader.width
-            text: segmentLoader.modelData.formatted
+            width: parent.width
+            text: parent.segment.formatted
                   + (root.streaming ? " ▋"
                      : root.messageState === "cancelled" ? " (cancelado)"
                      : root.messageState === "failed" ? " (error)" : "")
@@ -99,7 +100,9 @@ Item {
         id: codeSegment
 
         Rectangle {
-            width: segmentLoader.width
+            id: codeCard
+            property var segmentData: parent.segment
+            width: parent.width
             color: "#24272b"
             border.color: root.borderColor
             border.width: 1
@@ -119,7 +122,7 @@ Item {
                     height: 26
                     Label {
                         Layout.fillWidth: true
-                        text: segmentLoader.modelData.language || "Código"
+                        text: codeCard.segmentData.language || "Código"
                         color: root.mutedColor
                         font.pixelSize: 12
                         elide: Text.ElideRight
@@ -127,7 +130,7 @@ Item {
                     Button {
                         text: "Copiar código"
                         font.pixelSize: 11
-                        onClicked: root.copyRequested(segmentLoader.modelData.raw)
+                        onClicked: root.copyRequested(codeCard.segmentData.raw)
                     }
                 }
 
@@ -141,7 +144,7 @@ Item {
                     TextEdit {
                         id: codeText
                         width: Math.max(implicitWidth, parent.width)
-                        text: segmentLoader.modelData.raw
+                        text: codeCard.segmentData.raw
                         textFormat: TextEdit.PlainText
                         readOnly: true
                         selectByMouse: true

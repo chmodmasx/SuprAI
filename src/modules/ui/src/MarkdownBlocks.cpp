@@ -42,7 +42,7 @@ QVariantList safeMarkdownBlocks(const QString &markdown)
     if (markdown.size() > kMaxLength) return {};
 
     const QStringList lines = markdown.split(QLatin1Char('\n'), Qt::KeepEmptyParts);
-    static const QRegularExpression fence(QStringLiteral("^ {0,3}(\`{3,}|~{3,})(.*)$"));
+    static const QRegularExpression fence(QStringLiteral("^ {0,3}(`{3,}|~{3,})(.*)$"));
     QVariantList blocks;
     QStringList proseLines;
     qsizetype index = 0;
