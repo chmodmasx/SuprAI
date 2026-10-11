@@ -73,7 +73,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - latest-session snapshot reading and interrupted-Run reconciliation are CI verified, including worker shutdown/reopen;
 - runtime-layering tests prove provider request count remains zero before ACK;
 - persistence tests verify the durable batch and FTS entry;
-- ordinary chat rendering remains plain text in this prototype.
+- streaming chat, user messages and failed/cancelled responses remain plain text; completed assistant responses have a bounded safe StyledText projection (full Markdown proof remains open).
 
 Still required before M1 can be COMPLETE:
 - physical KDE Wayland and X11 launch proof on a real desktop;
@@ -127,7 +127,7 @@ Early prototype proof already exists for:
 - cancellation;
 - error display.
 
-M2 is not complete: the latest local session is automatically restored, but session navigation, tool/approval/clarification UI and safe Markdown proof remain. Terminal writes and restart reconstruction are CI-verified. The generalized domain foundation and runtime capability projection are implemented.
+M2 is not complete: the latest local session is automatically restored, but session navigation and tool/approval/clarification UI remain. A safe completion-only Markdown projection is implemented; full Markdown performance, selection/copy and OpenURI proof remain. Terminal writes and restart reconstruction are CI-verified. The generalized domain foundation and runtime capability projection are implemented.
 
 Implemented foundation:
 - AgentRuntime abstract interface;
@@ -141,12 +141,14 @@ Implemented foundation:
 - composer, streaming deltas, cancellation and error-state UI;
 - separate completed/stopped transcript projection preserves failed/cancelled states, including persistence errors (CI verified);
 - C++ QAbstractListModel transcript projection;
+- completion-only assistant Markdown projection to allowlisted Qt StyledText, without images, injected HTML or clickable model-supplied links;
+- streaming stays plain text; inputs and failed/cancelled items also stay plain text; giant completed messages degrade safely to plain text;
 - first durable turn-admission write path through PersistencePort.
 
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- safe native Markdown rendering proof;
+- complete native Markdown proof: scroll/load benchmarks, large code blocks, selection/copy, attachment resources, policy-bound OpenURI and rendering of long answers;
 - tool cards;
 - approval/clarification component.
 
@@ -368,6 +370,10 @@ Initial alpha preview packaging implemented and PR CI-verified:
 - `SuprAI-0.1.0-alpha.1-x86_64.AppImage` and SHA-256;
 - extract-and-run smoke tests on XCB/Xvfb and Wayland/Weston;
 - release pipeline publishes from main only after packaged tests pass.
+- main publication currently creates the fixed tag v0.1.0-alpha.1; because
+  that release already exists, subsequent main pushes may pass packaging but
+  fail at release publication. Immutable per-build versioning must be resolved
+  before merging further changes into main.
 
 Still required for M9 completion:
 - inspect and record GLIBC/GLIBCXX ABI floor;

@@ -18,7 +18,9 @@ public:
         SpeakerRole,
         TextRole,
         StreamingRole,
-        StateRole
+        StateRole,
+        DisplayTextRole,
+        StyledTextRole
     };
 
     explicit TranscriptModel(QObject *parent = nullptr);
@@ -35,7 +37,10 @@ public:
 
 private:
     int rowForId(const QString &itemId) const;
+    void updateCompletedProjection(int row);
 
+    QVector<QString> m_styledText;
+    QVector<bool> m_styledRows;
     QVector<suprai::domain::ConversationItem> m_items;
     QHash<QString, int> m_rowsById;
 };

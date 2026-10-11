@@ -141,6 +141,8 @@ add_library(suprai_ui STATIC
     modules/ui/src/ChatController.cpp
     modules/ui/src/TranscriptModel.h
     modules/ui/src/TranscriptModel.cpp
+    modules/ui/src/SafeMarkdownRenderer.h
+    modules/ui/src/SafeMarkdownRenderer.cpp
 )
 target_include_directories(suprai_ui
     PUBLIC
@@ -153,6 +155,7 @@ target_link_libraries(suprai_ui
         Qt6::Core
         suprai_runtime
     PRIVATE
+        Qt6::Gui
         suprai_domain
 )
 
