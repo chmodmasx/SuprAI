@@ -3,10 +3,13 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 795a599a28e99d6ee871cf8fd4f079c8655d07b7
-last_verified_code_commit: 795a599a28e99d6ee871cf8fd4f079c8655d07b7
+last_verified_commit: 225b855dfebd1b73c4c1367bb54857201817cb18
+last_verified_code_commit: 225b855dfebd1b73c4c1367bb54857201817cb18
 verified_pr_appimage_run: 38167660144
 verified_pr_build_run: 38167660157
+verified_release_appimage_run: 38167934773
+verified_main_build_run: 38167934840
+verified_main_remote_ninfer_run: 38167934740
 verified_release_appimage_run: 38162811884
 verified_live_ninfer_run: 38162535283
 
@@ -26,7 +29,7 @@ working:
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
   - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
-  - immutable alpha.2 AppImage release is published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.2 with packaged XCB/Wayland CI smoke success
+  - immutable alpha.3 AppImage is published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.3 after main build, package XCB/Wayland and remote NInfer CI PASS; alpha.2 remains available
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
@@ -58,7 +61,7 @@ working:
   - provider/model capabilities use supported/unsupported/unknown semantics
   - ProviderCapabilities tri-state contract is implemented in the public provider API
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
-  - alpha.3 candidate: AppSettings exposes editable provider URL/model, bounded catalogue discovery and asynchronous QtKeychain secret operations; PR build and packaged XCB/Wayland smoke PASS (38167660157 / 38167660144); changes apply on restart
+  - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
@@ -315,7 +318,7 @@ open_questions:
 
 next_milestone: M1
 next_exact_steps:
-  - verify alpha.3 provider editor and saved key after full AppImage restart on local KDE; test discovered NInfer model with user-supplied key
+  - test the published alpha.3 AppImage on KDE without SUPRAI_* environment overrides: discover NInfer models, save credential in KWallet, fully quit/reopen from icon, resume prior SQLite conversation
   - verify KDE Wayland and X11 locally using scripts/verify-local-desktop.sh; add GNOME Wayland proof when available
   - keep public/private module boundaries enforced as new subsystems arrive
   - preserve the now-implemented RuntimeOrchestrator/AgentEngine boundary while new M1/M2 infrastructure arrives
