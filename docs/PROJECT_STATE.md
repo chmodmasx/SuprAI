@@ -21,7 +21,8 @@ working:
   - AppImage selected as first portable artifact
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for a dedicated GitHub Actions remote smoke; public health is checked automatically and authenticated streaming uses only an Actions secret
-  - remote live inference from GitHub Actions is NOT yet verified; never conflate it with local KDE evidence
+  - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
+  - remote authenticated inference/context remains unverified: main Actions run 38161054774 reported SKIP because NINFER_API_KEY secret is absent; do not conflate a successful workflow with an executed inference test
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
   - main-only pre-release publication runs after packaged checks pass; physical host/cross-distro ABI proof remains pending
