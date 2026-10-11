@@ -82,7 +82,7 @@ private slots:
         QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(), raw);
     }
 
-    void linkDestinationRemainsVisibleWithoutAnchor()
+    void allowedLinkDestinationVisibleAndConfirmedInUi()
     {
         using suprai::ui::internal::TranscriptModel;
         TranscriptModel model;
@@ -94,7 +94,7 @@ private slots:
         const QString rendered = model.data(
             model.index(0), TranscriptModel::DisplayTextRole).toString();
         QVERIFY(rendered.contains(QStringLiteral("https://example.org/path?q=1&amp;x=2")));
-        QVERIFY(!rendered.contains(QStringLiteral("<a "), Qt::CaseInsensitive));
+        QVERIFY(rendered.contains(QStringLiteral("<a href="), Qt::CaseInsensitive));
     }
 
     void largeAnswerFallsBackToPlainText()
