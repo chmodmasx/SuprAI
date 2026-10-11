@@ -141,3 +141,12 @@ add_executable(tst_app_settings tst_app_settings.cpp)
 target_link_libraries(tst_app_settings PRIVATE Qt6::Core Qt6::Test suprai_app_settings)
 add_test(NAME app_settings COMMAND tst_app_settings)
 set_tests_properties(app_settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Real QML instantiation test: empty-window smoke alone never creates delegates.
+add_executable(tst_message_bubble tst_message_bubble.cpp)
+target_compile_definitions(tst_message_bubble PRIVATE
+    SUPRAI_MESSAGE_BUBBLE_FILE="${CMAKE_SOURCE_DIR}/src/qml/MessageBubble.qml")
+target_link_libraries(tst_message_bubble PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets Qt6::Test)
+add_test(NAME message_bubble COMMAND tst_message_bubble)
+set_tests_properties(message_bubble PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

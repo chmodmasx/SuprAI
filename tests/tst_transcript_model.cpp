@@ -1,4 +1,6 @@
 #include "TranscriptModel.h"
+#include "MarkdownBlocks.h"
+#include "SafeMarkdownRenderer.h"
 
 #include <suprai/domain/ConversationItem.h>
 
@@ -80,7 +82,7 @@ private slots:
         QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(), raw);
     }
 
-    void linkDestinationRemainsVisibleWithoutAnchor()
+    void allowedLinkDestinationVisibleAndConfirmedInUi()
     {
         using suprai::ui::internal::TranscriptModel;
         TranscriptModel model;
@@ -92,7 +94,7 @@ private slots:
         const QString rendered = model.data(
             model.index(0), TranscriptModel::DisplayTextRole).toString();
         QVERIFY(rendered.contains(QStringLiteral("https://example.org/path?q=1&amp;x=2")));
-        QVERIFY(!rendered.contains(QStringLiteral("<a "), Qt::CaseInsensitive));
+        QVERIFY(rendered.contains(QStringLiteral("<a href="), Qt::CaseInsensitive));
     }
 
     void largeAnswerFallsBackToPlainText()
@@ -106,6 +108,68 @@ private slots:
             QStringLiteral("md-large")));
         QCOMPARE(model.data(model.index(0), TranscriptModel::StyledTextRole).toBool(), false);
         QCOMPARE(model.data(model.index(0), TranscriptModel::DisplayTextRole).toString(), large);
+    }
+
+    void projectsFencedCodeIntoSeparateBlock()
+    {
+        const QString markdown = QStringLiteral(
+            "Ejemplo **listo**:\n"
+            "```cpp\nint main() { return 7; }\n```\n"
+            "Más texto con [sitio](https://example.org/docs).");
+        const auto segments = suprai::ui::internal::safeMarkdownBlocks(markdown);
+        QCOMPARE(segments.size(), 3);
+        QCOMPARE(segments.at(0).toMap().value("kind").toString(), QStringLiteral("text"));
+        QVERIFY(segments.at(0).toMap().value("formatted").toString().contains(QStringLiteral("<b>")));
+        QCOMPARE(segments.at(1).toMap().value("kind").toString(), QStringLiteral("code"));
+        QCOMPARE(segments.at(1).toMap().value("language").toString(), QStringLiteral("cpp"));
+        QCOMPARE(segments.at(1).toMap().value("raw").toString(), QStringLiteral("int main() { return 7; }"));
+        QCOMPARE(segments.at(2).toMap().value("kind").toString(), QStringLiteral("text"));
+        QVERIFY(segments.at(2).toMap().value("formatted").toString().contains(QStringLiteral("<a href=")));
+
+        suprai::ui::internal::TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant, markdown,
+            suprai::domain::ConversationItemState::Completed,
+            QStringLiteral("code-block")));
+        QCOMPARE(model.data(model.index(0),
+            suprai::ui::internal::TranscriptModel::MessageBlocksRole).toList().size(), 3);
+        QCOMPARE(model.data(model.index(0),
+            suprai::ui::internal::TranscriptModel::TextRole).toString(), markdown);
+    }
+
+    void unsafeTargetsStayInertAndVisible()
+    {
+        using suprai::ui::internal::isAllowedExternalUrl;
+        QVERIFY(isAllowedExternalUrl(QStringLiteral("https://example.org/a?q=1&b=2")));
+        QVERIFY(isAllowedExternalUrl(QStringLiteral("http://localhost:8080/")));
+        QVERIFY(!isAllowedExternalUrl(QStringLiteral("javascript:alert(1)")));
+        QVERIFY(!isAllowedExternalUrl(QStringLiteral("file:///etc/passwd")));
+        QVERIFY(!isAllowedExternalUrl(QStringLiteral("https://user:pass@example.org")));
+        QVERIFY(!isAllowedExternalUrl(QStringLiteral("//example.org/path")));
+        QVERIFY(!isAllowedExternalUrl(QStringLiteral("https://example.org/\nInjected")));
+
+        const QString safe = suprai::ui::internal::safeMarkdownToStyledText(
+            QStringLiteral("[seguro](https://example.org/a?q=1&b=2) "
+                           "[malo](javascript:alert(1)) ![pixel](https://example.org/pixel.png) "
+                           "<a href='https://example.net'>injection</a>"));
+        QVERIFY(safe.contains(QStringLiteral("<a href=")));
+        QVERIFY(!safe.contains(QStringLiteral("href=\"javascript"), Qt::CaseInsensitive));
+        QVERIFY(!safe.contains(QStringLiteral("<img"), Qt::CaseInsensitive));
+        QVERIFY(!safe.contains(QStringLiteral("<script"), Qt::CaseInsensitive));
+        QVERIFY(safe.contains(QStringLiteral("javascript:alert")));
+    }
+
+    void incompleteFencesRemainPlainAndExcessiveMarkupFallsBack()
+    {
+        const auto unclosed = suprai::ui::internal::safeMarkdownBlocks(
+            QStringLiteral("Primero\n```rust\nfn main() {}"));
+        QCOMPARE(unclosed.size(), 1);
+        QCOMPARE(unclosed.at(0).toMap().value("kind").toString(),
+                 QStringLiteral("text"));
+        const QString oversized(65537, QLatin1Char('x'));
+        QVERIFY(suprai::ui::internal::safeMarkdownBlocks(oversized).isEmpty());
+        const QString stress = QStringLiteral("```js\n1\n```\n").repeated(120);
+        QVERIFY(suprai::ui::internal::safeMarkdownBlocks(stress).isEmpty());
     }
 
     void ignoresNonMessageDomainItems()

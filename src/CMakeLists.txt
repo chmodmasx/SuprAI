@@ -143,6 +143,8 @@ add_library(suprai_ui STATIC
     modules/ui/src/TranscriptModel.cpp
     modules/ui/src/SafeMarkdownRenderer.h
     modules/ui/src/SafeMarkdownRenderer.cpp
+    modules/ui/src/MarkdownBlocks.h
+    modules/ui/src/MarkdownBlocks.cpp
 )
 target_include_directories(suprai_ui
     PUBLIC
@@ -195,6 +197,7 @@ qt_add_qml_module(suprai
     QML_FILES
         qml/Main.qml
         qml/SettingsPage.qml
+        qml/MessageBubble.qml
 )
 
 target_link_libraries(suprai

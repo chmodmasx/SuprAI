@@ -60,7 +60,8 @@ working:
   - ProviderCapabilities tri-state contract is implemented in the public provider API
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
-  - physical alpha.3 test confirmed model discovery and preference save; alpha.4 clarifies that a full restart is needed before first use and fixes Enter/Shift+Enter input handling (CI verified, physical alpha.4 acceptance pending)
+  - physical alpha.3 test confirmed model discovery and preference save; alpha.4 clarifies the required restart and fixes Enter/Shift+Enter (CI verified, physical acceptance pending)
+  - alpha.5 candidate: bounded structured Markdown/code presentation, read-only selection/copy and confirmation-gated safe HTTP(S) links; PR CI and physical text UX proof pending
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
@@ -277,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - **next text iteration after provider editor**: fenced code blocks/language labels/copy, text selection, safe user-invoked links, long transcript scroll/resize benchmarks and resource handling
+  - alpha.5 text presentation is in development; outstanding tests: long transcript scroll/resize, accessibility/selection, external-link confirmation on physical KDE, resources/attachments
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
@@ -324,7 +325,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - return immediately to text UX after the provider editor: fenced code-block cards, copy, selection and safe external-link policy; keep MarkdownNoHTML threat model
+  - validate alpha.5 on physical KDE: large fenced code snippets, copy buttons, selectable text and confirmation-gated HTTP(S) links; keep MarkdownNoHTML threat model; benchmark long transcript afterwards
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

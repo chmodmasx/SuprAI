@@ -69,12 +69,16 @@ jobs:
         run: bash scripts/package-appimage.sh
       - name: Validate packaged X11/XCB launch
         run: |
+          set +e
           output="$(xvfb-run -a env -u LD_LIBRARY_PATH \
             -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QT_ROOT_DIR \
             QT_QPA_PLATFORM=xcb QT_QUICK_BACKEND=software \
             APPIMAGE_EXTRACT_AND_RUN=1 SUPRAI_RUNTIME=mock \
             "$PWD/dist/SuprAI-${{ steps.version.outputs.version }}-x86_64.AppImage" --smoke-test 2>&1)"
+          status=$?
+          set -e
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           if grep -Eq 'shutdown_timeout|persistence_worker_error|QQmlApplicationEngine failed' <<<"$output"; then
             exit 1
           fi
@@ -97,12 +101,16 @@ jobs:
             cat "$RUNNER_TEMP/weston-appimage.log"
             exit 1
           fi
+          set +e
           output="$(env -u LD_LIBRARY_PATH -u QT_PLUGIN_PATH \
             -u QML2_IMPORT_PATH -u QT_ROOT_DIR \
             QT_QPA_PLATFORM=wayland QT_QUICK_BACKEND=software \
             APPIMAGE_EXTRACT_AND_RUN=1 SUPRAI_RUNTIME=mock \
             ./dist/SuprAI-${{ steps.version.outputs.version }}-x86_64.AppImage --smoke-test 2>&1)"
+          status=$?
+          set -e
           printf '%s\n' "$output"
+          if (( status != 0 )); then exit "$status"; fi
           if grep -Eq 'shutdown_timeout|persistence_worker_error|QQmlApplicationEngine failed' <<<"$output"; then
             exit 1
           fi

@@ -1,5 +1,6 @@
 #include "TranscriptModel.h"
 #include "SafeMarkdownRenderer.h"
+#include "MarkdownBlocks.h"
 
 namespace suprai::ui::internal {
 
@@ -59,6 +60,8 @@ QVariant TranscriptModel::data(const QModelIndex &index, int role) const
         return m_styledRows.at(index.row()) ? m_styledText.at(index.row()) : message->text;
     case StyledTextRole:
         return m_styledRows.at(index.row());
+    case MessageBlocksRole:
+        return m_messageBlocks.at(index.row());
     default:
         return {};
     }
@@ -74,6 +77,7 @@ QHash<int, QByteArray> TranscriptModel::roleNames() const
         {StateRole, "messageState"},
         {DisplayTextRole, "displayText"},
         {StyledTextRole, "displayStyled"},
+        {MessageBlocksRole, "messageBlocks"},
     };
 }
 
@@ -92,6 +96,7 @@ void TranscriptModel::append(const suprai::domain::ConversationItem &item)
     m_items.push_back(item);
     m_styledText.push_back({});
     m_styledRows.push_back(false);
+    m_messageBlocks.push_back({});
     updateCompletedProjection(row);
     m_rowsById.insert(item.id, row);
     endInsertRows();
@@ -124,7 +129,7 @@ void TranscriptModel::finish(const QString &itemId)
     m_items[row].state = suprai::domain::ConversationItemState::Completed;
     updateCompletedProjection(row);
     const auto modelIndex = index(row);
-    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole, DisplayTextRole, StyledTextRole});
+    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole, DisplayTextRole, StyledTextRole, MessageBlocksRole});
 }
 
 void TranscriptModel::stop(
@@ -154,6 +159,7 @@ void TranscriptModel::clear()
     m_items.clear();
     m_styledText.clear();
     m_styledRows.clear();
+    m_messageBlocks.clear();
     m_rowsById.clear();
     endResetModel();
 }
@@ -167,10 +173,12 @@ void TranscriptModel::updateCompletedProjection(int row)
         || message->text.size() > kMarkdownLimit) {
         m_styledText[row].clear();
         m_styledRows[row] = false;
+        m_messageBlocks[row].clear();
         return;
     }
     m_styledText[row] = safeMarkdownToStyledText(message->text);
     m_styledRows[row] = true;
+    m_messageBlocks[row] = safeMarkdownBlocks(message->text);
 }
 
 int TranscriptModel::rowForId(const QString &itemId) const

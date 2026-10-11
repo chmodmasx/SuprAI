@@ -41,6 +41,39 @@ ApplicationWindow {
     readonly property color foreground: "#F6F6F6"
     readonly property color muted: "#AFAFAF"
 
+    Dialog {
+        id: externalLinkDialog
+        modal: true
+        title: "Abrir enlace externo"
+        anchors.centerIn: parent
+        width: Math.min(root.width - 80, 650)
+        property string pendingUrl: ""
+        standardButtons: Dialog.Open | Dialog.Cancel
+
+        contentItem: Column {
+            spacing: 12
+            Label {
+                text: "SuprAI va a abrir este enlace en el navegador. Verificá el destino:"
+                width: externalLinkDialog.availableWidth
+                color: root.foreground
+                wrapMode: Text.Wrap
+            }
+            TextArea {
+                text: externalLinkDialog.pendingUrl
+                width: externalLinkDialog.availableWidth
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.WrapAnywhere
+                color: root.foreground
+            }
+        }
+        onAccepted: {
+            chatController.openExternalLink(pendingUrl)
+            pendingUrl = ""
+        }
+        onRejected: pendingUrl = ""
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -278,50 +311,17 @@ ApplicationWindow {
                             positionViewAtEnd()
                     })
 
-                    delegate: Item {
-                        required property string itemId
-                        required property string speaker
-                        required property string text
-                        required property string displayText
-                        required property bool displayStyled
-                        required property bool streaming
-                        required property string messageState
-
+                    delegate: MessageBubble {
                         width: ListView.view.width - transcript.leftMargin - transcript.rightMargin
-                        implicitHeight: bubble.implicitHeight
-
-                        Rectangle {
-                            id: bubble
-
-                            width: Math.min(parent.width * 0.84, 780)
-                            implicitHeight: body.implicitHeight + 26
-                            radius: 12
-
-                            anchors.right: speaker === "user" ? parent.right : undefined
-                            anchors.left: speaker === "user" ? undefined : parent.left
-
-                            color: speaker === "user" ? "#24445A" : root.panelAlt
-                            border.color: speaker === "user" ? root.accent : root.border
-                            border.width: 1
-
-                            Text {
-                                id: body
-
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.margins: 13
-
-                                text: parent.parent.displayText
-                                      + (parent.parent.streaming ? " ▋"
-                                         : parent.parent.messageState === "cancelled" ? " (cancelado)"
-                                         : parent.parent.messageState === "failed" ? " (error)" : "")
-                                color: root.foreground
-                                wrapMode: Text.Wrap
-                                textFormat: parent.parent.displayStyled ? Text.StyledText : Text.PlainText
-                                font.pixelSize: 14
-                                lineHeight: 1.25
-                            }
+                        foregroundColor: root.foreground
+                        mutedColor: root.muted
+                        panelColor: root.panelAlt
+                        borderColor: root.border
+                        accentColor: root.accent
+                        onCopyRequested: function(value) { chatController.copyText(value) }
+                        onExternalLinkRequested: function(url) {
+                            externalLinkDialog.pendingUrl = url
+                            externalLinkDialog.open()
                         }
                     }
 
