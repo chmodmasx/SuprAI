@@ -217,10 +217,16 @@ install(TARGETS suprai
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+# Ubuntu's Qt6Keychain::Qt6Keychain is an alias, not an imported target
+# accepted directly by install(IMPORTED_RUNTIME_ARTIFACTS).
+get_target_property(SUPRAI_QTKEYCHAIN_TARGET Qt6Keychain::Qt6Keychain ALIASED_TARGET)
+if(NOT SUPRAI_QTKEYCHAIN_TARGET)
+    message(FATAL_ERROR "QtKeychain imported library target is missing")
+endif()
 install(IMPORTED_RUNTIME_ARTIFACTS
     Qt6::Widgets
     Qt6::Sql
-    Qt6Keychain::Qt6Keychain
+    ${SUPRAI_QTKEYCHAIN_TARGET}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
