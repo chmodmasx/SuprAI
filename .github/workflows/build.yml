@@ -65,6 +65,7 @@ jobs:
           test -f stage/plugins/platforms/libqxcb.so
           test -f stage/plugins/platforms/libqwayland.so
           test -f stage/plugins/sqldrivers/libqsqlite.so
+          find stage/lib -maxdepth 2 -type f -name 'libqt6keychain.so*' | grep -q .
 
       - name: Staged install smoke test
         run: |
