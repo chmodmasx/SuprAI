@@ -197,6 +197,7 @@ qt_add_qml_module(suprai
     QML_FILES
         qml/Main.qml
         qml/SettingsPage.qml
+        qml/MessageBubble.qml
 )
 
 target_link_libraries(suprai
