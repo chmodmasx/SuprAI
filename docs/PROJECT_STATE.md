@@ -22,7 +22,8 @@ working:
   - deep current-Cline code review is recorded under docs/research/2026-10-07-cline-code-review.md
   - AppImage selected as first portable artifact
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
-  - externally hosted NInfer test endpoint is configured for a dedicated GitHub Actions remote smoke; public health is checked automatically and authenticated streaming uses only an Actions secret
+  - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
+  - optional C++ native-runtime integration test exercises the actual provider, SQLite restart recovery and canonical-context reconstruction against the remote NInfer; must be verified on main with an Actions secret
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - remote authenticated inference/context remains unverified: main Actions run 38161054774 reported SKIP because NINFER_API_KEY secret is absent; do not conflate a successful workflow with an executed inference test
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking

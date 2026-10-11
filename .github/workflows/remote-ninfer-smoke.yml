@@ -23,6 +23,9 @@ jobs:
   external-provider:
     runs-on: ubuntu-24.04
     timeout-minutes: 6
+    outputs:
+      authenticated: ${{ steps.remote.outputs.authenticated }}
+      model: ${{ steps.remote.outputs.model }}
     steps:
       - uses: actions/checkout@v4
       - name: Probe public NInfer health over verified HTTPS
@@ -33,8 +36,40 @@ jobs:
       # Never expose a repository secret to untrusted pull-request code.
       # Only manual runs or a push to the default branch can exercise generation.
       - name: Probe authenticated models, streaming and two-turn context
+        id: remote
         if: github.event_name != 'pull_request'
         env:
           NINFER_BASE_URL: https://ninfer.minilinux.win/v1
           NINFER_API_KEY: ${{ secrets.NINFER_API_KEY }}
         run: python3 scripts/test-remote-ninfer.py --inference-only
+
+  native-runtime:
+    needs: external-provider
+    if: github.event_name != 'pull_request' && needs.external-provider.outputs.authenticated == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler and Wayland headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build build-essential libgl1-mesa-dev libgles2-mesa-dev libwayland-dev libwayland-egl1-mesa libxkbcommon-dev
+      - name: Install Qt 6.12
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.12.0'
+          modules: 'qtwaylandcompositor'
+          cache: true
+      - name: Build native runtime integration test
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSUPRAI_BUILD_TESTS=ON
+          cmake --build build --parallel
+      - name: Run SuprAI native runtime against real NInfer over HTTPS
+        env:
+          QT_QPA_PLATFORM: offscreen
+          NINFER_BASE_URL: https://ninfer.minilinux.win/v1
+          NINFER_MODEL: ${{ needs.external-provider.outputs.model }}
+          NINFER_API_KEY: ${{ secrets.NINFER_API_KEY }}
+        run: ctest --test-dir build -R '^native_remote_ninfer$' --output-on-failure

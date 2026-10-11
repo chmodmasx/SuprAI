@@ -128,3 +128,11 @@ set_tests_properties(
     PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )
+
+# Optional remote real-server integration: environment-gated, no CI credentials on PRs.
+add_executable(tst_remote_ninfer tst_remote_ninfer.cpp)
+target_link_libraries(tst_remote_ninfer PRIVATE
+    Qt6::Core Qt6::Network Qt6::Test
+    suprai_runtime suprai_provider_openai suprai_persistence)
+add_test(NAME native_remote_ninfer COMMAND tst_remote_ninfer)
+set_tests_properties(native_remote_ninfer PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
