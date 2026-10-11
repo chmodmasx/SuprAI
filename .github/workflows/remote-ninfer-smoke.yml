@@ -1,0 +1,40 @@
+name: remote-ninfer-smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/remote-ninfer-smoke.yml'
+      - 'scripts/test-remote-ninfer.py'
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/remote-ninfer-smoke.yml'
+      - 'scripts/test-remote-ninfer.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: suprai-remote-ninfer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  external-provider:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public NInfer health over verified HTTPS
+        env:
+          NINFER_BASE_URL: https://ninfer.minilinux.win/v1
+        run: python3 scripts/test-remote-ninfer.py --health-only
+
+      # Never expose a repository secret to untrusted pull-request code.
+      # Only manual runs or a push to the default branch can exercise generation.
+      - name: Probe authenticated models, streaming and two-turn context
+        if: github.event_name != 'pull_request'
+        env:
+          NINFER_BASE_URL: https://ninfer.minilinux.win/v1
+          NINFER_API_KEY: ${{ secrets.NINFER_API_KEY }}
+        run: python3 scripts/test-remote-ninfer.py --inference-only
