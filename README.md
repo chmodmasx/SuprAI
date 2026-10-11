@@ -6,7 +6,7 @@ SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface
 
 **Status: functional modular prototype / M1 in progress.**
 
-The latest verified vertical slice compiles and is CI-verified with Qt 6.12; new alpha.3 provider configuration is pending CI verification. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+The latest alpha.3 provider-settings branch passed build and packaged XCB/Wayland CI verification with Qt 6.12; its real desktop wallet integration still requires physical testing. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
 
 ## Current prototype
 
@@ -45,7 +45,7 @@ Implemented:
 - clean worker shutdown enforced by CI;
 - newest session restored from SQLite, prepared Runs reconciled as interrupted, and assistant terminal outcome committed before completion ACK;
 - initial AppImage preview built from the staged Qt runtime, with bundled Qt/QML/XCB/Wayland/SQLite, SHA-256 file, and packaged XCB/Wayland CI smoke tests;
-- alpha.3 provider configuration slice: editable endpoint/model, safe /v1/models discovery, asynchronous QtKeychain-based stored credentials and explicit restart-to-apply (pending CI and physical KDE wallet proof).
+- alpha.3 provider configuration slice: editable endpoint/model, safe /v1/models discovery, asynchronous QtKeychain-based stored credentials and explicit restart-to-apply (CI passed; physical KDE wallet proof pending).
 
 Not implemented yet:
 - older-session selection and advanced ProviderAttempt/Task recovery;
@@ -114,7 +114,7 @@ The external endpoint is a test service, **not** a permanent default; changing m
 
 ## Provider configuration (alpha.3 candidate)
 
-The **Configuración** page now edits one active OpenAI-compatible endpoint and model. It can query `/v1/models` using the entered key or the locally stored credential. User-entered API keys are persisted asynchronously through QtKeychain into the desktop's KWallet/Secret Service; no insecure fallback is enabled. Provider URLs and model IDs are the only data stored in QSettings. Remote endpoints must use HTTPS; HTTP is restricted to local/private addresses. Credentials already stored for an endpoint cannot be carried to another URL without explicit replacement.
+The **Configuración** page now edits one active OpenAI-compatible endpoint and model. It can query `/v1/models` using the entered key or the locally stored credential. User-entered API keys are persisted asynchronously through QtKeychain into the desktop's KWallet/Secret Service; no insecure fallback is enabled. Provider URLs and model IDs are the only data stored in QSettings. Secret-store entries are endpoint-hash-scoped. Remote endpoints must use HTTPS; HTTP is restricted to local/private addresses. Discovery never reuses a previously loaded key for a different endpoint.
 
 A change takes effect **after fully closing and reopening the application**. No live runtime mutation is attempted mid-turn. Startup waits asynchronously for a credential-store result before creating NativeSuprAIRuntime; KWallet may prompt to unlock. If a secure store is unavailable, configuration metadata can be saved but credentials cannot. Environment overrides remain available for CI and troubleshooting; they are not a permanent provider default.
 

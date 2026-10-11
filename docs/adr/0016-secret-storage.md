@@ -26,8 +26,8 @@ not claim 0.17-specific APIs or functionality from this build.
   and a short error/status message are shown.
 - If the wallet fails or is absent, the UI reports that credentials were not
   loaded/saved and never writes a plaintext substitute.
-- Updating endpoint metadata does not reuse a previously loaded bearer for a
-  different target unless a replacement key is explicitly provided.
+- Stored credentials are keyed by SHA-256 of the active endpoint; API keys are never automatically sent to another server when the endpoint changes.
+- Model discovery uses the entered key, or the stored key only when the queried endpoint matches the active one. Redirects are not followed.
 - Changes take effect only after restarting the application; the current
   runtime is not reconfigured during an in-progress Turn.
 - Public endpoints require HTTPS in the configuration UI.
@@ -56,7 +56,7 @@ Stored profile entries will reference opaque IDs, never credential payloads.
 - GNOME Secret Service;
 - unavailable service and error messaging;
 - credential deletion/replacement and reopening the AppImage;
-- verify complete QtKeychain dynamic dependency closure in the AppImage;
+- CI packaging asserts that the real QtKeychain shared library is included in AppDir (PR build 38167660144 passed); physical desktop load proof remains pending;
 - dependency and license audit across Qt and third parties.
 
 The alpha.3 code is not production-verified until these tests pass.
