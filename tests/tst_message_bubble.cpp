@@ -31,6 +31,75 @@ private slots:
         QCOMPARE(button->property("implicitWidth").toInt(), before);
     }
 
+
+    void constructsStructuredMarkdownComponents()
+    {
+        QQmlEngine engine;
+        QQmlComponent tableComponent(&engine, QUrl::fromLocalFile(
+            QStringLiteral(SUPRAI_MARKDOWN_TABLE_FILE)));
+        QVERIFY2(tableComponent.isReady(), qPrintable(tableComponent.errorString()));
+        const QVariantMap firstCell{{QStringLiteral("raw"), QStringLiteral("A")},
+                                    {QStringLiteral("formatted"), QStringLiteral("<b>A</b>")}};
+        const QVariantMap secondCell{{QStringLiteral("raw"), QStringLiteral("B")},
+                                     {QStringLiteral("formatted"), QStringLiteral("B")}};
+        const QVariantMap tableData{
+            {QStringLiteral("kind"), QStringLiteral("table")},
+            {QStringLiteral("raw"), QStringLiteral("| A | B |\n|---|---|\n| x | y |")},
+            {QStringLiteral("headers"), QVariantList{firstCell, secondCell}},
+            {QStringLiteral("rows"), QVariantList{
+                QVariantList{
+                    QVariantMap{{QStringLiteral("formatted"), QStringLiteral("x")}},
+                    QVariantMap{{QStringLiteral("formatted"), QStringLiteral("y")}}}}},
+            {QStringLiteral("alignment"), QVariantList{QStringLiteral("left"), QStringLiteral("right")}}
+        };
+        QScopedPointer<QObject> table(tableComponent.createWithInitialProperties({
+            {QStringLiteral("tableData"), tableData}
+        }));
+        QVERIFY2(table, qPrintable(tableComponent.errorString()));
+        auto *tableItem = qobject_cast<QQuickItem *>(table.get());
+        QVERIFY(tableItem);
+        tableItem->setWidth(550);
+        QTRY_VERIFY_WITH_TIMEOUT(tableItem->implicitHeight() > 45, 3000);
+        QVERIFY(tableComponent.errors().isEmpty());
+
+        QQmlComponent quoteComponent(&engine, QUrl::fromLocalFile(
+            QStringLiteral(SUPRAI_MARKDOWN_QUOTE_FILE)));
+        QVERIFY2(quoteComponent.isReady(), qPrintable(quoteComponent.errorString()));
+        QScopedPointer<QObject> quote(quoteComponent.createWithInitialProperties({
+            {QStringLiteral("formatted"), QStringLiteral("Una <b>cita</b> segura")}
+        }));
+        QVERIFY2(quote, qPrintable(quoteComponent.errorString()));
+        auto *quoteItem = qobject_cast<QQuickItem *>(quote.get());
+        QVERIFY(quoteItem);
+        quoteItem->setWidth(550);
+        QTRY_VERIFY_WITH_TIMEOUT(quoteItem->implicitHeight() > 30, 3000);
+
+        QQmlComponent bubbleComponent(&engine, QUrl::fromLocalFile(
+            QStringLiteral(SUPRAI_MESSAGE_BUBBLE_FILE)));
+        QVERIFY2(bubbleComponent.isReady(), qPrintable(bubbleComponent.errorString()));
+        const QVariantMap initial{
+            {QStringLiteral("itemId"), QStringLiteral("table-quote")},
+            {QStringLiteral("speaker"), QStringLiteral("assistant")},
+            {QStringLiteral("text"), tableData.value("raw")},
+            {QStringLiteral("displayText"), QStringLiteral("formatted")},
+            {QStringLiteral("displayStyled"), true},
+            {QStringLiteral("streaming"), false},
+            {QStringLiteral("messageState"), QStringLiteral("completed")},
+            {QStringLiteral("messageBlocks"), QVariantList{
+                tableData,
+                QVariantMap{{QStringLiteral("kind"), QStringLiteral("quote")},
+                            {QStringLiteral("formatted"), QStringLiteral("Una cita")}}
+            }}
+        };
+        QScopedPointer<QObject> bubble(bubbleComponent.createWithInitialProperties(initial));
+        QVERIFY2(bubble, qPrintable(bubbleComponent.errorString()));
+        auto *bubbleItem = qobject_cast<QQuickItem *>(bubble.get());
+        QVERIFY(bubbleItem);
+        bubbleItem->setWidth(900);
+        QTRY_VERIFY_WITH_TIMEOUT(bubbleItem->implicitHeight() > 80, 3000);
+        QVERIFY(bubbleComponent.errors().isEmpty());
+    }
+
     void constructsAndLaysOutSafeTextAndCode()
     {
         QQmlEngine engine;
