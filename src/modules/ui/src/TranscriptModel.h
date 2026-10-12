@@ -4,6 +4,8 @@
 
 #include <QAbstractListModel>
 #include <QHash>
+#include <QSet>
+#include <QTimer>
 #include <QVector>
 
 namespace suprai::ui::internal {
@@ -39,12 +41,15 @@ public:
 private:
     int rowForId(const QString &itemId) const;
     void updateCompletedProjection(int row);
+    void flushStreamingPreview();
 
     QVector<QString> m_styledText;
     QVector<bool> m_styledRows;
     QVector<QVariantList> m_messageBlocks;
     QVector<suprai::domain::ConversationItem> m_items;
     QHash<QString, int> m_rowsById;
+    QSet<QString> m_pendingPreviewIds;
+    QTimer m_previewTimer;
 };
 
 } // namespace suprai::ui::internal
