@@ -18,8 +18,11 @@ canonical text, execution state or provider behavior.
 
 - `TranscriptModel` is a C++ `QAbstractListModel` whose roles expose canonical
   plain text, terminal state and disposable Markdown presentation blocks.
-- `MarkdownBlocks` splits prose from fenced code; code cards are non-executing,
-  selectable, horizontally scrollable and expose explicit copy actions.
+- `MarkdownBlocks` separates fenced code from the rest of the transcript. Its
+  private `MarkdownStructures` collaborator recognizes bounded GitHub-flavored
+  pipe tables and blockquotes in non-code prose; no provider or domain code
+  depends on these presentation structures. Code cards remain non-executing,
+  selectable, horizontally scrollable and explicitly copyable.
 - `SafeMarkdownRenderer` uses Qt's GitHub Markdown parser with
   `MarkdownNoHTML`; all text is escaped before emitting a narrow set of
   generated RichText markup. Model HTML and images never reach the QML parser.
@@ -30,6 +33,12 @@ canonical text, execution state or provider behavior.
 - `ProseText.qml` uses `TextEdit.RichText` **only** for generated allowlisted
   presentation, otherwise `TextEdit.PlainText`. The cursor belongs to the
   final streaming segment; it is not repeated after every prose block.
+- `MarkdownTable.qml` displays up to 10 columns and 60 data rows per table
+  using scrollable selectable rich-text cells and copies the original table
+  source. `MarkdownQuote.qml` displays sanitized prose with an accent strip.
+  Both use `ProseText` for allowlisted generated formatting and forward link
+  clicks through the same C++ validation boundary. Incomplete/malformed or
+  over-limit pipe tables fall back to non-executing source prose.
 - Rendering is synchronous and bounded: at most 65,536 UTF-16 units and
   80 blocks for final completed assistant messages. Oversized messages,
   user text and stopped/failed messages stay plain.
@@ -51,13 +60,16 @@ canonical text, execution state or provider behavior.
 
 Automated tests cover:
 - Markdown safety, untrusted HTML/images/URLs, fenced code and size bounds;
+- table cell splitting with escaped/code pipes, malformed/oversized tables,
+  blockquote segmentation and actual QML component instantiation;
 - QML instantiation and selectable `QTextDocument` rich-text interpretation;
 - deferred/coalesced UI updates, unfinished code fences and terminal cleanup;
 - packaged XCB/Xvfb and Wayland/Weston smoke tests.
 
 These tests do **not** prove real KDE/GNOME link/copy accessibility or long-run
-smoothness. Physical acceptance of the alpha.7 link/copy improvements and the
-new live preview remain outstanding until tested on a real desktop.
+smoothness. Physical acceptance of the alpha.7 link/copy improvements,
+the alpha.8 live preview and alpha.9 table/quote presentation remains
+outstanding until tested on a real desktop.
 
 ## Remaining acceptance work
 
@@ -65,6 +77,6 @@ Benchmark both coalesced full-message parsing (current preview) and a
 completed-block + streaming-tail incremental parser, including 1,000+ items,
 long Markdown, long fences, scrolling and pane resize under real inference.
 Choose measured complexity rather than assuming the 90 ms budget ensures
-smoothness. Evaluate tables, quotes, attachments, keyboard accessibility,
-and syntax highlighting as independent UI modules, without adding WebEngine
-to the ordinary chat surface.
+smoothness. Evaluate more complete GFM table constructs (multiline content,
+nested blocks), attachments, keyboard accessibility, and syntax highlighting
+as independent UI modules, without adding WebEngine to ordinary chat.
