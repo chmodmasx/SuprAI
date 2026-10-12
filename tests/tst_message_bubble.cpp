@@ -1,6 +1,8 @@
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QQuickItem>
+#include <QQuickTextDocument>
+#include <QTextDocument>
 #include <QScopedPointer>
 #include <QTest>
 #include <QVariantMap>
@@ -18,7 +20,7 @@ private slots:
 
         QVariantList segments{
             QVariantMap{{QStringLiteral("kind"), QStringLiteral("text")},
-                        {QStringLiteral("formatted"), QStringLiteral("Hola <b>mundo</b>")}},
+                        {QStringLiteral("formatted"), QStringLiteral("Hola <b>mundo</b><br/>Un &amp; dos <i>cursiva</i>")}},
             QVariantMap{{QStringLiteral("kind"), QStringLiteral("code")},
                         {QStringLiteral("language"), QStringLiteral("cpp")},
                         {QStringLiteral("raw"), QStringLiteral("int answer = 42;")}},
@@ -41,6 +43,41 @@ private slots:
         item->setWidth(950);
         QTRY_VERIFY_WITH_TIMEOUT(item->implicitHeight() > 30, 3000);
         QVERIFY2(component.errors().isEmpty(), qPrintable(component.errorString()));
+
+        // Probe the exact selectable prose component independently rather than
+        // relying on private QObject parenting of Repeater/Loader children.
+        QQmlComponent proseComponent(&engine, QUrl::fromLocalFile(
+            QStringLiteral(SUPRAI_PROSE_TEXT_FILE)));
+        QVERIFY2(proseComponent.isReady(), qPrintable(proseComponent.errorString()));
+
+        QScopedPointer<QObject> prose(proseComponent.createWithInitialProperties({
+            {QStringLiteral("formatted"),
+             QStringLiteral("Hola <b>mundo</b><br/>Un &amp; dos <i>cursiva</i>")},
+            {QStringLiteral("styled"), true},
+        }));
+        QVERIFY2(prose, qPrintable(proseComponent.errorString()));
+        QCOMPARE(prose->property("textFormat").toInt(), int(Qt::RichText));
+        const auto quickDocument =
+            prose->property("textDocument").value<QQuickTextDocument *>();
+        QVERIFY(quickDocument);
+        const QString rendered = quickDocument->textDocument()->toPlainText();
+        QCOMPARE(rendered, QStringLiteral("Hola mundo\nUn & dos cursiva"));
+        QVERIFY(!rendered.contains(QStringLiteral("<b>")));
+        QVERIFY(!rendered.contains(QStringLiteral("<br")));
+        QVERIFY(prose->property("readOnly").toBool());
+        QVERIFY(prose->property("selectByMouse").toBool());
+
+        QScopedPointer<QObject> streaming(proseComponent.createWithInitialProperties({
+            {QStringLiteral("formatted"), QStringLiteral("**sin procesar**")},
+            {QStringLiteral("styled"), false},
+            {QStringLiteral("streaming"), true},
+        }));
+        QVERIFY2(streaming, qPrintable(proseComponent.errorString()));
+        QCOMPARE(streaming->property("textFormat").toInt(), int(Qt::PlainText));
+        auto *streamDoc = streaming->property("textDocument").value<QQuickTextDocument *>();
+        QVERIFY(streamDoc);
+        QCOMPARE(streamDoc->textDocument()->toPlainText(),
+                 QStringLiteral("**sin procesar** ▋"));
     }
 };
 

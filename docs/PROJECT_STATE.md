@@ -61,7 +61,7 @@ working:
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
   - physical alpha.3 test confirmed model discovery and preference save; alpha.4 clarifies the required restart and fixes Enter/Shift+Enter (CI verified, physical acceptance pending)
-  - alpha.5 implemented and CI-verified: bounded structured Markdown/code, read-only selection/copy and confirmation-gated safe HTTP(S) links; native MessageBubble QML instantiation test and packaged XCB/Wayland smoke PASS; physical KDE UX proof pending
+  - alpha.5 code/cards and confirmation-gated links passed CI; physical KDE found a rendering regression: unsupported TextEdit.StyledText caused literal generated HTML tags in completed prose (2026-10-11). Alpha.6 candidate uses TextEdit.RichText for escaped, allowlisted C++ output only; raw streams/user text stay PlainText. Regression test now checks actual rendered QTextDocument text; CI and physical verification pending
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.5 text rendering is published; outstanding physical KDE tests: selection, copy, link confirmation; long transcript scroll/resize, accessibility and resources/attachments still unverified
+  - alpha.5 is superseded due to literal-markup regression. Verify alpha.6 rendering on physical KDE, then selection/copy/link confirmation; long transcript scroll/resize, accessibility and resources/attachments remain unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
