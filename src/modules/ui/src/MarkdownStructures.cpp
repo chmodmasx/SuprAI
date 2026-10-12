@@ -101,7 +101,9 @@ bool parseTable(const QStringList &lines, qsizetype first,
             row.append(QVariantMap{{QStringLiteral("raw"), value},
                 {QStringLiteral("formatted"), safeMarkdownToStyledText(value)}});
         }
-        rows.append(row);
+        // QVariantList::append(QVariantList) concatenates cells; wrap the
+        // row explicitly so QML receives a nested list of table rows.
+        rows.append(QVariant::fromValue(row));
         rawLines.append(lines.at(i));
     }
     result = {{QStringLiteral("kind"), QStringLiteral("table")},
