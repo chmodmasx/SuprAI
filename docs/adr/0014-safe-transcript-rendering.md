@@ -138,7 +138,7 @@ virtualization and long-response resizing/scroll benchmarks, keyboard
 accessibility, attachments and syntax highlighting. Those remain open; do not
 mark M2 rendering complete based solely on CI.
 
-## Alpha.7 UX refinement (CI and KDE acceptance pending)
+## Alpha.7 UX refinement (CI PASS, physical KDE acceptance pending)
 
 - Introduce a reusable `CopyFeedbackButton.qml` with a fixed implicit width
   and copy-state reset after 1.8 seconds or upon delegate content replacement.
@@ -153,5 +153,6 @@ mark M2 rendering complete based solely on CI.
   Only generated, fixed-size HTML span styles are added for heading hierarchy;
   task markers use noninteractive checkbox glyphs (not executable controls).
   Model-provided raw HTML/images remain untrusted and disabled.
+- CI: 12/12 CTest and packaged AppImage XCB/Wayland launch PASS (run 38196166495); direct browser opening and clipboard interaction still require physical KDE testing.
 - Still open: tables, blockquote cards, optional ==highlight==, larger
   formatted streaming, long-transcript and keyboard accessibility proof.

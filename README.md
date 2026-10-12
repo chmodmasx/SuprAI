@@ -112,11 +112,11 @@ The authenticated test **only runs when repository Actions secret `NINFER_API_KE
 
 The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
 
-## Text rendering (alpha.7 candidate)
+## Text rendering (alpha.7)
 
 Completed assistant messages now have a bounded `messageBlocks` presentation role: safe styled prose plus explicit fenced-code cards, selectable read-only text, monospace code, code-language labels and copy actions. Inline HTTP(S) links are generated from validated Markdown destinations, **never activated by rendering**; a user click immediately delegates to the system browser (no extra modal), with a second strict HTTP(S)/host/userinfo check in C++; rendering itself never opens links. Non-HTTP(S), credential-bearing and malformed links remain inert, with destinations visible. Model-provided HTML/images are not loaded. Streaming and failed/cancelled messages remain plain text, and very large messages safely fall back to non-parsed text.
 
-Alpha.7 candidate also adds fixed-width copy buttons with brief '✓ Copiado' feedback, visible heading size hierarchy, GitHub-style strikethrough and checked/unchecked task markers. These features are pending CI and physical KDE verification. Remaining work: long-transcript performance, tables, callouts/quotes, optional ==highlight==, keyboard accessibility, attachments, richer syntax highlighting, and incremental Markdown during streaming. This is a first native proof rather than a complete document renderer.
+Alpha.7 adds fixed-width copy buttons with brief '✓ Copiado' feedback, visible heading size hierarchy, GitHub-style strikethrough and checked/unchecked task markers. CI passed with 12/12 tests and packaged XCB/Wayland AppImage smoke. Physical KDE interaction testing remains pending. Remaining work: long-transcript performance, tables, callouts/quotes, optional ==highlight==, keyboard accessibility, attachments, richer syntax highlighting, and incremental Markdown during streaming. This is a first native proof rather than a complete document renderer.
 
 ## Provider configuration (alpha.4)
 

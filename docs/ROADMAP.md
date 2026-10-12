@@ -149,7 +149,7 @@ Implemented foundation:
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- alpha.7 candidate updates Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network), pending CI and physical KDE acceptance. Next: tables, quotes, optional highlight, coalesced safe Markdown preview during streaming, 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
+- alpha.7 shipped with CI PASS: Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network). Physical KDE acceptance still pending. Next: tables, quotes, optional highlight, coalesced safe Markdown preview during streaming, 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
 - tool cards;
 - approval/clarification component.
 

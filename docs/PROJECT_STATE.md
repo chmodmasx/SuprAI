@@ -27,7 +27,7 @@ working:
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
   - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
-  - immutable alpha.6 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.6; 12/12 CTest plus XCB/Wayland packaged startup CI PASS; earlier releases remain immutable
+  - immutable alpha.7 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.7; 12/12 CTest plus packaged XCB/Wayland CI PASS (run 38196166495); earlier releases remain immutable
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.6 physical KDE confirmed Markdown formatting, code blocks and code copy but no visual feedback; external link confirmation worked yet modal theme was unreadable/unwanted. Alpha.7 candidate removes the modal while retaining C++ URL validation, shows fixed-width copy feedback and adds heading/task/strike improvements; CI and KDE acceptance pending. Live streaming still intentionally shows raw Markdown; long transcript scroll/resize, accessibility and attachments remain unverified
+  - alpha.6 physical KDE confirmed Markdown formatting, code blocks and code copy but no visual feedback; external link confirmation worked yet modal theme was unreadable/unwanted. Alpha.7 removes the modal while retaining C++ URL validation, shows fixed-width copy feedback and adds heading/task/strike improvements; 12/12 CTest and packaged XCB/Wayland PASS, physical KDE acceptance pending. Live streaming still intentionally shows raw Markdown; long transcript scroll/resize, accessibility and attachments remain unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
@@ -325,7 +325,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - validate alpha.7 on physical KDE: fixed-width 'Copiar' -> '✓ Copiado' feedback without layout shift, HTTP(S) opens on one click without modal, heading H1–H6 hierarchy, strike and checkbox markers; streaming formatting/performance and long transcript benchmarks remain pending
+  - validate published alpha.7 on physical KDE: fixed-width 'Copiar' -> '✓ Copiado' feedback without layout shift, HTTP(S) opens on one click without modal, heading H1–H6 hierarchy, strike and checkbox markers; streaming formatting/performance and long transcript benchmarks remain pending
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 
