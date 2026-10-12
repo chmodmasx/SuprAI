@@ -4,6 +4,7 @@
 
 #include <suprai/domain/ConversationItem.h>
 
+#include <QSignalSpy>
 #include <QTest>
 
 class TranscriptModelTest final : public QObject
@@ -48,12 +49,12 @@ private slots:
             suprai::domain::ConversationItemState::Streaming,
             QStringLiteral("preview")));
         QSignalSpy changes(&model, &QAbstractItemModel::dataChanged);
-        model.appendDelta(QStringLiteral("preview"), QStringLiteral("# Título\\n"));
+        model.appendDelta(QStringLiteral("preview"), QStringLiteral("# Título\n"));
         model.appendDelta(QStringLiteral("preview"), QStringLiteral("**negrita** "));
         model.appendDelta(QStringLiteral("preview"), QStringLiteral("![pixel](https://example.org/x.png)"));
         QCOMPARE(changes.count(), 0); // no synchronous per-token reparse or UI update
         QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(),
-                 QStringLiteral("# Título\\n**negrita** ![pixel](https://example.org/x.png)"));
+                 QStringLiteral("# Título\n**negrita** ![pixel](https://example.org/x.png)"));
         QTRY_COMPARE_WITH_TIMEOUT(changes.count(), 1, 1500);
         const auto blocks = model.data(model.index(0), TranscriptModel::MessageBlocksRole).toList();
         QCOMPARE(blocks.size(), 1);
@@ -72,7 +73,7 @@ private slots:
     void openFenceIsShownAsCodeDuringStreaming()
     {
         using suprai::ui::internal::TranscriptModel;
-        const QString unfinished = QStringLiteral("Antes **listo**\\n```cpp\\nint n = 2;");
+        const QString unfinished = QStringLiteral("Antes **listo**\n```cpp\nint n = 2;");
         const auto completed = suprai::ui::internal::safeMarkdownBlocks(unfinished);
         QCOMPARE(completed.size(), 1); // strict final projection unchanged
         const auto preview = suprai::ui::internal::safeStreamingMarkdownBlocks(unfinished);
