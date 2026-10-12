@@ -3,12 +3,12 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 510d9434eb8b238d97789e0623c0e58cb19ea3f8
-last_verified_code_commit: 510d9434eb8b238d97789e0623c0e58cb19ea3f8
-verified_pr_appimage_run: 38185272987
-verified_pr_build_run: 38185273070
-verified_release_appimage_run: 38185449542
-verified_main_build_run: 38185449564
+last_verified_commit: 6a41226af06a3eb50e7a49d5926fa0d5449a1c3c
+last_verified_code_commit: 6a41226af06a3eb50e7a49d5926fa0d5449a1c3c
+verified_pr_appimage_run: 38190737949
+verified_pr_build_run: 38190737952
+verified_release_appimage_run: 38190896933
+verified_main_build_run: 38190896929
 verified_live_ninfer_run: 38162535283
 
 working:
@@ -27,7 +27,7 @@ working:
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
   - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
-  - immutable alpha.5 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.5 after 12/12 CTest and packaged XCB/Wayland CI PASS; alpha.4 remains available
+  - immutable alpha.6 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.6; 12/12 CTest plus XCB/Wayland packaged startup CI PASS; earlier releases remain immutable
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
@@ -61,7 +61,7 @@ working:
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
   - physical alpha.3 test confirmed model discovery and preference save; alpha.4 clarifies the required restart and fixes Enter/Shift+Enter (CI verified, physical acceptance pending)
-  - alpha.5 code/cards and confirmation-gated links passed CI; physical KDE found a rendering regression: unsupported TextEdit.StyledText caused literal generated HTML tags in completed prose (2026-10-11). Alpha.6 candidate uses TextEdit.RichText for escaped, allowlisted C++ output only; raw streams/user text stay PlainText. Regression test now checks actual rendered QTextDocument text; CI and physical verification pending
+  - alpha.6 corrected the confirmed alpha.5 literal-markup regression: ProseText.qml uses TextEdit.RichText only for escaped allowlisted C++ output, PlainText for raw/streaming; 12/12 CTest including actual QTextDocument text verification PASS; physical KDE presentation acceptance pending
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.5 is superseded due to literal-markup regression. Verify alpha.6 rendering on physical KDE, then selection/copy/link confirmation; long transcript scroll/resize, accessibility and resources/attachments remain unverified
+  - alpha.6 supersedes alpha.5 due to literal-markup regression. Verify alpha.6 on KDE, then selection/copy/link confirmation; live streaming still intentionally shows raw Markdown; long transcript scroll/resize, accessibility and attachments remain unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
@@ -325,7 +325,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - validate alpha.5 on physical KDE: large fenced code snippets, copy buttons, selectable text and confirmation-gated HTTP(S) links; keep MarkdownNoHTML threat model; benchmark long transcript afterwards
+  - validate alpha.6 on physical KDE: completed bold/headings/links must render without literal HTML tags; then code copy, text selection and confirmation-gated HTTP(S) links; streaming formatting/performance and long transcript benchmarks remain pending
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

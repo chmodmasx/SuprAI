@@ -149,7 +149,7 @@ Implemented foundation:
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- alpha.5 implemented and CI-verified: safe fenced-code cards with language labels and copy, selectable text and confirmation-gated HTTP(S) links (including a QML component-instantiation test); still required: physical desktop acceptance, realistic 1k-message/long-answer scroll/resize benchmarks, keyboard selection and accessibility, attachments and optional syntax highlighting;
+- alpha.6 fixes alpha.5 completed-text regression: supported TextEdit.RichText for escaped allowlisted markup and PlainText otherwise; a dedicated ProseText/QTextDocument regression test, code cards, copy and confirmed links are CI-verified. Next: physical KDE acceptance and coalesced safe Markdown preview during streaming; also realistic 1k-message/long-answer scroll/resize benchmarks, keyboard selection/accessibility, attachments and optional syntax highlighting;
 - tool cards;
 - approval/clarification component.
 

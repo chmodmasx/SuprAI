@@ -128,9 +128,9 @@ introduced by rendering.
 CI results: 12/12 CTest including native MessageBubble QML instantiation,
 plus packaged AppImage XCB and Wayland launch, main run 38185449542.
 
-## Alpha.6 correction (CI pending)
+## Alpha.6 correction (CI verified, physical KDE acceptance pending)
 
-The first physical KDE test of Alpha.5 showed HTML-format instructions (`<b>`, `<br/>`, entities) as literal text because `TextEdit.StyledText` is **not** a supported `TextEdit` format (only `Text` supports it). For selectable `TextEdit`, the generated allowlisted C++ output must use `TextEdit.RichText`; streaming/user/raw fallback remains `TextEdit.PlainText`. HTML from the model continues to be escaped and images omitted before any rich parser sees them. The new `ProseText.qml` isolates the selectable rich-text presentation; Qt tests instantiate that real component and examine its `QQuickTextDocument` plain-text projection as well as the streaming PlainText branch. This catches regressions a simple empty-window/QML creation test could not detect. No direct model Markdown/HTML reaches `RichText`.
+The first physical KDE test of Alpha.5 showed HTML-format instructions (`<b>`, `<br/>`, entities) as literal text because `TextEdit.StyledText` is **not** a supported `TextEdit` format (only `Text` supports it). For selectable `TextEdit`, the generated allowlisted C++ output must use `TextEdit.RichText`; streaming/user/raw fallback remains `TextEdit.PlainText`. HTML from the model continues to be escaped and images omitted before any rich parser sees them. The new `ProseText.qml` isolates the selectable rich-text presentation; Qt tests instantiate that real component and examine its `QQuickTextDocument` plain-text projection as well as the streaming PlainText branch. The alpha.6 PR and main workflows passed 12/12 CTest and packaged XCB/Wayland launches (38190737952, 38190737949, 38190896933). This proves the markup renders correctly in Qt; KDE visual and link/copy user acceptance remain open. This catches regressions a simple empty-window/QML creation test could not detect. No direct model Markdown/HTML reaches `RichText`.
 
 Still unverified: real physical KDE/GNOME selection/copy/link UX, 1k-message
 virtualization and long-response resizing/scroll benchmarks, keyboard

@@ -6,7 +6,7 @@ SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface
 
 **Status: functional modular prototype / M1 in progress.**
 
-Alpha.5 passed its original CI but KDE physical validation exposed that prose rendered literal generated HTML tags: TextEdit.StyledText was not a supported format. Alpha.6 corrects the text format to explicit RichText for **only sanitized C++-generated markup**, retains PlainText for raw streams and adds an actual QTextDocument output regression test. Alpha.6 CI/desktop verification is pending. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+Alpha.5 passed its original CI but KDE physical validation exposed that prose rendered literal generated HTML tags: TextEdit.StyledText was not a supported format. Alpha.6 corrects the text format to explicit RichText for **only sanitized C++-generated markup**, retains PlainText for raw streams and adds an actual QTextDocument output regression test. Alpha.6 passed 12/12 CTest including actual ProseText QTextDocument rendering, as well as packaged XCB/Wayland AppImage smoke. Physical KDE visual verification remains open. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
 
 ## Current prototype
 
@@ -112,7 +112,7 @@ The authenticated test **only runs when repository Actions secret `NINFER_API_KE
 
 The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
 
-## Text rendering (alpha.6 candidate)
+## Text rendering (alpha.6)
 
 Completed assistant messages now have a bounded `messageBlocks` presentation role: safe styled prose plus explicit fenced-code cards, selectable read-only text, monospace code, code-language labels and copy actions. Inline HTTP(S) links are generated from validated Markdown destinations, **never activated by rendering**; clicking opens a confirmation showing the full destination before QDesktopServices opens the browser. Non-HTTP(S), credential-bearing and malformed links remain inert, with destinations visible. Model-provided HTML/images are not loaded. Streaming and failed/cancelled messages remain plain text, and very large messages safely fall back to non-parsed text.
 
