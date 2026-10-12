@@ -77,26 +77,15 @@ Item {
     Component {
         id: proseSegment
 
-        TextEdit {
-            objectName: "proseText"
+        ProseText {
             width: parent.width
-            text: parent.segment.formatted
-                  + (root.streaming ? " ▋"
-                     : root.messageState === "cancelled" ? " (cancelado)"
-                     : root.messageState === "failed" ? " (error)" : "")
-            // TextEdit supports RichText, not Text.StyledText. Only C++-generated
-            // allowlisted/escaped markup reaches this branch; raw user/stream
-            // content remains explicitly PlainText.
-            textFormat: (root.messageBlocks && root.messageBlocks.length > 0)
-                        || root.displayStyled
-                        ? TextEdit.RichText : TextEdit.PlainText
+            formatted: parent.segment.formatted
+            styled: (root.messageBlocks && root.messageBlocks.length > 0)
+                    || root.displayStyled
+            streaming: root.streaming
+            messageState: root.messageState
             color: root.foregroundColor
-            font.pixelSize: 14
-            readOnly: true
-            selectByMouse: true
-            selectByKeyboard: true
-            wrapMode: TextEdit.Wrap
-            onLinkActivated: function(url) { root.externalLinkRequested(url) }
+            onExternalLinkRequested: function(url) { root.externalLinkRequested(url) }
         }
     }
 

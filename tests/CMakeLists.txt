@@ -145,7 +145,8 @@ set_tests_properties(app_settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscr
 # Real QML instantiation test: empty-window smoke alone never creates delegates.
 add_executable(tst_message_bubble tst_message_bubble.cpp)
 target_compile_definitions(tst_message_bubble PRIVATE
-    SUPRAI_MESSAGE_BUBBLE_FILE="${CMAKE_SOURCE_DIR}/src/qml/MessageBubble.qml")
+    SUPRAI_MESSAGE_BUBBLE_FILE="${CMAKE_SOURCE_DIR}/src/qml/MessageBubble.qml"
+    SUPRAI_PROSE_TEXT_FILE="${CMAKE_SOURCE_DIR}/src/qml/ProseText.qml")
 target_link_libraries(tst_message_bubble PRIVATE
     Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets Qt6::Test)
 add_test(NAME message_bubble COMMAND tst_message_bubble)

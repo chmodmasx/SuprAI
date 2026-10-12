@@ -44,11 +44,18 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(item->implicitHeight() > 30, 3000);
         QVERIFY2(component.errors().isEmpty(), qPrintable(component.errorString()));
 
-        // A component can instantiate successfully but render HTML markup
-        // literally. Assert the actual QTextDocument content, not only QML
-        // construction or the model's generated markup.
-        QObject *prose = instance->findChild<QObject *>(QStringLiteral("proseText"));
-        QTRY_VERIFY_WITH_TIMEOUT(prose, 3000);
+        // Probe the exact selectable prose component independently rather than
+        // relying on private QObject parenting of Repeater/Loader children.
+        QQmlComponent proseComponent(&engine, QUrl::fromLocalFile(
+            QStringLiteral(SUPRAI_PROSE_TEXT_FILE)));
+        QVERIFY2(proseComponent.isReady(), qPrintable(proseComponent.errorString()));
+
+        QScopedPointer<QObject> prose(proseComponent.createWithInitialProperties({
+            {QStringLiteral("formatted"),
+             QStringLiteral("Hola <b>mundo</b><br/>Un &amp; dos <i>cursiva</i>")},
+            {QStringLiteral("styled"), true},
+        }));
+        QVERIFY2(prose, qPrintable(proseComponent.errorString()));
         QCOMPARE(prose->property("textFormat").toInt(), int(Qt::RichText));
         const auto quickDocument =
             prose->property("textDocument").value<QQuickTextDocument *>();
@@ -59,6 +66,18 @@ private slots:
         QVERIFY(!rendered.contains(QStringLiteral("<br")));
         QVERIFY(prose->property("readOnly").toBool());
         QVERIFY(prose->property("selectByMouse").toBool());
+
+        QScopedPointer<QObject> streaming(proseComponent.createWithInitialProperties({
+            {QStringLiteral("formatted"), QStringLiteral("**sin procesar**")},
+            {QStringLiteral("styled"), false},
+            {QStringLiteral("streaming"), true},
+        }));
+        QVERIFY2(streaming, qPrintable(proseComponent.errorString()));
+        QCOMPARE(streaming->property("textFormat").toInt(), int(Qt::PlainText));
+        auto *streamDoc = streaming->property("textDocument").value<QQuickTextDocument *>();
+        QVERIFY(streamDoc);
+        QCOMPARE(streamDoc->textDocument()->toPlainText(),
+                 QStringLiteral("**sin procesar** ▋"));
     }
 };
 
