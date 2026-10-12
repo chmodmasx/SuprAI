@@ -145,6 +145,8 @@ add_library(suprai_ui STATIC
     modules/ui/src/SafeMarkdownRenderer.cpp
     modules/ui/src/MarkdownBlocks.h
     modules/ui/src/MarkdownBlocks.cpp
+    modules/ui/src/MarkdownStructures.h
+    modules/ui/src/MarkdownStructures.cpp
 )
 target_include_directories(suprai_ui
     PUBLIC
@@ -200,6 +202,8 @@ qt_add_qml_module(suprai
         qml/MessageBubble.qml
         qml/CopyFeedbackButton.qml
         qml/ProseText.qml
+        qml/MarkdownTable.qml
+        qml/MarkdownQuote.qml
 )
 
 target_link_libraries(suprai
