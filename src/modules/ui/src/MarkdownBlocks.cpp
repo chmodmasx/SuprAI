@@ -32,9 +32,7 @@ QString languageName(const QString &info)
     return acceptable.match(first).hasMatch() ? first : QStringLiteral("Código");
 }
 
-} // namespace
-
-QVariantList safeMarkdownBlocks(const QString &markdown)
+QVariantList parseMarkdownBlocks(const QString &markdown, bool preview)
 {
     // Hard ceiling both on render cost and the number of QML delegates.
     constexpr qsizetype kMaxLength = 65536;
@@ -72,8 +70,20 @@ QVariantList safeMarkdownBlocks(const QString &markdown)
             ++close;
         }
         if (close >= lines.size()) {
-            proseLines.append(lines.at(index++));
-            continue;
+            if (!preview) {
+                proseLines.append(lines.at(index++));
+                continue;
+            }
+            if (!proseLines.isEmpty()) {
+                blocks.append(prose(proseLines.join(QLatin1Char('\n'))));
+                proseLines.clear();
+            }
+            QStringList tail;
+            for (qsizetype line = index + 1; line < lines.size(); ++line) {
+                tail.append(lines.at(line));
+            }
+            blocks.append(code(tail.join(QLatin1Char('\n')), languageName(info)));
+            return blocks.size() > kMaxBlocks ? QVariantList{} : blocks;
         }
 
         if (!proseLines.isEmpty()) {
@@ -93,7 +103,19 @@ QVariantList safeMarkdownBlocks(const QString &markdown)
         blocks.append(prose(proseLines.join(QLatin1Char('\n'))));
     }
     if (blocks.isEmpty()) blocks.append(prose(markdown));
-    return blocks;
+    return blocks.size() > kMaxBlocks ? QVariantList{} : blocks;
+}
+
+} // namespace
+
+QVariantList safeMarkdownBlocks(const QString &markdown)
+{
+    return parseMarkdownBlocks(markdown, false);
+}
+
+QVariantList safeStreamingMarkdownBlocks(const QString &markdown)
+{
+    return parseMarkdownBlocks(markdown, true);
 }
 
 } // namespace suprai::ui::internal
