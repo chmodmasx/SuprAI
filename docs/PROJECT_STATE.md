@@ -255,7 +255,7 @@ decisions:
   - distinct ConversationItemCompleted/ConversationItemStopped events preserve completed/failed/cancelled stream semantics, including terminal-write failures (CI verified)
   - transcript projection exposes explicit messageState and preserves failure/cancellation across streaming completion
   - initial safe Markdown display for completed assistant messages is merged into main; Qt MarkdownNoHTML and allowlisted StyledText only
-  - raw model HTML/anchors/images never reach rich QML; streaming and oversized replies remain plain text, with no per-token Markdown reparse
+  - raw model HTML/images never reach rich QML; only sanitized generated HTTP(S) anchors can open on explicit click; streaming and oversized replies remain plain text, with no per-token Markdown reparse
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.6 supersedes alpha.5 due to literal-markup regression. Verify alpha.6 on KDE, then selection/copy/link confirmation; live streaming still intentionally shows raw Markdown; long transcript scroll/resize, accessibility and attachments remain unverified
+  - alpha.6 physical KDE confirmed Markdown formatting, code blocks and code copy but no visual feedback; external link confirmation worked yet modal theme was unreadable/unwanted. Alpha.7 candidate removes the modal while retaining C++ URL validation, shows fixed-width copy feedback and adds heading/task/strike improvements; CI and KDE acceptance pending. Live streaming still intentionally shows raw Markdown; long transcript scroll/resize, accessibility and attachments remain unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
@@ -325,7 +325,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - validate alpha.6 on physical KDE: completed bold/headings/links must render without literal HTML tags; then code copy, text selection and confirmation-gated HTTP(S) links; streaming formatting/performance and long transcript benchmarks remain pending
+  - validate alpha.7 on physical KDE: fixed-width 'Copiar' -> '✓ Copiado' feedback without layout shift, HTTP(S) opens on one click without modal, heading H1–H6 hierarchy, strike and checkbox markers; streaming formatting/performance and long transcript benchmarks remain pending
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

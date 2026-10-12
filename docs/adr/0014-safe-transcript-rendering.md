@@ -115,9 +115,10 @@ never executes on click.
 
 `SafeMarkdownRenderer` may now generate only strictly validated absolute
 HTTP(S) anchors (no embedded credentials). It still discards images and
-model-supplied HTML. Link clicks are intercepted, displayed in a confirmation
-dialog including the full URL, and revalidated by `ChatController` immediately
-before user-invoked QDesktopServices activation. Unsafe schemes remain inert.
+model-supplied HTML. From alpha.7, clicking a generated HTTP(S) anchor
+invokes ChatController directly, without an additional modal; C++ still
+validates the destination scheme/host/userinfo before QDesktopServices opens
+the browser. Rendering does not activate links. Unsafe schemes remain inert.
 
 Fences require a matching close; unmatched markers remain styled prose. The
 existing 65,536 UTF-16 limit and a maximum of 80 presentation blocks bound
@@ -136,3 +137,21 @@ Still unverified: real physical KDE/GNOME selection/copy/link UX, 1k-message
 virtualization and long-response resizing/scroll benchmarks, keyboard
 accessibility, attachments and syntax highlighting. Those remain open; do not
 mark M2 rendering complete based solely on CI.
+
+## Alpha.7 UX refinement (CI and KDE acceptance pending)
+
+- Introduce a reusable `CopyFeedbackButton.qml` with a fixed implicit width
+  and copy-state reset after 1.8 seconds or upon delegate content replacement.
+  The block action is labeled **Copiar**, switches to **✓ Copiado**, and does
+  not resize or shift the code header. The response copy action shares it.
+- External links open with a single intentional user click, with no modal or
+  confirmation dialog. The existing scheme/host/credential allowlist is still
+  enforced in C++ and the source document cannot trigger a navigation by
+  rendering alone. This is a convenience choice, not a promise that remote
+  websites are trustworthy.
+- QTextDocument's GitHub Markdown dialect enables native strike/task markers.
+  Only generated, fixed-size HTML span styles are added for heading hierarchy;
+  task markers use noninteractive checkbox glyphs (not executable controls).
+  Model-provided raw HTML/images remain untrusted and disabled.
+- Still open: tables, blockquote cards, optional ==highlight==, larger
+  formatted streaming, long-transcript and keyboard accessibility proof.
