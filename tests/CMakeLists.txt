@@ -147,7 +147,9 @@ add_executable(tst_message_bubble tst_message_bubble.cpp)
 target_compile_definitions(tst_message_bubble PRIVATE
     SUPRAI_MESSAGE_BUBBLE_FILE="${CMAKE_SOURCE_DIR}/src/qml/MessageBubble.qml"
     SUPRAI_PROSE_TEXT_FILE="${CMAKE_SOURCE_DIR}/src/qml/ProseText.qml"
-    SUPRAI_COPY_BUTTON_FILE="${CMAKE_SOURCE_DIR}/src/qml/CopyFeedbackButton.qml")
+    SUPRAI_COPY_BUTTON_FILE="${CMAKE_SOURCE_DIR}/src/qml/CopyFeedbackButton.qml"
+    SUPRAI_MARKDOWN_TABLE_FILE="${CMAKE_SOURCE_DIR}/src/qml/MarkdownTable.qml"
+    SUPRAI_MARKDOWN_QUOTE_FILE="${CMAKE_SOURCE_DIR}/src/qml/MarkdownQuote.qml")
 target_link_libraries(tst_message_bubble PRIVATE
     Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Widgets Qt6::Test)
 add_test(NAME message_bubble COMMAND tst_message_bubble)
