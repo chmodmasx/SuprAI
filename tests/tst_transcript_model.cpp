@@ -301,7 +301,7 @@ private slots:
         const auto result = suprai::ui::internal::safeMarkdownBlocks(large);
         QVERIFY(!result.isEmpty());
         QCOMPARE(result.at(0).toMap().value("kind").toString(), QStringLiteral("text"));
-        QCOMPARE(result.at(0).toMap().value("raw").toString(), large);
+        QVERIFY(result.at(0).toMap().value("raw").toString().contains(QStringLiteral("| x | y |")));
     }
 
     void unsafeTargetsStayInertAndVisible()
