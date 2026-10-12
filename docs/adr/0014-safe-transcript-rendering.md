@@ -103,7 +103,7 @@ A private SafeMarkdownRenderer owned by suprai_ui now:
 - Adds security and large-message boundary tests without any new third-party
   runtime or WebEngine dependency.
 
-## Alpha.5 presentation extension (CI verified, physical validation pending)
+## Alpha.5 presentation extension (CI passed, physical rendering regression found)
 
 `MarkdownBlocks` transforms only bounded, completed assistant messages into
 safe prose and fenced-code segment maps; `TranscriptModel` exposes
@@ -127,6 +127,10 @@ introduced by rendering.
 
 CI results: 12/12 CTest including native MessageBubble QML instantiation,
 plus packaged AppImage XCB and Wayland launch, main run 38185449542.
+
+## Alpha.6 correction (CI pending)
+
+The first physical KDE test of Alpha.5 showed HTML-format instructions (`<b>`, `<br/>`, entities) as literal text because `TextEdit.StyledText` is **not** a supported `TextEdit` format (only `Text` supports it). For selectable `TextEdit`, the generated allowlisted C++ output must use `TextEdit.RichText`; streaming/user/raw fallback remains `TextEdit.PlainText`. HTML from the model continues to be escaped and images omitted before any rich parser sees them. The new Qt test examines the actual `QQuickTextDocument` plain-text projection to catch future regressions that simple QML creation could not detect. No direct model Markdown/HTML reaches `RichText`.
 
 Still unverified: real physical KDE/GNOME selection/copy/link UX, 1k-message
 virtualization and long-response resizing/scroll benchmarks, keyboard

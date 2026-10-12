@@ -1,6 +1,8 @@
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QQuickItem>
+#include <QQuickTextDocument>
+#include <QTextDocument>
 #include <QScopedPointer>
 #include <QTest>
 #include <QVariantMap>
@@ -18,7 +20,7 @@ private slots:
 
         QVariantList segments{
             QVariantMap{{QStringLiteral("kind"), QStringLiteral("text")},
-                        {QStringLiteral("formatted"), QStringLiteral("Hola <b>mundo</b>")}},
+                        {QStringLiteral("formatted"), QStringLiteral("Hola <b>mundo</b><br/>Un &amp; dos <i>cursiva</i>")}},
             QVariantMap{{QStringLiteral("kind"), QStringLiteral("code")},
                         {QStringLiteral("language"), QStringLiteral("cpp")},
                         {QStringLiteral("raw"), QStringLiteral("int answer = 42;")}},
@@ -41,6 +43,22 @@ private slots:
         item->setWidth(950);
         QTRY_VERIFY_WITH_TIMEOUT(item->implicitHeight() > 30, 3000);
         QVERIFY2(component.errors().isEmpty(), qPrintable(component.errorString()));
+
+        // A component can instantiate successfully but render HTML markup
+        // literally. Assert the actual QTextDocument content, not only QML
+        // construction or the model's generated markup.
+        QObject *prose = instance->findChild<QObject *>(QStringLiteral("proseText"));
+        QTRY_VERIFY_WITH_TIMEOUT(prose, 3000);
+        QCOMPARE(prose->property("textFormat").toInt(), int(Qt::RichText));
+        const auto quickDocument =
+            prose->property("textDocument").value<QQuickTextDocument *>();
+        QVERIFY(quickDocument);
+        const QString rendered = quickDocument->textDocument()->toPlainText();
+        QCOMPARE(rendered, QStringLiteral("Hola mundo\nUn & dos cursiva"));
+        QVERIFY(!rendered.contains(QStringLiteral("<b>")));
+        QVERIFY(!rendered.contains(QStringLiteral("<br")));
+        QVERIFY(prose->property("readOnly").toBool());
+        QVERIFY(prose->property("selectByMouse").toBool());
     }
 };
 
