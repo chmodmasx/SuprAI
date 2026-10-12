@@ -3,12 +3,12 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: c7283d21e10e83d963cc7d6d72ebc1ff8173fbbe
-last_verified_code_commit: 5bacb23ba7ecca7bfc4aaae45564c5045c59593a
-verified_pr_appimage_run: 38195942615
-verified_pr_build_run: 38195942606
-verified_release_appimage_run: 38196166495
-verified_main_build_run: 38196166448
+last_verified_commit: caca3fccc69fcb2686b3db70a9a0bb4625d785ee
+last_verified_code_commit: caca3fccc69fcb2686b3db70a9a0bb4625d785ee
+verified_pr_appimage_run: 38199855478
+verified_pr_build_run: 38199855456
+verified_release_appimage_run: 38200060385
+verified_main_build_run: 38200060155
 verified_live_ninfer_run: 38162535283
 
 working:
@@ -27,7 +27,7 @@ working:
   - physical KDE/X11 SuprAI AppImage smoke succeeded with NInfer: text streaming, multi-turn context, SQLite restoration after restart and post-restart context were observed on 2026-10-11
   - externally hosted NInfer test endpoint is configured for dedicated GitHub Actions remote smoke; public health, authenticated streaming and API-level two-turn context passed on Actions run 38161226683
   - C++ NativeSuprAIRuntime remote NInfer authenticated smoke passed with actual streaming, SQLite restart, and canonical two-turn context (GitHub Actions 38162535283; 1/1 tests PASS)
-  - immutable alpha.7 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.7; 12/12 CTest plus packaged XCB/Wayland CI PASS (run 38196166495); earlier releases remain immutable
+  - immutable alpha.8 AppImage published at https://github.com/chmodmasx/SuprAI/releases/tag/v0.1.0-alpha.8; 12/12 CTest plus packaged XCB/Wayland CI PASS (runs 38200060155 and 38200060385); previous releases remain immutable
   - remote NInfer public HTTPS /health returned PASS from GitHub-hosted Ubuntu 24.04 on 2026-10-11 (Actions run 38161054774)
   - initial portable AppImage preview is packaged via pinned appimagetool with SHA-256 checking
   - GitHub Actions passed packaged X11/XCB and Wayland smoke tests for preview PR head a580d4a
@@ -254,8 +254,8 @@ decisions:
   - SQLite writer reopening and restoration across worker restart are CI tested
   - distinct ConversationItemCompleted/ConversationItemStopped events preserve completed/failed/cancelled stream semantics, including terminal-write failures (CI verified)
   - transcript projection exposes explicit messageState and preserves failure/cancellation across streaming completion
-  - alpha.7 safe completed Markdown uses Qt MarkdownNoHTML, allowlisted generated RichText, structural code cards and validated HTTP(S) anchors; new alpha.8 candidate adds a coalesced bounded live preview
-  - raw model HTML/images never reach rich QML; only validated HTTP(S) anchors open on explicit click; alpha.8 candidate coalesces streaming Markdown previews every 90 ms for changed rows up to 32,768 UTF-16 units; oversize and failed/cancelled stay plain
+  - alpha.7 safe completed Markdown uses Qt MarkdownNoHTML, allowlisted generated RichText, structural code cards and validated HTTP(S) anchors; alpha.8 adds a coalesced bounded live preview; alpha.9 candidate adds structured tables/quotes
+  - raw model HTML/images never reach rich QML; only validated HTTP(S) anchors open on explicit click; alpha.8 coalesces streaming Markdown previews every 90 ms for changed rows up to 32,768 UTF-16 units; oversize and failed/cancelled stay plain
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.6 physical KDE confirmed Markdown formatting and code copy; alpha.7 adds copy feedback, direct validated HTTP(S) links, heading/task/strike formatting with CI PASS, physical acceptance pending. Alpha.8 candidate introduces streaming previews and open-code-fence cards; 1k-message scroll/resize, accessibility and attachments remain unverified
+  - alpha.6 physical KDE confirmed Markdown formatting and code copy; alpha.7 adds copy feedback, direct validated HTTP(S) links, heading/task/strike formatting with CI PASS, physical acceptance pending. Alpha.8 is published with streaming previews and open-code-fence cards; alpha.9 candidate adds table and quote cards; 1k-message scroll/resize, accessibility and attachments remain unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
@@ -325,7 +325,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - validate alpha.7 copy/link/heading features and alpha.8 live Markdown/open fence preview on physical KDE after release; performance benchmarks and 1k-message scrolling remain pending
+  - validate alpha.8 streaming/copy/link features and candidate alpha.9 table/quote cards on physical KDE after release; performance benchmarks and 1k-message scrolling remain pending
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

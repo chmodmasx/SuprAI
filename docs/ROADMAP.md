@@ -144,12 +144,13 @@ Implemented foundation:
 - C++ QAbstractListModel transcript projection;
 - bounded completed assistant Markdown and coalesced live previews use generated allowlisted Qt RichText only, without model HTML or images; generated HTTP(S) links require a user click and strict C++ validation;
 - streaming preview is refreshed at most every 90 ms for changed rows and is restricted to 32,768 UTF-16 units; unfinished fences show code cards, while oversized live streams, inputs and failed/cancelled items remain plain; completed Markdown is capped at 65,536 UTF-16 units;
+- alpha.9 candidate: bounded native pipe tables and blockquotes in independent QML components, escaped rich-cell content, horizontal scroll, explicit raw-table copy and malformed/oversize fallback; QML/CI and desktop proof must be tracked separately;
 - first durable turn-admission write path through PersistencePort.
 
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- alpha.7 shipped with CI PASS: Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network). Physical KDE acceptance still pending. Next: tables, quotes, optional highlight, benchmarks of incremental-block vs coalesced preview and 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
+- alpha.7 shipped with CI PASS: Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network). Physical KDE acceptance still pending. Next: verify alpha.9 structured tables/quotes, optional highlight, benchmarks of incremental-block vs coalesced preview and 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
 - tool cards;
 - approval/clarification component.
 

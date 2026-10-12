@@ -211,6 +211,99 @@ private slots:
             suprai::ui::internal::TranscriptModel::TextRole).toString(), markdown);
     }
 
+
+    void separatesTablesQuotesAndCodeWithoutChangingRawHistory()
+    {
+        const QString markdown = QStringLiteral(
+            "Texto previo\n"
+            "| Modelo | Velocidad |\n"
+            "|:---|---:|\n"
+            "| A | 50 t/s |\n"
+            "| B | **80** t/s |\n"
+            "\n> Una **cita** importante\n"
+            "> con otra línea\n"
+            "\n```cpp\nint x = 42;\n```\n");
+        const auto blocks = suprai::ui::internal::safeMarkdownBlocks(markdown);
+        QCOMPARE(blocks.size(), 4);
+        QCOMPARE(blocks.at(0).toMap().value("kind").toString(), QStringLiteral("text"));
+        const auto table = blocks.at(1).toMap();
+        QCOMPARE(table.value("kind").toString(), QStringLiteral("table"));
+        QCOMPARE(table.value("headers").toList().size(), 2);
+        QCOMPARE(table.value("rows").toList().size(), 2);
+        QCOMPARE(table.value("alignment").toList().at(1).toString(), QStringLiteral("right"));
+        const auto lastRow = table.value("rows").toList().at(1).toList();
+        QVERIFY(lastRow.at(1).toMap().value("formatted").toString()
+            .contains(QStringLiteral("<b>80</b>")));
+        QCOMPARE(blocks.at(2).toMap().value("kind").toString(), QStringLiteral("quote"));
+        QVERIFY(blocks.at(2).toMap().value("formatted").toString()
+            .contains(QStringLiteral("<b>cita</b>")));
+        QCOMPARE(blocks.at(3).toMap().value("kind").toString(), QStringLiteral("code"));
+
+        suprai::ui::internal::TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant,
+            markdown, suprai::domain::ConversationItemState::Completed,
+            QStringLiteral("structured")));
+        QCOMPARE(model.data(model.index(0),
+            suprai::ui::internal::TranscriptModel::TextRole).toString(), markdown);
+    }
+
+    void keepsEscapedPipesAndInlineCodeInsideCells()
+    {
+        const QString tick(QChar(0x60));
+        const QString input = QStringLiteral(
+            "| Izquierda | Derecha |\n"
+            "|---|---|\n"
+            "| uno \\| dos | ") + tick + QStringLiteral("x|y") + tick
+            + QStringLiteral(" |\n");
+        const auto blocks = suprai::ui::internal::safeMarkdownBlocks(input);
+        QCOMPARE(blocks.size(), 1);
+        const auto table = blocks.at(0).toMap();
+        QCOMPARE(table.value("kind").toString(), QStringLiteral("table"));
+        const auto row = table.value("rows").toList().at(0).toList();
+        QCOMPARE(row.size(), 2);
+        QCOMPARE(row.at(0).toMap().value("raw").toString(),
+                 QStringLiteral("uno \\| dos"));
+        QCOMPARE(row.at(1).toMap().value("raw").toString(), tick + QStringLiteral("x|y") + tick);
+    }
+
+    void unsafeTableAndQuoteContentNeverBecomesResourceMarkup()
+    {
+        const QString source = QStringLiteral(
+            "| Acción | Vista |\n"
+            "|---|---|\n"
+            "| [malo](javascript:alert(1)) | ![pixel](https://example.org/t.png) |\n"
+            "\n> <script>mal</script> [seguro](https://example.org/docs)");
+        const auto blocks = suprai::ui::internal::safeStreamingMarkdownBlocks(source);
+        QCOMPARE(blocks.size(), 2);
+        const auto table = blocks.at(0).toMap();
+        const auto row = table.value("rows").toList().at(0).toList();
+        for (const QVariant &cell : row) {
+            const QString formatted = cell.toMap().value("formatted").toString();
+            QVERIFY(!formatted.contains(QStringLiteral("<img"), Qt::CaseInsensitive));
+            QVERIFY(!formatted.contains(QStringLiteral("<script"), Qt::CaseInsensitive));
+            QVERIFY(!formatted.contains(QStringLiteral("href=\"javascript"), Qt::CaseInsensitive));
+        }
+        const QString quote = blocks.at(1).toMap().value("formatted").toString();
+        QVERIFY(!quote.contains(QStringLiteral("<script"), Qt::CaseInsensitive));
+        QVERIFY(quote.contains(QStringLiteral("<a href=\"https://example.org/docs\"")));
+    }
+
+    void rejectsMalformedAndOversizedTablesWithoutDroppingSource()
+    {
+        const QString bad = QStringLiteral("A | B\n---|not-a-rule\none|two");
+        const auto badBlocks = suprai::ui::internal::safeMarkdownBlocks(bad);
+        QCOMPARE(badBlocks.size(), 1);
+        QCOMPARE(badBlocks.first().toMap().value("kind").toString(),
+                 QStringLiteral("text"));
+        const QString large = QStringLiteral("| A | B |\n|---|---|\n")
+                              + QStringLiteral("| x | y |\n").repeated(61);
+        const auto result = suprai::ui::internal::safeMarkdownBlocks(large);
+        QVERIFY(!result.isEmpty());
+        QCOMPARE(result.at(0).toMap().value("kind").toString(), QStringLiteral("text"));
+        QVERIFY(result.at(0).toMap().value("raw").toString().contains(QStringLiteral("| x | y |")));
+    }
+
     void unsafeTargetsStayInertAndVisible()
     {
         using suprai::ui::internal::isAllowedExternalUrl;

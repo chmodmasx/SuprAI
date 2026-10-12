@@ -72,16 +72,19 @@ Item {
                         ? root.messageBlocks.length - 1 : 0)
                     width: content.width
                     height: item ? item.implicitHeight : 0
-                    sourceComponent: modelData.kind === "code" ? codeSegment : proseSegment
+                    sourceComponent: modelData.kind === "code" ? codeSegment
+                                     : modelData.kind === "table" ? tableSegment
+                                     : modelData.kind === "quote" ? quoteSegment
+                                     : proseSegment
                 }
             }
 
-            // The streaming cursor belongs to the unfinished code tail only;
-            // preceding prose segments must not each show a cursor.
+            // Prose owns its own cursor; structured tails show one below
+            // the last table/quote/code component, never after every block.
             Text {
                 visible: root.streaming && root.messageBlocks
                          && root.messageBlocks.length > 0
-                         && root.messageBlocks[root.messageBlocks.length - 1].kind === "code"
+                         && root.messageBlocks[root.messageBlocks.length - 1].kind !== "text"
                 text: "▋"
                 font.pixelSize: 14
                 color: root.foregroundColor
@@ -101,6 +104,27 @@ Item {
             messageState: root.messageState && parent.isLastSegment
                           ? root.messageState : ""
             color: root.foregroundColor
+            onExternalLinkRequested: function(url) { root.externalLinkRequested(url) }
+        }
+    }
+
+    Component {
+        id: tableSegment
+
+        MarkdownTable {
+            width: parent.width
+            tableData: parent.segment
+            onCopyRequested: function(value) { root.copyRequested(value) }
+            onExternalLinkRequested: function(url) { root.externalLinkRequested(url) }
+        }
+    }
+
+    Component {
+        id: quoteSegment
+
+        MarkdownQuote {
+            width: parent.width
+            formatted: parent.segment.formatted
             onExternalLinkRequested: function(url) { root.externalLinkRequested(url) }
         }
     }

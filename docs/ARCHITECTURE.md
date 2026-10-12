@@ -243,6 +243,11 @@ text immediately; a UI-only 90 ms coalescer projects previews for affected
 rows up to 32,768 UTF-16 units. Unfinished fences are code cards, not raw
 HTML. Messages above the preview limit, unsafe resources and failed/cancelled
 turns remain plain; terminal completion projects up to 65,536 UTF-16 units.
+Safe structural presentation is a separate UI concern: MarkdownStructures
+recognizes bounded pipe tables and blockquotes outside fenced code. QML
+MarkdownTable and MarkdownQuote components render only escaped/generated
+RichText through ProseText. No provider, agent runtime, canonical item or
+persistence schema changes are needed to add/remove these widgets.
 This does not close the performance/desktop gates in ADR-0014.
 
 Future modules (tools/context/memory/MCP/persistence/skills/platform/services) are added under the same public-contract/private-implementation rule when their milestone begins.
