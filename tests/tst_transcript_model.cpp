@@ -39,6 +39,79 @@ private slots:
             false);
     }
 
+    void streamsSafeMarkdownOnCoalescedUiUpdates()
+    {
+        using suprai::ui::internal::TranscriptModel;
+        TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant, {},
+            suprai::domain::ConversationItemState::Streaming,
+            QStringLiteral("preview")));
+        QSignalSpy changes(&model, &QAbstractItemModel::dataChanged);
+        model.appendDelta(QStringLiteral("preview"), QStringLiteral("# Título\\n"));
+        model.appendDelta(QStringLiteral("preview"), QStringLiteral("**negrita** "));
+        model.appendDelta(QStringLiteral("preview"), QStringLiteral("![pixel](https://example.org/x.png)"));
+        QCOMPARE(changes.count(), 0); // no synchronous per-token reparse or UI update
+        QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(),
+                 QStringLiteral("# Título\\n**negrita** ![pixel](https://example.org/x.png)"));
+        QTRY_COMPARE_WITH_TIMEOUT(changes.count(), 1, 1500);
+        const auto blocks = model.data(model.index(0), TranscriptModel::MessageBlocksRole).toList();
+        QCOMPARE(blocks.size(), 1);
+        const QString preview = blocks.first().toMap().value("formatted").toString();
+        QVERIFY(preview.contains(QStringLiteral("font-size:26px")));
+        QVERIFY(preview.contains(QStringLiteral("<b>negrita</b>")));
+        QVERIFY(!preview.contains(QStringLiteral("<img"), Qt::CaseInsensitive));
+        QVERIFY(!preview.contains(QStringLiteral("<script"), Qt::CaseInsensitive));
+        QVERIFY(model.data(model.index(0), TranscriptModel::StreamingRole).toBool());
+
+        model.finish(QStringLiteral("preview"));
+        QCOMPARE(model.data(model.index(0), TranscriptModel::StreamingRole).toBool(), false);
+        QVERIFY(!model.data(model.index(0), TranscriptModel::MessageBlocksRole).toList().isEmpty());
+    }
+
+    void openFenceIsShownAsCodeDuringStreaming()
+    {
+        using suprai::ui::internal::TranscriptModel;
+        const QString unfinished = QStringLiteral("Antes **listo**\\n```cpp\\nint n = 2;");
+        const auto completed = suprai::ui::internal::safeMarkdownBlocks(unfinished);
+        QCOMPARE(completed.size(), 1); // strict final projection unchanged
+        const auto preview = suprai::ui::internal::safeStreamingMarkdownBlocks(unfinished);
+        QCOMPARE(preview.size(), 2);
+        QCOMPARE(preview.at(0).toMap().value("kind").toString(), QStringLiteral("text"));
+        QCOMPARE(preview.at(1).toMap().value("kind").toString(), QStringLiteral("code"));
+        QCOMPARE(preview.at(1).toMap().value("language").toString(), QStringLiteral("cpp"));
+        QCOMPARE(preview.at(1).toMap().value("raw").toString(), QStringLiteral("int n = 2;"));
+
+        TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant, {},
+            suprai::domain::ConversationItemState::Streaming, QStringLiteral("fence")));
+        model.appendDelta(QStringLiteral("fence"), unfinished);
+        QTRY_COMPARE_WITH_TIMEOUT(model.data(model.index(0),
+            TranscriptModel::MessageBlocksRole).toList().size(), 2, 1500);
+    }
+
+    void stoppedPreviewReturnsToPlainTextAndCannotResurrect()
+    {
+        using suprai::ui::internal::TranscriptModel;
+        TranscriptModel model;
+        model.append(suprai::domain::makeMessageItem(
+            suprai::domain::ConversationRole::Assistant, {},
+            suprai::domain::ConversationItemState::Streaming, QStringLiteral("stopped")));
+        model.appendDelta(QStringLiteral("stopped"), QStringLiteral("**parcial**"));
+        QTRY_VERIFY_WITH_TIMEOUT(!model.data(model.index(0),
+            TranscriptModel::MessageBlocksRole).toList().isEmpty(), 1500);
+        model.stop(QStringLiteral("stopped"), suprai::domain::ConversationItemState::Failed);
+        QCOMPARE(model.data(model.index(0), TranscriptModel::MessageBlocksRole).toList().size(), 0);
+        QCOMPARE(model.data(model.index(0), TranscriptModel::DisplayTextRole).toString(),
+                 QStringLiteral("**parcial**"));
+        QCOMPARE(model.data(model.index(0), TranscriptModel::StateRole).toString(),
+                 QStringLiteral("failed"));
+        model.appendDelta(QStringLiteral("stopped"), QStringLiteral("rejected"));
+        QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(),
+                 QStringLiteral("**parcial**"));
+    }
+
     void abortedStreamPreservesTerminalFailureState()
     {
         using suprai::domain::ConversationItemState;
