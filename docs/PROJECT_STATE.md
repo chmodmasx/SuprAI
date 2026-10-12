@@ -3,12 +3,12 @@
 ```yaml
 milestone: M1
 status: in_progress_vertical_slice_verified
-last_verified_commit: 6a41226af06a3eb50e7a49d5926fa0d5449a1c3c
-last_verified_code_commit: 6a41226af06a3eb50e7a49d5926fa0d5449a1c3c
-verified_pr_appimage_run: 38190737949
-verified_pr_build_run: 38190737952
-verified_release_appimage_run: 38190896933
-verified_main_build_run: 38190896929
+last_verified_commit: c7283d21e10e83d963cc7d6d72ebc1ff8173fbbe
+last_verified_code_commit: 5bacb23ba7ecca7bfc4aaae45564c5045c59593a
+verified_pr_appimage_run: 38195942615
+verified_pr_build_run: 38195942606
+verified_release_appimage_run: 38196166495
+verified_main_build_run: 38196166448
 verified_live_ninfer_run: 38162535283
 
 working:
@@ -61,7 +61,7 @@ working:
   - current OpenAI Chat adapter explicitly reports Chat supported, unimplemented adapter features unsupported, and reasoning output unknown
   - alpha.3 settings editor is merged and AppImage-published with 11/11 tests passing; bounded /v1/models discovery and endpoint-scoped QtKeychain credentials are implemented; actual KDE wallet storage/recovery is awaiting physical test
   - physical alpha.3 test confirmed model discovery and preference save; alpha.4 clarifies the required restart and fixes Enter/Shift+Enter (CI verified, physical acceptance pending)
-  - alpha.6 corrected the confirmed alpha.5 literal-markup regression: ProseText.qml uses TextEdit.RichText only for escaped allowlisted C++ output, PlainText for raw/streaming; 12/12 CTest including actual QTextDocument text verification PASS; physical KDE presentation acceptance pending
+  - ProseText.qml uses TextEdit.RichText only for escaped allowlisted C++ text, PlainText for raw fallback; QTextDocument interpretation is covered by a component test; alpha.7 physical acceptance remains pending
   - no arbitrary model default; credential-store keys use SHA-256 of endpoint; remote discovery never forwards the prior endpoint bearer; public hosts require HTTPS; real KDE wallet proof pending
   - transparent provider retry is forbidden after observable generation begins
   - provider actual input-token usage feeds conservative future token-budget calibration
@@ -254,8 +254,8 @@ decisions:
   - SQLite writer reopening and restoration across worker restart are CI tested
   - distinct ConversationItemCompleted/ConversationItemStopped events preserve completed/failed/cancelled stream semantics, including terminal-write failures (CI verified)
   - transcript projection exposes explicit messageState and preserves failure/cancellation across streaming completion
-  - initial safe Markdown display for completed assistant messages is merged into main; Qt MarkdownNoHTML and allowlisted StyledText only
-  - raw model HTML/images never reach rich QML; only sanitized generated HTTP(S) anchors can open on explicit click; streaming and oversized replies remain plain text, with no per-token Markdown reparse
+  - alpha.7 safe completed Markdown uses Qt MarkdownNoHTML, allowlisted generated RichText, structural code cards and validated HTTP(S) anchors; new alpha.8 candidate adds a coalesced bounded live preview
+  - raw model HTML/images never reach rich QML; only validated HTTP(S) anchors open on explicit click; alpha.8 candidate coalesces streaming Markdown previews every 90 ms for changed rows up to 32,768 UTF-16 units; oversize and failed/cancelled stay plain
   - target persistence may keep untouched empty chats transient until the first accepted Input
   - raw provider reasoning is never promoted to canonical history merely because the provider exposes it
   - runtime depends on ports/contracts rather than concrete provider/database/platform implementations
@@ -278,7 +278,7 @@ open_questions:
   - exact visual language and component system
   - physical KDE Wayland and GNOME Wayland proof (physical KDE X11/NVIDIA and local NInfer chat + persistence were validated 2026-10-11)
   - exact automated architecture/dependency check beyond CMake target enforcement, if needed
-  - alpha.6 physical KDE confirmed Markdown formatting, code blocks and code copy but no visual feedback; external link confirmation worked yet modal theme was unreadable/unwanted. Alpha.7 removes the modal while retaining C++ URL validation, shows fixed-width copy feedback and adds heading/task/strike improvements; 12/12 CTest and packaged XCB/Wayland PASS, physical KDE acceptance pending. Live streaming still intentionally shows raw Markdown; long transcript scroll/resize, accessibility and attachments remain unverified
+  - alpha.6 physical KDE confirmed Markdown formatting and code copy; alpha.7 adds copy feedback, direct validated HTTP(S) links, heading/task/strike formatting with CI PASS, physical acceptance pending. Alpha.8 candidate introduces streaming previews and open-code-fence cards; 1k-message scroll/resize, accessibility and attachments remain unverified
   - alpha.3 QtKeychain proof on real KDE wallet and GNOME keyring: save, reload after AppImage restart, delete, locked wallet and unavailable backend
   - exact first built-in tool set
   - default persisted permission UX
@@ -325,7 +325,7 @@ next_exact_steps:
   - preserve the now-verified terminal Run transaction and reject unacknowledged assistant completion
   - validate session restoration and provider-independent context rebuild on the actual KDE desktop against NInfer
   - design user-selectable session navigation without replaying interrupted Runs
-  - validate published alpha.7 on physical KDE: fixed-width 'Copiar' -> '✓ Copiado' feedback without layout shift, HTTP(S) opens on one click without modal, heading H1–H6 hierarchy, strike and checkbox markers; streaming formatting/performance and long transcript benchmarks remain pending
+  - validate alpha.7 copy/link/heading features and alpha.8 live Markdown/open fence preview on physical KDE after release; performance benchmarks and 1k-message scrolling remain pending
   - keep RuntimeOrchestrator free of SQL and preserve ACK-before-effect ordering
   - then complete the remaining M2 UI contract before broader M3/tool semantics
 

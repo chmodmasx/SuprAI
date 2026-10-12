@@ -1,158 +1,70 @@
 # ADR-0014: Safe native transcript rendering
 
-Status: partially implemented / acceptance proof in progress
+Status: partially implemented — long-transcript and physical desktop acceptance pending
 Date: 2026-10-06
-Updated: 2026-10-11
+Updated: 2026-10-12
 
-## Problem
+## Problem and boundaries
 
-A long streaming AI transcript stresses:
-- layout;
-- Markdown parsing;
-- variable-height virtualization;
-- selection/copy;
-- code blocks;
-- untrusted links/images;
-- token-by-token updates.
+A streaming AI transcript must support rich text, fenced code, selection, links
+and changing heights without triggering network requests or tying token delivery
+to the speed of QML painting. Model output is untrusted.
 
-Qt Quick can render Markdown directly, but rich/Markdown text may load remote images. Directly feeding untrusted model Markdown into a generic rich-text surface therefore violates SuprAI's no-ambient-network rule.
+The canonical conversation belongs to RuntimeOrchestrator and persistence.
+`suprai_ui` owns only its projected transcript. Presentation never changes
+canonical text, execution state or provider behavior.
 
-## Proposed architecture
+## Current implementation
 
-### Transcript model
+- `TranscriptModel` is a C++ `QAbstractListModel` whose roles expose canonical
+  plain text, terminal state and disposable Markdown presentation blocks.
+- `MarkdownBlocks` splits prose from fenced code; code cards are non-executing,
+  selectable, horizontally scrollable and expose explicit copy actions.
+- `SafeMarkdownRenderer` uses Qt's GitHub Markdown parser with
+  `MarkdownNoHTML`; all text is escaped before emitting a narrow set of
+  generated RichText markup. Model HTML and images never reach the QML parser.
+- Absolute HTTP(S) anchors with a host and without embedded credentials are
+  allowed only from parsed Markdown. A deliberate user click is revalidated
+  by `ChatController` before opening the system browser; no confirmation
+  modal and no ambient navigation occur.
+- `ProseText.qml` uses `TextEdit.RichText` **only** for generated allowlisted
+  presentation, otherwise `TextEdit.PlainText`. The cursor belongs to the
+  final streaming segment; it is not repeated after every prose block.
+- Rendering is synchronous and bounded: at most 65,536 UTF-16 units and
+  80 blocks for final completed assistant messages. Oversized messages,
+  user text and stopped/failed messages stay plain.
+- During an active assistant stream, raw deltas are appended immediately,
+  but `dataChanged` and Markdown preview rebuilds are **coalesced every
+  90 ms** for the affected rows, not emitted or reparsed per token.
+  Live rich previews are bounded to 32,768 UTF-16 units; larger in-progress
+  messages fall back to raw text, while final completion still uses the
+  full 65,536-unit limit. No message is truncated.
+- The streaming parser can show a still-open fenced code block as a code
+  card. Final completion uses the strict matched-fence parser. Terminal
+  completion refreshes the projection immediately; failure or cancellation
+  discards any preview and returns to raw text. Pending timer work cannot
+  resurrect terminated items.
+- The implementation introduces no WebEngine, new runtime dependency,
+  network loader or agent-layer change.
 
-C++ `QAbstractListModel` owns transcript presentation state derived from domain items.
+## Validation requirements
 
-QML `ListView`:
-- `reuseItems: true`;
-- no durable state in delegates;
-- tuned `cacheBuffer`;
-- lightweight delegates;
-- variable-height behavior benchmarked with realistic long conversations.
+Automated tests cover:
+- Markdown safety, untrusted HTML/images/URLs, fenced code and size bounds;
+- QML instantiation and selectable `QTextDocument` rich-text interpretation;
+- deferred/coalesced UI updates, unfinished code fences and terminal cleanup;
+- packaged XCB/Xvfb and Wayland/Weston smoke tests.
 
-### Streaming
+These tests do **not** prove real KDE/GNOME link/copy accessibility or long-run
+smoothness. Physical acceptance of the alpha.7 link/copy improvements and the
+new live preview remain outstanding until tested on a real desktop.
 
-Provider deltas update the runtime model immediately but UI notifications are coalesced to a short frame-oriented interval when semantic ordering permits.
+## Remaining acceptance work
 
-Do not trigger a full transcript rebuild per token.
-
-Benchmark at minimum:
-- 1k messages;
-- very long Markdown answer;
-- long code block;
-- active streaming while scrolling/resizing.
-
-### Markdown
-
-Use a safe Markdown presentation layer.
-
-Required properties:
-- raw HTML disabled/sanitized;
-- remote image loading disabled by default;
-- inline file/image references resolve only through explicit SuprAI attachment resources;
-- link activation is intercepted and routed to explicit OpenURI behavior;
-- no script/web execution;
-- code blocks are explicit components where practical.
-
-Qt's Markdown/CommonMark/GitHub-dialect parser can be reused, but the final renderer must enforce these resource policies.
-
-Do not use Qt WebEngine to render ordinary chat.
-
-### Code blocks
-
-Own component:
-- language label;
-- copy action;
-- horizontal scrolling;
-- monospace font;
-- no execution on click;
-- optional syntax highlighter added only after dependency/performance review.
-
-### Streaming Markdown
-
-Do not assume reparsing an ever-growing full Markdown string per token will scale.
-
-M1/M2 should benchmark:
-A. coalesced full-message Markdown reparse;
-B. completed-block + streaming-tail rendering.
-
-Choose the simpler implementation if it stays within performance targets.
-
-## Acceptance criteria
-
-- no network request caused merely by rendering model Markdown;
-- no WebEngine dependency;
-- stable selection/copy;
-- smooth long transcript scroll;
-- streaming does not produce O(n)-sized UI object churn per token;
-- external links require a user action.
-
-## Implemented M2 slice (2026-10-09)
-
-A private SafeMarkdownRenderer owned by suprai_ui now:
-
-- Parses completed assistant messages using QTextDocument MarkdownNoHTML.
-- Iterates only text fragments, escaping all model-supplied text.
-- Projects to a minimal explicit allowlist of Qt StyledText tags: b, i,
-  font and br. Images become a placeholder; anchors and resource URLs are
-  not emitted. No renderer-initiated network access is expected.
-- Keeps streaming output, user text, failed/cancelled items and output over
-  65,536 UTF-16 code units as plain text.
-- Caches rich text once per completed message; streaming deltas do not parse
-  Markdown. The canonical conversation stays unmodified.
-- Adds security and large-message boundary tests without any new third-party
-  runtime or WebEngine dependency.
-
-## Alpha.5 presentation extension (CI passed, physical rendering regression found)
-
-`MarkdownBlocks` transforms only bounded, completed assistant messages into
-safe prose and fenced-code segment maps; `TranscriptModel` exposes
-`messageBlocks` without modifying canonical message content or rebuilding
-Markdown on every streamed token. QML uses a standalone `MessageBubble.qml`
-with read-only selectable prose/code and bounded vertically scrollable code
-cards, language labels and explicit clipboard actions. Code is plain text and
-never executes on click.
-
-`SafeMarkdownRenderer` may now generate only strictly validated absolute
-HTTP(S) anchors (no embedded credentials). It still discards images and
-model-supplied HTML. From alpha.7, clicking a generated HTTP(S) anchor
-invokes ChatController directly, without an additional modal; C++ still
-validates the destination scheme/host/userinfo before QDesktopServices opens
-the browser. Rendering does not activate links. Unsafe schemes remain inert.
-
-Fences require a matching close; unmatched markers remain styled prose. The
-existing 65,536 UTF-16 limit and a maximum of 80 presentation blocks bound
-synchronous CPU/object churn; oversized messages fall back to plain text.
-No network request, WebEngine, executable code, or HTML source injection is
-introduced by rendering.
-
-CI results: 12/12 CTest including native MessageBubble QML instantiation,
-plus packaged AppImage XCB and Wayland launch, main run 38185449542.
-
-## Alpha.6 correction (CI verified, physical KDE acceptance pending)
-
-The first physical KDE test of Alpha.5 showed HTML-format instructions (`<b>`, `<br/>`, entities) as literal text because `TextEdit.StyledText` is **not** a supported `TextEdit` format (only `Text` supports it). For selectable `TextEdit`, the generated allowlisted C++ output must use `TextEdit.RichText`; streaming/user/raw fallback remains `TextEdit.PlainText`. HTML from the model continues to be escaped and images omitted before any rich parser sees them. The new `ProseText.qml` isolates the selectable rich-text presentation; Qt tests instantiate that real component and examine its `QQuickTextDocument` plain-text projection as well as the streaming PlainText branch. The alpha.6 PR and main workflows passed 12/12 CTest and packaged XCB/Wayland launches (38190737952, 38190737949, 38190896933). This proves the markup renders correctly in Qt; KDE visual and link/copy user acceptance remain open. This catches regressions a simple empty-window/QML creation test could not detect. No direct model Markdown/HTML reaches `RichText`.
-
-Still unverified: real physical KDE/GNOME selection/copy/link UX, 1k-message
-virtualization and long-response resizing/scroll benchmarks, keyboard
-accessibility, attachments and syntax highlighting. Those remain open; do not
-mark M2 rendering complete based solely on CI.
-
-## Alpha.7 UX refinement (CI PASS, physical KDE acceptance pending)
-
-- Introduce a reusable `CopyFeedbackButton.qml` with a fixed implicit width
-  and copy-state reset after 1.8 seconds or upon delegate content replacement.
-  The block action is labeled **Copiar**, switches to **✓ Copiado**, and does
-  not resize or shift the code header. The response copy action shares it.
-- External links open with a single intentional user click, with no modal or
-  confirmation dialog. The existing scheme/host/credential allowlist is still
-  enforced in C++ and the source document cannot trigger a navigation by
-  rendering alone. This is a convenience choice, not a promise that remote
-  websites are trustworthy.
-- QTextDocument's GitHub Markdown dialect enables native strike/task markers.
-  Only generated, fixed-size HTML span styles are added for heading hierarchy;
-  task markers use noninteractive checkbox glyphs (not executable controls).
-  Model-provided raw HTML/images remain untrusted and disabled.
-- CI: 12/12 CTest and packaged AppImage XCB/Wayland launch PASS (run 38196166495); direct browser opening and clipboard interaction still require physical KDE testing.
-- Still open: tables, blockquote cards, optional ==highlight==, larger
-  formatted streaming, long-transcript and keyboard accessibility proof.
+Benchmark both coalesced full-message parsing (current preview) and a
+completed-block + streaming-tail incremental parser, including 1,000+ items,
+long Markdown, long fences, scrolling and pane resize under real inference.
+Choose measured complexity rather than assuming the 90 ms budget ensures
+smoothness. Evaluate tables, quotes, attachments, keyboard accessibility,
+and syntax highlighting as independent UI modules, without adding WebEngine
+to the ordinary chat surface.

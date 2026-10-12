@@ -65,11 +65,26 @@ Item {
                 Loader {
                     id: segmentLoader
                     required property var modelData
+                    required property int index
                     property var segment: modelData
+                    property bool isLastSegment: index === (
+                        root.messageBlocks && root.messageBlocks.length > 0
+                        ? root.messageBlocks.length - 1 : 0)
                     width: content.width
                     height: item ? item.implicitHeight : 0
                     sourceComponent: modelData.kind === "code" ? codeSegment : proseSegment
                 }
+            }
+
+            // The streaming cursor belongs to the unfinished code tail only;
+            // preceding prose segments must not each show a cursor.
+            Text {
+                visible: root.streaming && root.messageBlocks
+                         && root.messageBlocks.length > 0
+                         && root.messageBlocks[root.messageBlocks.length - 1].kind === "code"
+                text: "▋"
+                font.pixelSize: 14
+                color: root.foregroundColor
             }
         }
     }
@@ -82,8 +97,9 @@ Item {
             formatted: parent.segment.formatted
             styled: (root.messageBlocks && root.messageBlocks.length > 0)
                     || root.displayStyled
-            streaming: root.streaming
-            messageState: root.messageState
+            streaming: root.streaming && parent.isLastSegment
+            messageState: root.messageState && parent.isLastSegment
+                          ? root.messageState : ""
             color: root.foregroundColor
             onExternalLinkRequested: function(url) { root.externalLinkRequested(url) }
         }

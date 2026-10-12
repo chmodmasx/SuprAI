@@ -6,7 +6,7 @@ SuprAI is a complete Linux-native AI application: its own Qt Quick/QML interface
 
 **Status: functional modular prototype / M1 in progress.**
 
-Alpha.5 passed its original CI but KDE physical validation exposed that prose rendered literal generated HTML tags: TextEdit.StyledText was not a supported format. Alpha.6 corrects the text format to explicit RichText for **only sanitized C++-generated markup**, retains PlainText for raw streams and adds an actual QTextDocument output regression test. Alpha.6 passed 12/12 CTest including actual ProseText QTextDocument rendering, as well as packaged XCB/Wayland AppImage smoke. Physical KDE visual verification remains open. It can run a deterministic MockRuntime or stream a real OpenAI-compatible Chat Completions endpoint through NativeSuprAIRuntime.
+The native prototype supports a deterministic MockRuntime and streamed OpenAI-compatible Chat Completions through NativeSuprAIRuntime. Completed and live assistant Markdown are presented through a bounded, C++-sanitized native renderer. The last published artifact before this change was alpha.7; its physical KDE link/copy acceptance is still pending.
 
 ## Current prototype
 
@@ -112,11 +112,11 @@ The authenticated test **only runs when repository Actions secret `NINFER_API_KE
 
 The external endpoint is a test service, **not** a permanent default; changing models or ports must not silently change SuprAI application defaults. Manual runs are available from Actions → remote-ninfer-smoke → Run workflow.
 
-## Text rendering (alpha.7)
+## Text rendering
 
-Completed assistant messages now have a bounded `messageBlocks` presentation role: safe styled prose plus explicit fenced-code cards, selectable read-only text, monospace code, code-language labels and copy actions. Inline HTTP(S) links are generated from validated Markdown destinations, **never activated by rendering**; a user click immediately delegates to the system browser (no extra modal), with a second strict HTTP(S)/host/userinfo check in C++; rendering itself never opens links. Non-HTTP(S), credential-bearing and malformed links remain inert, with destinations visible. Model-provided HTML/images are not loaded. Streaming and failed/cancelled messages remain plain text, and very large messages safely fall back to non-parsed text.
+Completed assistant messages now have a bounded `messageBlocks` presentation role: safe styled prose plus explicit fenced-code cards, selectable read-only text, monospace code, code-language labels and copy actions. Inline HTTP(S) links are generated from validated Markdown destinations, **never activated by rendering**; a user click immediately delegates to the system browser (no extra modal), with a second strict HTTP(S)/host/userinfo check in C++; rendering itself never opens links. Non-HTTP(S), credential-bearing and malformed links remain inert, with destinations visible. Model-provided HTML/images are not loaded. Streaming assistant Markdown previews are coalesced to 90 ms updates for changed messages and bounded to 32,768 UTF-16 units; an unfinished fenced block is displayed as a code card. Failed/cancelled items remain plain, and the full finalized message is formatted when within the 65,536-unit limit. Very large messages safely fall back to non-parsed text.
 
-Alpha.7 adds fixed-width copy buttons with brief '✓ Copiado' feedback, visible heading size hierarchy, GitHub-style strikethrough and checked/unchecked task markers. CI passed with 12/12 tests and packaged XCB/Wayland AppImage smoke. Physical KDE interaction testing remains pending. Remaining work: long-transcript performance, tables, callouts/quotes, optional ==highlight==, keyboard accessibility, attachments, richer syntax highlighting, and incremental Markdown during streaming. This is a first native proof rather than a complete document renderer.
+Alpha.7 adds fixed-width copy buttons with brief '✓ Copiado' feedback, visible heading size hierarchy, GitHub-style strikethrough and checked/unchecked task markers. CI passed with 12/12 tests and packaged XCB/Wayland AppImage smoke. Physical KDE interaction testing remains pending. Remaining work: physical acceptance of live previews and alpha.7 copy/link UX, long-transcript and streaming-parser benchmarks, tables, callouts/quotes, optional ==highlight==, keyboard accessibility, attachments and richer syntax highlighting. This is a first native proof rather than a complete document renderer.
 
 ## Provider configuration (alpha.4)
 
@@ -128,15 +128,15 @@ This first slice supports **one active endpoint/model**; named provider profiles
 
 ## AppImage preview
 
-SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The experimental `SuprAI-0.1.0-alpha.7-x86_64.AppImage` is generated and verified in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
+SuprAI can be tested from one executable without installing build-time Qt/CMake dependencies. The candidate `SuprAI-0.1.0-alpha.8-x86_64.AppImage` is built and tested in GitHub Actions on Ubuntu 24.04 with Qt 6.12.0. Packaged smoke tests run under XCB/Xvfb and headless Wayland/Weston. KDE X11/NVIDIA with real NInfer was tested on 2026-10-11; KDE/GNOME Wayland and other-distro ABI compatibility are not yet proved.
 
 The `appimage-preview` GitHub Actions workflow uploads the AppImage + `.sha256`; after verified `main` builds it publishes the same pair as a GitHub pre-release. To run it on a machine whose local inference server speaks OpenAI-compatible Chat Completions:
 
 ```bash
-chmod +x SuprAI-0.1.0-alpha.7-x86_64.AppImage
+chmod +x SuprAI-0.1.0-alpha.8-x86_64.AppImage
 SUPRAI_RUNTIME=native SUPRAI_BASE_URL=http://127.0.0.1:8090/v1 \
   SUPRAI_MODEL=your-model-id SUPRAI_API_KEY=your-local-api-key \
-  ./SuprAI-0.1.0-alpha.7-x86_64.AppImage
+  ./SuprAI-0.1.0-alpha.8-x86_64.AppImage
 ```
 
 If FUSE is unavailable, add `APPIMAGE_EXTRACT_AND_RUN=1` before the invocation. After saving a model in the Configuración page, close SuprAI completely and reopen it before using the chat; an explicit notice explains why Send is disabled in the current process. For a fake local test, use `SUPRAI_RUNTIME=mock`. Full build instructions follow for contributors.

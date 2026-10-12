@@ -236,11 +236,14 @@ Current implemented structure:
     tst_native_runtime.cpp
 ```
 
-The initial M2 transcript safety slice lives inside suprai_ui: completed
-assistant Markdown is parsed with QTextDocument MarkdownNoHTML and projected
-through a private allowlisted StyledText converter. Live streaming, unsafe
-resources and overly large messages never enter an untrusted rich renderer.
-This does not complete the full transcript renderer gates in ADR-0014.
+The M2 transcript safety layer lives inside suprai_ui: completed assistant
+Markdown is parsed with QTextDocument MarkdownNoHTML and projected as
+allowlisted generated RichText. Streaming assistant deltas update the canonical
+text immediately; a UI-only 90 ms coalescer projects previews for affected
+rows up to 32,768 UTF-16 units. Unfinished fences are code cards, not raw
+HTML. Messages above the preview limit, unsafe resources and failed/cancelled
+turns remain plain; terminal completion projects up to 65,536 UTF-16 units.
+This does not close the performance/desktop gates in ADR-0014.
 
 Future modules (tools/context/memory/MCP/persistence/skills/platform/services) are added under the same public-contract/private-implementation rule when their milestone begins.
 

@@ -5,7 +5,7 @@
 namespace suprai::ui::internal {
 
 // Input must be an absolute HTTP(S) URL without embedded credentials. External
-// activation is always user-initiated and confirmation-gated in the QML UI.
+// activation is always user-initiated and revalidated in C++ (no modal).
 bool isAllowedExternalUrl(const QString &uri);
 
 // Emits ONLY generated/escaped Qt StyledText tags. External resources are not

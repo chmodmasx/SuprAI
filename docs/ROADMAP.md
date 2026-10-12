@@ -73,7 +73,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - latest-session snapshot reading and interrupted-Run reconciliation are CI verified, including worker shutdown/reopen;
 - runtime-layering tests prove provider request count remains zero before ACK;
 - persistence tests verify the durable batch and FTS entry;
-- streaming chat, user messages and failed/cancelled responses remain plain text; completed assistant responses have a bounded safe StyledText projection (full Markdown proof remains open).
+- user messages and failed/cancelled output stay plain; live assistant Markdown now has a bounded, coalesced presentation preview and completed output has a separate bounded RichText/code projection (physical and long-history proof remains open).
 
 Still required before M1 can be COMPLETE:
 - KDE Wayland and GNOME Wayland physical proof (KDE X11/NVIDIA AppImage and NInfer chat/recovery were verified on 2026-10-11);
@@ -127,7 +127,7 @@ Early prototype proof already exists for:
 - cancellation;
 - error display.
 
-M2 is not complete: the latest local session is automatically restored, but session navigation and tool/approval/clarification UI remain. A safe completion-only Markdown projection is implemented; full Markdown performance, selection/copy and OpenURI proof remain. Terminal writes and restart reconstruction are CI-verified. The generalized domain foundation and runtime capability projection are implemented.
+M2 is not complete: the latest local session is automatically restored, but session navigation and tool/approval/clarification UI remain. Bounded completion Markdown and coalesced streaming preview are implemented; long-transcript performance and physical selection/copy/OpenURI proof remain. Terminal writes and restart reconstruction are CI-verified. The generalized domain foundation and runtime capability projection are implemented.
 
 Implemented foundation:
 - AgentRuntime abstract interface;
@@ -142,14 +142,14 @@ Implemented foundation:
 - alpha.4 release: sending is gated on a Ready runtime and an actually active model; pending provider restart is explained, with Enter to send and Shift+Enter for a newline (CI verified; physical KDE acceptance pending);
 - separate completed/stopped transcript projection preserves failed/cancelled states, including persistence errors (CI verified);
 - C++ QAbstractListModel transcript projection;
-- completion-only assistant Markdown projection to allowlisted generated Qt RichText, without model HTML or images; generated HTTP(S) links are user-clickable only, with host/scheme/credential validation;
-- streaming stays plain text; inputs and failed/cancelled items also stay plain text; giant completed messages degrade safely to plain text;
+- bounded completed assistant Markdown and coalesced live previews use generated allowlisted Qt RichText only, without model HTML or images; generated HTTP(S) links require a user click and strict C++ validation;
+- streaming preview is refreshed at most every 90 ms for changed rows and is restricted to 32,768 UTF-16 units; unfinished fences show code cards, while oversized live streams, inputs and failed/cancelled items remain plain; completed Markdown is capped at 65,536 UTF-16 units;
 - first durable turn-admission write path through PersistencePort.
 
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- alpha.7 shipped with CI PASS: Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network). Physical KDE acceptance still pending. Next: tables, quotes, optional highlight, coalesced safe Markdown preview during streaming, 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
+- alpha.7 shipped with CI PASS: Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network). Physical KDE acceptance still pending. Next: tables, quotes, optional highlight, benchmarks of incremental-block vs coalesced preview and 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
 - tool cards;
 - approval/clarification component.
 
