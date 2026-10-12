@@ -143,8 +143,8 @@ void ChatController::copyText(const QString &text)
 
 bool ChatController::openExternalLink(const QString &uri)
 {
-    // Defense in depth: caller displays explicit confirmation, AND the
-    // application validates the scheme and host immediately before opening.
+    // User clicks the link once; we validate the entire target again before
+    // handing it to the OS browser. Rendering never activates URLs.
     if (!internal::isAllowedExternalUrl(uri)) return false;
     return QDesktopServices::openUrl(QUrl(uri, QUrl::StrictMode));
 }
