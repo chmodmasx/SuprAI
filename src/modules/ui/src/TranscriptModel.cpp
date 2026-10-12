@@ -2,12 +2,17 @@
 #include "SafeMarkdownRenderer.h"
 #include "MarkdownBlocks.h"
 
+#include <utility>
+
 namespace suprai::ui::internal {
 
 namespace {
-// Keep synchronous parsing bounded; long answers remain plain text until a
-// benchmarked block-based renderer exists.
+// Streaming previews are intentionally smaller than final Markdown projections:
+// coalescing avoids per-token reparses, while the size bound avoids expensive
+// synchronous rich formatting in the GUI thread for very long generations.
 constexpr qsizetype kMarkdownLimit = 65536;
+constexpr qsizetype kStreamingPreviewLimit = 32768;
+constexpr int kPreviewIntervalMs = 90;
 
 QString itemStateName(suprai::domain::ConversationItemState state)
 {
@@ -26,6 +31,9 @@ QString itemStateName(suprai::domain::ConversationItemState state)
 TranscriptModel::TranscriptModel(QObject *parent)
     : QAbstractListModel(parent)
 {
+    m_previewTimer.setSingleShot(true);
+    connect(&m_previewTimer, &QTimer::timeout, this,
+            &TranscriptModel::flushStreamingPreview);
 }
 
 int TranscriptModel::rowCount(const QModelIndex &parent) const
@@ -114,9 +122,10 @@ void TranscriptModel::appendDelta(const QString &itemId, const QString &delta)
         return;
     }
 
+    if (delta.isEmpty()) return;
     message->text += delta;
-    const auto modelIndex = index(row);
-    emit dataChanged(modelIndex, modelIndex, {TextRole, DisplayTextRole});
+    m_pendingPreviewIds.insert(itemId);
+    if (!m_previewTimer.isActive()) m_previewTimer.start(kPreviewIntervalMs);
 }
 
 void TranscriptModel::finish(const QString &itemId)
@@ -126,6 +135,7 @@ void TranscriptModel::finish(const QString &itemId)
         return;
     }
 
+    m_pendingPreviewIds.remove(itemId);
     m_items[row].state = suprai::domain::ConversationItemState::Completed;
     updateCompletedProjection(row);
     const auto modelIndex = index(row);
@@ -144,13 +154,22 @@ void TranscriptModel::stop(
     if (row < 0 || !suprai::domain::isStreaming(m_items[row])) {
         return;
     }
+    m_pendingPreviewIds.remove(itemId);
     m_items[row].state = terminalState;
+    // Failed/cancelled streams use the plain-text error projection.
+    m_messageBlocks[row].clear();
+    m_styledText[row].clear();
+    m_styledRows[row] = false;
     const auto modelIndex = index(row);
-    emit dataChanged(modelIndex, modelIndex, {StreamingRole, StateRole});
+    emit dataChanged(modelIndex, modelIndex,
+                     {TextRole, StreamingRole, StateRole, DisplayTextRole,
+                      StyledTextRole, MessageBlocksRole});
 }
 
 void TranscriptModel::clear()
 {
+    m_previewTimer.stop();
+    m_pendingPreviewIds.clear();
     if (m_items.isEmpty()) {
         return;
     }
@@ -179,6 +198,30 @@ void TranscriptModel::updateCompletedProjection(int row)
     m_styledText[row] = safeMarkdownToStyledText(message->text);
     m_styledRows[row] = true;
     m_messageBlocks[row] = safeMarkdownBlocks(message->text);
+}
+
+void TranscriptModel::flushStreamingPreview()
+{
+    // Only the changed streaming rows are projected, never the whole history.
+    // The complete canonical text is kept even when a preview is too large.
+    const auto pending = std::exchange(m_pendingPreviewIds, QSet<QString>{});
+    for (const QString &itemId : pending) {
+        const int row = rowForId(itemId);
+        if (row < 0 || !suprai::domain::isStreaming(m_items[row])) continue;
+
+        const auto *message = suprai::domain::messageContent(m_items[row]);
+        if (!message) continue;
+
+        if (message->role == suprai::domain::ConversationRole::Assistant
+            && message->text.size() <= kStreamingPreviewLimit) {
+            m_messageBlocks[row] = safeStreamingMarkdownBlocks(message->text);
+        } else {
+            m_messageBlocks[row].clear();
+        }
+        const auto modelIndex = index(row);
+        emit dataChanged(modelIndex, modelIndex,
+                         {TextRole, DisplayTextRole, MessageBlocksRole});
+    }
 }
 
 int TranscriptModel::rowForId(const QString &itemId) const
