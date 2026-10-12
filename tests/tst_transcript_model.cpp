@@ -82,7 +82,7 @@ private slots:
         QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(), raw);
     }
 
-    void allowedLinkDestinationVisibleAndConfirmedInUi()
+    void allowedLinkDestinationVisibleAndClickable()
     {
         using suprai::ui::internal::TranscriptModel;
         TranscriptModel model;
