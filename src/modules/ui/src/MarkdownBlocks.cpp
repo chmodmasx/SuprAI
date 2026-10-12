@@ -1,5 +1,6 @@
 #include "MarkdownBlocks.h"
 #include "SafeMarkdownRenderer.h"
+#include "MarkdownStructures.h"
 
 #include <QRegularExpression>
 #include <QVariantMap>
@@ -75,7 +76,7 @@ QVariantList parseMarkdownBlocks(const QString &markdown, bool preview)
                 continue;
             }
             if (!proseLines.isEmpty()) {
-                blocks.append(prose(proseLines.join(QLatin1Char('\n'))));
+                appendMarkdownStructures(proseLines, blocks);
                 proseLines.clear();
             }
             QStringList tail;
@@ -87,7 +88,7 @@ QVariantList parseMarkdownBlocks(const QString &markdown, bool preview)
         }
 
         if (!proseLines.isEmpty()) {
-            blocks.append(prose(proseLines.join(QLatin1Char('\n'))));
+            appendMarkdownStructures(proseLines, blocks);
             proseLines.clear();
         }
 
@@ -100,7 +101,7 @@ QVariantList parseMarkdownBlocks(const QString &markdown, bool preview)
         if (blocks.size() >= kMaxBlocks) return {};
     }
     if (!proseLines.isEmpty()) {
-        blocks.append(prose(proseLines.join(QLatin1Char('\n'))));
+        appendMarkdownStructures(proseLines, blocks);
     }
     if (blocks.isEmpty()) blocks.append(prose(markdown));
     return blocks.size() > kMaxBlocks ? QVariantList{} : blocks;
