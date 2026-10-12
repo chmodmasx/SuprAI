@@ -87,6 +87,17 @@ private slots:
         QVERIFY(prose->property("readOnly").toBool());
         QVERIFY(prose->property("selectByMouse").toBool());
 
+        QScopedPointer<QObject> styledStreaming(proseComponent.createWithInitialProperties({
+            {QStringLiteral("formatted"), QStringLiteral("Hola <b>mundo</b>")},
+            {QStringLiteral("styled"), true},
+            {QStringLiteral("streaming"), true},
+        }));
+        QVERIFY2(styledStreaming, qPrintable(proseComponent.errorString()));
+        QCOMPARE(styledStreaming->property("textFormat").toInt(), int(Qt::RichText));
+        auto *previewDoc = styledStreaming->property("textDocument").value<QQuickTextDocument *>();
+        QVERIFY(previewDoc);
+        QCOMPARE(previewDoc->textDocument()->toPlainText(), QStringLiteral("Hola mundo ▋"));
+
         QScopedPointer<QObject> streaming(proseComponent.createWithInitialProperties({
             {QStringLiteral("formatted"), QStringLiteral("**sin procesar**")},
             {QStringLiteral("styled"), false},
