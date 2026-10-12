@@ -41,39 +41,6 @@ ApplicationWindow {
     readonly property color foreground: "#F6F6F6"
     readonly property color muted: "#AFAFAF"
 
-    Dialog {
-        id: externalLinkDialog
-        modal: true
-        title: "Abrir enlace externo"
-        anchors.centerIn: parent
-        width: Math.min(root.width - 80, 650)
-        property string pendingUrl: ""
-        standardButtons: Dialog.Open | Dialog.Cancel
-
-        contentItem: Column {
-            spacing: 12
-            Label {
-                text: "SuprAI va a abrir este enlace en el navegador. Verificá el destino:"
-                width: externalLinkDialog.availableWidth
-                color: root.foreground
-                wrapMode: Text.Wrap
-            }
-            TextArea {
-                text: externalLinkDialog.pendingUrl
-                width: externalLinkDialog.availableWidth
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.WrapAnywhere
-                color: root.foreground
-            }
-        }
-        onAccepted: {
-            chatController.openExternalLink(pendingUrl)
-            pendingUrl = ""
-        }
-        onRejected: pendingUrl = ""
-    }
-
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -320,8 +287,9 @@ ApplicationWindow {
                         accentColor: root.accent
                         onCopyRequested: function(value) { chatController.copyText(value) }
                         onExternalLinkRequested: function(url) {
-                            externalLinkDialog.pendingUrl = url
-                            externalLinkDialog.open()
+                            // One deliberate click opens valid HTTP(S) URLs.
+                            // ChatController validates the URL again in C++.
+                            chatController.openExternalLink(url)
                         }
                     }
 

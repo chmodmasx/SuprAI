@@ -11,6 +11,26 @@ class MessageBubbleTest final : public QObject
 {
     Q_OBJECT
 private slots:
+    void copyFeedbackChangesWithoutResizing()
+    {
+        QQmlEngine engine;
+        QQmlComponent component(&engine, QUrl::fromLocalFile(
+            QStringLiteral(SUPRAI_COPY_BUTTON_FILE)));
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        QScopedPointer<QObject> button(component.createWithInitialProperties({
+            {QStringLiteral("contentToCopy"), QStringLiteral("print('hola')")},
+        }));
+        QVERIFY2(button, qPrintable(component.errorString()));
+        QCOMPARE(button->property("text").toString(), QStringLiteral("Copiar"));
+        const int before = button->property("implicitWidth").toInt();
+        QVERIFY(QMetaObject::invokeMethod(button.get(), "confirmCopy"));
+        QCOMPARE(button->property("text").toString(), QStringLiteral("✓ Copiado"));
+        QCOMPARE(button->property("implicitWidth").toInt(), before);
+        QVERIFY(button->setProperty("contentToCopy", QStringLiteral("otro bloque")));
+        QCOMPARE(button->property("text").toString(), QStringLiteral("Copiar"));
+        QCOMPARE(button->property("implicitWidth").toInt(), before);
+    }
+
     void constructsAndLaysOutSafeTextAndCode()
     {
         QQmlEngine engine;

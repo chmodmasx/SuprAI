@@ -49,11 +49,11 @@ Item {
                 height: root.speaker === "assistant" && root.messageState === "completed" ? 22 : 0
                 visible: height > 0
                 layoutDirection: Qt.RightToLeft
-                Button {
-                    text: "Copiar respuesta"
-                    height: 22
-                    font.pixelSize: 11
-                    onClicked: root.copyRequested(root.text)
+                CopyFeedbackButton {
+                    copyLabel: "Copiar respuesta"
+                    stableWidth: 132
+                    contentToCopy: root.text
+                    onCopyRequested: function(value) { root.copyRequested(value) }
                 }
             }
 
@@ -120,10 +120,10 @@ Item {
                         font.pixelSize: 12
                         elide: Text.ElideRight
                     }
-                    Button {
-                        text: "Copiar código"
-                        font.pixelSize: 11
-                        onClicked: root.copyRequested(codeCard.segmentData.raw)
+                    CopyFeedbackButton {
+                        stableWidth: 94
+                        contentToCopy: codeCard.segmentData.raw
+                        onCopyRequested: function(value) { root.copyRequested(value) }
                     }
                 }
 

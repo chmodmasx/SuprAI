@@ -2,6 +2,7 @@
 
 #include <QFont>
 #include <QTextBlock>
+#include <QTextBlockFormat>
 #include <QTextCharFormat>
 #include <QTextDocument>
 #include <QTextFragment>
@@ -29,7 +30,9 @@ QString safeMarkdownToStyledText(const QString &markdown)
 {
     // Read-only Markdown AST projection; no layout or image-resource fetch.
     QTextDocument doc;
-    doc.setMarkdown(markdown, QTextDocument::MarkdownNoHTML);
+    doc.setMarkdown(markdown,
+                    QTextDocument::MarkdownFeatures(QTextDocument::MarkdownDialectGitHub)
+                    | QTextDocument::MarkdownNoHTML);
 
     QString result;
     bool first = true;
@@ -38,17 +41,33 @@ QString safeMarkdownToStyledText(const QString &markdown)
         first = false;
 
         if (const auto *list = block.textList()) {
-            if (list->format().style() == QTextListFormat::ListDecimal) {
-                result += QString::number(list->itemNumber(block) + 1);
-                result += QStringLiteral(". ");
-            } else {
-                result += QStringLiteral("• ");
+            switch (block.blockFormat().marker()) {
+            case QTextBlockFormat::MarkerType::Checked:
+                result += QStringLiteral("☑ ");
+                break;
+            case QTextBlockFormat::MarkerType::Unchecked:
+                result += QStringLiteral("☐ ");
+                break;
+            case QTextBlockFormat::MarkerType::NoMarker:
+                if (list->format().style() == QTextListFormat::ListDecimal) {
+                    result += QString::number(list->itemNumber(block) + 1);
+                    result += QStringLiteral(". ");
+                } else {
+                    result += QStringLiteral("• ");
+                }
+                break;
             }
         }
 
         QString previousHref;
-        const bool heading = block.blockFormat().headingLevel() > 0;
-        if (heading) result += QStringLiteral("<b>");
+        // All markup here is generated from fixed constants, never from
+        // untrusted source HTML. Sizes are intentionally compact in chat.
+        const int headingLevel = block.blockFormat().headingLevel();
+        constexpr int headingSizes[] = {0, 26, 23, 20, 18, 16, 14};
+        if (headingLevel >= 1 && headingLevel <= 6) {
+            result += QStringLiteral("<span style=\"font-size:%1px;font-weight:bold\">")
+                          .arg(headingSizes[headingLevel]);
+        }
 
         for (auto it = block.begin(); !it.atEnd(); ++it) {
             const QTextFragment fragment = it.fragment();
@@ -66,9 +85,11 @@ QString safeMarkdownToStyledText(const QString &markdown)
 
             const bool bold = format.fontWeight() >= QFont::Bold;
             const bool italic = format.fontItalic();
+            const bool strike = format.fontStrikeOut();
             const bool code = format.fontFixedPitch();
             if (bold) result += QStringLiteral("<b>");
             if (italic) result += QStringLiteral("<i>");
+            if (strike) result += QStringLiteral("<s>");
             if (code) result += QStringLiteral("<font face=\"monospace\">");
 
             // Only generated, strictly validated HTTP(S) anchors are active.
@@ -92,10 +113,13 @@ QString safeMarkdownToStyledText(const QString &markdown)
             previousHref = href;
 
             if (code) result += QStringLiteral("</font>");
+            if (strike) result += QStringLiteral("</s>");
             if (italic) result += QStringLiteral("</i>");
             if (bold) result += QStringLiteral("</b>");
         }
-        if (heading) result += QStringLiteral("</b>");
+        if (headingLevel >= 1 && headingLevel <= 6) {
+            result += QStringLiteral("</span>");
+        }
     }
     return result;
 }

@@ -142,14 +142,14 @@ Implemented foundation:
 - alpha.4 release: sending is gated on a Ready runtime and an actually active model; pending provider restart is explained, with Enter to send and Shift+Enter for a newline (CI verified; physical KDE acceptance pending);
 - separate completed/stopped transcript projection preserves failed/cancelled states, including persistence errors (CI verified);
 - C++ QAbstractListModel transcript projection;
-- completion-only assistant Markdown projection to allowlisted Qt StyledText, without images, injected HTML or clickable model-supplied links;
+- completion-only assistant Markdown projection to allowlisted generated Qt RichText, without model HTML or images; generated HTTP(S) links are user-clickable only, with host/scheme/credential validation;
 - streaming stays plain text; inputs and failed/cancelled items also stay plain text; giant completed messages degrade safely to plain text;
 - first durable turn-admission write path through PersistencePort.
 
 Still implement:
 - ProviderAttempt/ToolInvocation/Task value types as their execution paths arrive;
 - retain verified terminal assistant/Run persistence and latest-session read/reconstruction; add session navigation and deeper recovery in M3;
-- alpha.6 fixes alpha.5 completed-text regression: supported TextEdit.RichText for escaped allowlisted markup and PlainText otherwise; a dedicated ProseText/QTextDocument regression test, code cards, copy and confirmed links are CI-verified. Next: physical KDE acceptance and coalesced safe Markdown preview during streaming; also realistic 1k-message/long-answer scroll/resize benchmarks, keyboard selection/accessibility, attachments and optional syntax highlighting;
+- alpha.7 candidate updates Markdown heading sizes, strike and task markers; fixed-size copy button with transient confirmation and one-click external links (validated HTTP(S), no ambient network), pending CI and physical KDE acceptance. Next: tables, quotes, optional highlight, coalesced safe Markdown preview during streaming, 1k-message/long-answer performance, keyboard selection/accessibility and attachments;
 - tool cards;
 - approval/clarification component.
 

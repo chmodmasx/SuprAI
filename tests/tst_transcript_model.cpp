@@ -82,7 +82,7 @@ private slots:
         QCOMPARE(model.data(model.index(0), TranscriptModel::TextRole).toString(), raw);
     }
 
-    void allowedLinkDestinationVisibleAndConfirmedInUi()
+    void allowedLinkDestinationVisibleAndClickable()
     {
         using suprai::ui::internal::TranscriptModel;
         TranscriptModel model;
@@ -157,6 +157,22 @@ private slots:
         QVERIFY(!safe.contains(QStringLiteral("<img"), Qt::CaseInsensitive));
         QVERIFY(!safe.contains(QStringLiteral("<script"), Qt::CaseInsensitive));
         QVERIFY(safe.contains(QStringLiteral("javascript:alert")));
+    }
+
+    void projectsHeadingHierarchyStrikeAndTaskMarkers()
+    {
+        const QString raw = QStringLiteral(
+            "# Nivel 1\n## Nivel 2\n### Nivel 3\n"
+            "~~obsoleto~~\n- [x] terminado\n- [ ] pendiente");
+        const QString safe = suprai::ui::internal::safeMarkdownToStyledText(raw);
+        QVERIFY(safe.contains(QStringLiteral("font-size:26px")));
+        QVERIFY(safe.contains(QStringLiteral("font-size:23px")));
+        QVERIFY(safe.contains(QStringLiteral("font-size:20px")));
+        QVERIFY(safe.contains(QStringLiteral("<s>obsoleto</s>")));
+        QVERIFY(safe.contains(QStringLiteral("☑ terminado")));
+        QVERIFY(safe.contains(QStringLiteral("☐ pendiente")));
+        QVERIFY(!safe.contains(QStringLiteral("<script")));
+        QVERIFY(!safe.contains(QStringLiteral("<img")));
     }
 
     void incompleteFencesRemainPlainAndExcessiveMarkupFallsBack()
