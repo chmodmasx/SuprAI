@@ -73,7 +73,7 @@ Verified vertical slice at commit `d461c15db78b43ae526d2fd707f5a7ac0d7b5ee8`:
 - latest-session snapshot reading and interrupted-Run reconciliation are CI verified, including worker shutdown/reopen;
 - runtime-layering tests prove provider request count remains zero before ACK;
 - persistence tests verify the durable batch and FTS entry;
-- streaming chat, user messages and failed/cancelled responses remain plain text; completed assistant responses have a bounded safe StyledText projection (full Markdown proof remains open).
+- user messages and failed/cancelled output stay plain; live assistant Markdown now has a bounded, coalesced presentation preview and completed output has a separate bounded RichText/code projection (physical and long-history proof remains open).
 
 Still required before M1 can be COMPLETE:
 - KDE Wayland and GNOME Wayland physical proof (KDE X11/NVIDIA AppImage and NInfer chat/recovery were verified on 2026-10-11);
