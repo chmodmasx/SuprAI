@@ -120,6 +120,10 @@ void appendMarkdownStructures(const QStringList &lines, QVariantList &blocks)
     static const QRegularExpression quoteLine(QStringLiteral("^ {0,3}> ?(.*)$"));
     QStringList proseLines;
     const auto flush = [&]() {
+        while (!proseLines.isEmpty() && proseLines.first().trimmed().isEmpty())
+            proseLines.removeFirst();
+        while (!proseLines.isEmpty() && proseLines.last().trimmed().isEmpty())
+            proseLines.removeLast();
         if (!proseLines.isEmpty()) {
             blocks.append(prose(proseLines.join(QLatin1Char('\n'))));
             proseLines.clear();
