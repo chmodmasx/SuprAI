@@ -30,8 +30,9 @@ QString safeMarkdownToStyledText(const QString &markdown)
 {
     // Read-only Markdown AST projection; no layout or image-resource fetch.
     QTextDocument doc;
-    doc.setMarkdown(markdown, QTextDocument::MarkdownDialectGitHub
-                                  | QTextDocument::MarkdownNoHTML);
+    doc.setMarkdown(markdown,
+                    QTextDocument::MarkdownFeatures(QTextDocument::MarkdownDialectGitHub)
+                    | QTextDocument::MarkdownNoHTML);
 
     QString result;
     bool first = true;
